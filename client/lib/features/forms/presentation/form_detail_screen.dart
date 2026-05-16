@@ -335,9 +335,17 @@ class _FormWorkspaceView extends StatelessWidget {
   }
 
   String _headerSubtitle(FormDetailDto form, BuildContext context) {
+    final l10n = context.l10n;
+    final status = form.status;
+    if (status == FormStatus.pendingReview) {
+      return '⏳ ${l10n.t('waitingForApproval')}';
+    }
+    if (status == FormStatus.rejected) {
+      return '❌ ${l10n.t('formRejected')}';
+    }
     final description = (form.description ?? '').trim();
     if (description.isNotEmpty) return description;
-    return context.l10n.t('workspaceHeaderFallback');
+    return l10n.t('workspaceHeaderFallback');
   }
 }
 

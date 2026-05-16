@@ -70,6 +70,8 @@ class DashboardScreen extends ConsumerWidget {
                     _CreateUserCard(actorRole: session.user.primaryRole),
                   if (_isManagementRole(session.user.primaryRole)) ...[
                     const SizedBox(height: AppSpacing.sm),
+                    const _PendingApprovalCard(),
+                    const SizedBox(height: AppSpacing.sm),
                     _UserManagementCard(actorRole: session.user.primaryRole),
                     const SizedBox(height: AppSpacing.sm),
                     const _FormManagementCard(),
@@ -923,6 +925,78 @@ class _EditUserDialogState extends State<_EditUserDialog> {
           child: Text(context.l10n.t('save')),
         ),
       ],
+    );
+  }
+}
+
+class _PendingApprovalCard extends ConsumerWidget {
+  const _PendingApprovalCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final future = ref
+        .watch(formsRepositoryProvider)
+        .listForms(page: 1, pageSize: 50, sortBy: 'updated_at', sortOrder: SortOrder.desc);
+    return SoftCard(
+      child: FutureBuilder<ListResponse<FormSummaryDto>>(
+        future: future,
+        builder: (context, snapshot) {
+          final allForms = snapshot.data?.data ?? const <FormSummaryDto>[];
+          final pending = allForms
+              .where((f) => f.status == FormStatus.pendingReview)
+              .toList();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _CardHeader(
+                icon: Icons.pending_actions_rounded,
+                title: context.l10n.t('pendingApprovalForms'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (pending.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Text(
+                    context.l10n.t('noFormsAwaitingApproval'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                )
+              else
+                for (final form in pending)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.hourglass_top_rounded),
+                    title: Text(
+                      form.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text(
+                      '${context.l10n.enumLabel(form.visibilityMode.toJson())} · ${context.l10n.countSubmissions(form.submissionsCount)}',
+                    ),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: [
+                        FilledButton.tonal(
+                          onPressed: () => context.go('/forms/${form.id}/publish'),
+                          child: Text(context.l10n.t('approve')),
+                        ),
+                      ],
+                    ),
+                    onTap: () => context.go('/forms/${form.id}'),
+                  ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
