@@ -14,11 +14,23 @@
 [CmdletBinding()]
 param(
     [string]$Version = "33.003",
-    [string]$Destination = (Join-Path $PSScriptRoot "..\assets\fonts")
+    [string]$Destination
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+
+# Resolve script directory ourselves so it works whether the script is dot-
+# sourced, run via -File, or invoked from a different cwd.
+$scriptDir = if ($PSScriptRoot) {
+    $PSScriptRoot
+} else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+if (-not $Destination) {
+    $Destination = Join-Path $scriptDir "..\assets\fonts"
+}
 
 $weights = @(
     "Regular",

@@ -72,6 +72,13 @@ client/macos/Flutter/ephemeral/
 # Linux / Windows desktop builds
 client/linux/flutter/ephemeral/
 client/windows/flutter/ephemeral/
+client/windows/flutter/generated_plugin_registrant.cc
+client/windows/flutter/generated_plugin_registrant.h
+client/windows/flutter/generated_plugins.cmake
+client/linux/flutter/generated_plugin_registrant.cc
+client/linux/flutter/generated_plugin_registrant.h
+client/linux/flutter/generated_plugins.cmake
+client/macos/Flutter/GeneratedPluginRegistrant.swift
 
 # Bundled font binaries (downloaded by scripts/download_vazirmatn_fonts.*)
 client/assets/fonts/*.ttf
