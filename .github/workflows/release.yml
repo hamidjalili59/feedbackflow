@@ -59,7 +59,7 @@ jobs:
         run: bash scripts/download_vazirmatn_fonts.sh
 
       - name: Resolve dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get
 
       - name: Run code generators
         run: dart run build_runner build --delete-conflicting-outputs
