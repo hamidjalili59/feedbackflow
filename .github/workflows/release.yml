@@ -8,7 +8,7 @@ on:
 
 env:
   RUST_TARGET: x86_64-unknown-linux-musl
-  FLUTTER_VERSION: "3.38.4"
+  FLUTTER_VERSION: "3.41.7"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ jobs:
         run: bash scripts/download_vazirmatn_fonts.sh
 
       - name: Resolve dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Run code generators
         run: dart run build_runner build --delete-conflicting-outputs
