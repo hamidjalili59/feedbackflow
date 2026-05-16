@@ -1,0 +1,170 @@
+name: Build Installer
+
+# Manual workflow that produces a self-contained `.tar.gz` you can download,
+# `scp` to the server, and install. Use this when the server has no direct
+# access to GitHub.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label (used in artifact filename). Leave empty for auto timestamp.'
+        required: false
+        default: ''
+      skip_analyze:
+        description: 'Skip flutter analyze (faster, less safe)'
+        type: boolean
+        default: false
+
+env:
+  FLUTTER_VERSION: "3.41.7"
+  RUST_TARGET: x86_64-unknown-linux-musl
+
+jobs:
+  build:
+    name: Build offline installer
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version label
+        id: version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+          fi
+          # Sanitize: only alnum, dash, dot, underscore.
+          VERSION="$(echo "$VERSION" | tr -c 'A-Za-z0-9._-' '-')"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building installer: feedbackflow-installer-$VERSION.tar.gz"
+
+      # ----- Flutter web -----------------------------------------------------
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Download Vazirmatn fonts
+        working-directory: client
+        run: bash scripts/download_vazirmatn_fonts.sh
+
+      - name: Resolve Flutter dependencies
+        working-directory: client
+        run: flutter pub get
+
+      - name: Run code generators
+        working-directory: client
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze (optional)
+        if: ${{ !inputs.skip_analyze }}
+        working-directory: client
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build Flutter web
+        working-directory: client
+        run: flutter build web --release --base-href "/"
+
+      # ----- Rust server (musl static binary) --------------------------------
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: musl
+          workspaces: server -> target
+
+      - name: Build server binary
+        working-directory: server
+        run: cargo build --release --target ${{ env.RUST_TARGET }}
+
+      # ----- Package installer bundle ----------------------------------------
+      - name: Stage bundle
+        id: stage
+        run: |
+          set -euo pipefail
+          STAGE="${RUNNER_TEMP}/installer-stage"
+          mkdir -p "$STAGE"
+
+          # Static binary
+          install -Dm755 \
+            "server/target/${RUST_TARGET}/release/feedbackflow-server" \
+            "$STAGE/feedbackflow-server"
+
+          # Flutter web bundle
+          cp -r client/build/web "$STAGE/web"
+
+          # Deploy assets
+          install -m 0644 deploy/feedbackflow.service "$STAGE/feedbackflow.service"
+          install -m 0755 deploy/install.sh           "$STAGE/install.sh"
+          install -m 0644 server/.env.example         "$STAGE/.env.example"
+          install -m 0644 deploy/README.md            "$STAGE/README.md"
+
+          # Lightweight metadata for the operator
+          cat > "$STAGE/VERSION" <<EOF
+          version=${{ steps.version.outputs.value }}
+          commit=$GITHUB_SHA
+          built_at=$(date --utc --iso-8601=seconds)
+          flutter_version=$FLUTTER_VERSION
+          rust_target=$RUST_TARGET
+          EOF
+
+          ARTIFACT="feedbackflow-installer-${{ steps.version.outputs.value }}.tar.gz"
+          tar -czf "$ARTIFACT" -C "$STAGE" .
+          ls -lh "$ARTIFACT"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedbackflow-installer-${{ steps.version.outputs.value }}
+          path: ${{ steps.stage.outputs.artifact }}
+          retention-days: 90
+          compression-level: 0
+
+      - name: Job summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Installer ready
+
+          | Field    | Value |
+          |----------|-------|
+          | Artifact | \`${{ steps.stage.outputs.artifact }}\` |
+          | Version  | \`${{ steps.version.outputs.value }}\` |
+          | Commit   | \`${GITHUB_SHA}\` |
+          | Retention| 90 days |
+
+          ### How to use
+
+          1. Scroll to the **Artifacts** section at the bottom of this page.
+          2. Click **feedbackflow-installer-${{ steps.version.outputs.value }}**.
+             GitHub will download a zip containing the \`.tar.gz\`.
+          3. Extract the zip on your laptop. You should see one file:
+             \`${{ steps.stage.outputs.artifact }}\`.
+          4. Transfer it to your server:
+
+             \`\`\`bash
+             scp ${{ steps.stage.outputs.artifact }} youruser@yourserver:~/
+             \`\`\`
+
+          5. On the server:
+
+             \`\`\`bash
+             mkdir -p ~/feedbackflow-installer
+             tar -xzf ~/${{ steps.stage.outputs.artifact }} -C ~/feedbackflow-installer
+             cd ~/feedbackflow-installer
+             sudo ./install.sh
+             \`\`\`
+
+          See \`deploy/README.md\` (also bundled inside the archive) for full
+          server setup including PostgreSQL configuration.
+          EOF

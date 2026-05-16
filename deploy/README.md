@@ -3,6 +3,11 @@
 You never build anything on the server. GitHub Actions builds a release
 bundle and you pull it on the server with `gh`.
 
+> **Server has no GitHub access?** See
+> [`OFFLINE-INSTALL.md`](OFFLINE-INSTALL.md) for the manual download +
+> `scp` flow. Everything below assumes the server can reach
+> `api.github.com`.
+
 ## What lives on the server
 
 ```
