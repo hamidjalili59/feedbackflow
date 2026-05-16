@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../data/api/api_exceptions.dart';
 import '../security/token_store.dart';
@@ -36,7 +35,9 @@ class ApiDioFactory {
     return dio;
   }
 
-  static AuthTokenStore defaultTokenStore() => AuthTokenStore(const FlutterSecureStorage());
+  static AuthTokenStore defaultTokenStore() {
+    return createTokenStore();
+  }
 }
 
 class _BearerTokenInterceptor extends Interceptor {
