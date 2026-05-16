@@ -13,6 +13,7 @@ import '../../../presentation/widgets/app_chrome.dart';
 import '../../../presentation/widgets/error_panel.dart';
 import '../../../presentation/widgets/feedback_field_kit.dart';
 import '../../../presentation/widgets/field_renderer.dart';
+import '../../../presentation/widgets/step_form_view.dart';
 import '../../../presentation/theme/app_spacing.dart';
 
 class FormDetailScreen extends ConsumerWidget {
@@ -28,6 +29,7 @@ class FormDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(formDetailProvider(formId));
+    final authAsync = ref.watch(authControllerProvider);
     return GradientScaffold(
       appBar: AppBar(
         leading: const Padding(
@@ -51,10 +53,35 @@ class FormDetailScreen extends ConsumerWidget {
               onBack: () => context.go('/forms'),
               onSignIn: () => context.go('/login'),
             ),
-        data: (form) => _FormWorkspaceView(form: form, section: initialSection),
+        data: (form) {
+          final session = authAsync.asData?.value;
+          final canManage = _canManageForm(form, session);
+          if (!canManage) {
+            // Regular users go directly to the submission/answer flow.
+            return _RespondentFormView(form: form);
+          }
+          return _FormWorkspaceView(form: form, section: initialSection);
+        },
       ),
     );
   }
+}
+
+/// Returns true if the current user can edit/manage this form.
+bool _canManageForm(FormDetailDto form, AuthSession? session) {
+  if (session == null) return false;
+  final role = session.user.primaryRole;
+  // Super admin, CEO, admin always can manage.
+  if (role == UserRole.superAdmin ||
+      role == UserRole.ceo ||
+      role == UserRole.admin) {
+    return true;
+  }
+  // Creator can manage their own form.
+  if (form.creatorId == session.user.id) return true;
+  // Manager can manage forms in their org.
+  if (role == UserRole.manager) return true;
+  return false;
 }
 
 enum FormWorkspaceSection {
@@ -102,6 +129,133 @@ FormWorkspaceSection formWorkspaceSectionFromWire(String? value) {
     (section) => section.wire == value,
     orElse: () => FormWorkspaceSection.builder,
   );
+}
+
+/// View shown to regular respondents (non-managers). If the form is published,
+/// they see the step-by-step answer flow. Otherwise they see a "not available" message.
+class _RespondentFormView extends ConsumerStatefulWidget {
+  const _RespondentFormView({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  ConsumerState<_RespondentFormView> createState() =>
+      _RespondentFormViewState();
+}
+
+class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
+  final Map<String, Object?> _answers = {};
+  bool _submitting = false;
+  bool _submitted = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final form = widget.form;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    if (form.status != FormStatus.published) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 56, color: scheme.error),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                context.l10n.t('formUnavailable'),
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                context.l10n.t('formUnavailableMessage'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              OutlinedButton.icon(
+                onPressed: () => context.go('/forms'),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: Text(context.l10n.t('back')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_submitted) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_rounded, size: 64, color: scheme.primary),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                context.l10n.t('responseSubmitted'),
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton.icon(
+                onPressed: () => context.go('/forms'),
+                icon: const Icon(Icons.list_rounded),
+                label: Text(context.l10n.t('forms')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final fields = [...form.fields]
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+
+    return StepFormView(
+      formTitle: form.title,
+      fields: fields,
+      answers: _answers,
+      onAnswerChanged: (fieldId, value) =>
+          setState(() => _answers[fieldId] = value),
+      onSubmit: _submit,
+      submitting: _submitting,
+    );
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(submissionsRepositoryProvider).createSubmission(
+            id: widget.form.id,
+            request: CreateSubmissionRequest(
+              answers: _answers.entries
+                  .where((e) => e.value != null)
+                  .map((e) => AnswerInputDto(fieldId: e.key, value: e.value))
+                  .toList(),
+              anonymous: false,
+            ),
+          );
+      if (mounted) setState(() => _submitted = true);
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 }
 
 class _FormWorkspaceView extends StatelessWidget {
