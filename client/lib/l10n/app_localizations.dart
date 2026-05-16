@@ -602,6 +602,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'template.riskAssessment.subtitle':
         'اسلایدرهای وزن\u200cدار و بررسی\u200cهای بله/خیر.',
     'continue': 'ادامه',
+    'next': 'بعدی',
     'tech.riverpod': 'Riverpod',
     'darkMode': 'حالت تاریک',
     'titleRequired': 'قبل از ساخت فرم، عنوان فرم را وارد کنید.',
@@ -1125,6 +1126,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'template.riskAssessment': 'Risk assessment',
     'template.riskAssessment.subtitle': 'Weighted sliders and yes/no checks.',
     'continue': 'Continue',
+    'next': 'Next',
     'tech.riverpod': 'Riverpod',
     'darkMode': 'Dark mode',
     'titleRequired': 'Add a form title before creating it.',
@@ -1614,6 +1616,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'template.riskAssessment': '风险评估',
     'template.riskAssessment.subtitle': '加权滑块和是/否检查。',
     'continue': '继续',
+    'next': '下一个',
     'tech.riverpod': 'Riverpod',
     'darkMode': '深色模式',
     'titleRequired': '创建前请填写表单标题。',

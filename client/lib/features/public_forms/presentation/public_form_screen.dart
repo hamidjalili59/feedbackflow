@@ -10,7 +10,7 @@ import '../../../presentation/widgets/app_chrome.dart';
 import '../../../presentation/theme/app_spacing.dart';
 import '../../../presentation/widgets/error_panel.dart';
 import '../../../presentation/widgets/feedback_field_kit.dart';
-import '../../../presentation/widgets/field_renderer.dart';
+import '../../../presentation/widgets/step_form_view.dart';
 
 // Uses FeedbackFieldCard via FieldRenderer for the public feedback-sheet experience.
 
@@ -347,65 +347,17 @@ class _LoadedPublicForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final protected = _needsPublicAccessToken(form);
     final fields = [...form.fields]
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return Form(
       key: formKey,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xxl,
-              ),
-              child: FeedbackSheetFrame(
-                maxWidth: 430,
-                children: [
-                  _PublicFormIntro(form: form),
-                  if (protected) ...[
-                    AppSpacing.gapMd,
-                    _ProtectionCard(
-                      validated:
-                          publicAccessToken != null &&
-                          publicAccessToken!.isNotEmpty,
-                      validating: validatingAccess,
-                    ),
-                  ],
-                  AppSpacing.gapMd,
-                  for (var index = 0; index < fields.length; index++) ...[
-                    _PublicFieldCard(
-                      index: index,
-                      field: fields[index],
-                      value: answers[fields[index].id],
-                      onChanged:
-                          (value) => onAnswerChanged(fields[index].id, value),
-                    ),
-                    AppSpacing.gapSm,
-                  ],
-                  FilledButton.icon(
-                    onPressed: submitting ? null : onSubmit,
-                    icon:
-                        submitting
-                            ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : const Icon(Icons.send_rounded),
-                    label: Text(
-                      submitting
-                          ? context.l10n.t('submitting')
-                          : context.l10n.t('submitResponse'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      child: StepFormView(
+        formTitle: form.title,
+        fields: fields,
+        answers: answers,
+        onAnswerChanged: onAnswerChanged,
+        onSubmit: onSubmit,
+        submitting: submitting,
       ),
     );
   }
@@ -552,6 +504,8 @@ class _PublicFormEntryGate extends StatelessWidget {
   }
 }
 
+// Kept for future use when an intro page is added before the step-by-step flow.
+// ignore: unused_element
 class _PublicFormIntro extends StatelessWidget {
   const _PublicFormIntro({required this.form});
 
@@ -663,6 +617,7 @@ class _PublicFormIntro extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ProtectionCard extends StatelessWidget {
   const _ProtectionCard({required this.validated, required this.validating});
 
@@ -694,66 +649,6 @@ class _ProtectionCard extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primary,
               ),
     );
-  }
-}
-
-class _PublicFieldCard extends StatelessWidget {
-  const _PublicFieldCard({
-    required this.index,
-    required this.field,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final int index;
-  final FormFieldDto field;
-  final Object? value;
-  final ValueChanged<Object?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_fieldSubmitsAnswer(field.type)) return _LayoutField(field: field);
-
-    return FieldRenderer(
-      index: index,
-      field: field,
-      values: <String, Object?>{field.id: value},
-      onChanged: onChanged,
-      previewOnly: false,
-    );
-  }
-}
-
-class _LayoutField extends StatelessWidget {
-  const _LayoutField({required this.field});
-
-  final FormFieldDto field;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (field.type == FieldType.sectionTitle) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 20, bottom: 8),
-        child: Text(
-          field.label,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.4,
-          ),
-        ),
-      );
-    }
-    if (field.type == FieldType.descriptionBlock ||
-        field.type == FieldType.termsAcceptance) {
-      return FeedbackInlinePanel(
-        icon: Icons.info_outline_rounded,
-        title: field.label,
-        message: field.description ?? field.label,
-      );
-    }
-    if (field.type == FieldType.divider) return const Divider(height: 40);
-    return const SizedBox.shrink();
   }
 }
 
