@@ -81,6 +81,15 @@ pub async fn list_forms(
         SortOrder::Asc => "asc",
         SortOrder::Desc => "desc",
     };
+    // Non-management roles only see published forms (+ their own drafts).
+    let status_filter = if matches!(
+        auth.role,
+        UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
+    ) {
+        "" // see all statuses
+    } else {
+        " and (f.status='published' or f.creator_id=$7)"
+    };
     let rows = if matches!(auth.role, UserRole::Ceo | UserRole::SuperAdmin) && org_id.is_none() {
         let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count from forms f where f.deleted_at is null and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) and ($2='' or lower(coalesce(f.category,''))=lower($2)) and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) order by {order_by} {direction}, f.id asc limit $5 offset $6");
         sqlx::query(&sql)
@@ -93,7 +102,7 @@ pub async fn list_forms(
             .fetch_all(&state.db)
             .await?
     } else {
-        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))) order by {order_by} {direction}, f.id asc limit $6 offset $7");
+        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))){status_filter} order by {order_by} {direction}, f.id asc limit $6 offset $7");
         sqlx::query(&sql)
             .bind(org_id)
             .bind(&search)
@@ -102,6 +111,7 @@ pub async fn list_forms(
             .bind(&tags)
             .bind(q.limit())
             .bind(q.offset())
+            .bind(auth.user_id)
             .fetch_all(&state.db)
             .await?
     };
@@ -380,6 +390,7 @@ pub async fn publish_form(
     .await?;
     if !direct
         && current.status != FormStatus::Approved
+        && request.publish_mode != PublishMode::PublicLink
         && !matches!(
             auth.role,
             UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
