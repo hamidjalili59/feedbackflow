@@ -1074,7 +1074,7 @@ class _FormManagementCard extends ConsumerWidget {
                         ),
                         IconButton(
                           tooltip: context.l10n.t('editField'),
-                          onPressed: () => context.go('/forms/${form.id}'),
+                          onPressed: () => context.go('/forms/${form.id}/builder'),
                           icon: const Icon(Icons.edit_note_rounded),
                         ),
                       ],

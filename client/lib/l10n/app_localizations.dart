@@ -446,6 +446,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'noFormsAwaitingApproval': 'فرمی در انتظار تأیید نیست',
     'approve': 'تأیید',
     'reject': 'رد',
+    'selectTargetRoles': 'نقش‌های مورد نظر را انتخاب کنید',
     'closedToResponses': 'بسته برای پاسخ\u200cهای جدید',
     'draftWorkflow': 'جریان پیش\u200cنویس',
     'builderMessage':
@@ -992,6 +993,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'noFormsAwaitingApproval': 'No forms awaiting approval',
     'approve': 'Approve',
     'reject': 'Reject',
+    'selectTargetRoles': 'Select target roles',
     'closedToResponses': 'Closed to new responses',
     'draftWorkflow': 'Draft workflow',
     'builderMessage':
@@ -1519,6 +1521,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'noFormsAwaitingApproval': '没有待审核的表单',
     'approve': '批准',
     'reject': '拒绝',
+    'selectTargetRoles': '选择目标角色',
     'closedToResponses': '已关闭新回复',
     'draftWorkflow': '草稿流程',
     'builderMessage': '编辑答题者需要填写的字段。更改会自动保存。',

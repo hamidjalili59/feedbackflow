@@ -55,33 +55,44 @@ class FormDetailScreen extends ConsumerWidget {
             ),
         data: (form) {
           final session = authAsync.asData?.value;
-          final canManage = _canManageForm(form, session);
-          if (!canManage) {
-            // Regular users go directly to the submission/answer flow.
+          final isCreator = session != null && form.creatorId == session.user.id;
+
+          // Creator always sees workspace from the forms list.
+          if (isCreator) {
+            return _FormWorkspaceView(form: form, section: initialSection);
+          }
+
+          // Admin/CEO/SuperAdmin/Manager: only see workspace if they
+          // explicitly navigated to a workspace section (e.g. /forms/:id/builder).
+          // From the plain /forms/:id route (initialSection == builder by default),
+          // they see the respondent answer flow for published forms.
+          final isManager = session != null &&
+              (session.user.primaryRole == UserRole.superAdmin ||
+                  session.user.primaryRole == UserRole.ceo ||
+                  session.user.primaryRole == UserRole.admin ||
+                  session.user.primaryRole == UserRole.manager);
+
+          if (isManager && initialSection != FormWorkspaceSection.builder) {
+            // Explicitly navigated to settings/publish/results/etc.
+            return _FormWorkspaceView(form: form, section: initialSection);
+          }
+
+          if (isManager && form.status == FormStatus.published) {
+            // From forms list → answer the form like a respondent.
             return _RespondentFormView(form: form);
           }
-          return _FormWorkspaceView(form: form, section: initialSection);
+
+          if (isManager) {
+            // Non-published form → show workspace to manage it.
+            return _FormWorkspaceView(form: form, section: initialSection);
+          }
+
+          // Regular users (teacher/parent/student) → answer flow.
+          return _RespondentFormView(form: form);
         },
       ),
     );
   }
-}
-
-/// Returns true if the current user can edit/manage this form.
-bool _canManageForm(FormDetailDto form, AuthSession? session) {
-  if (session == null) return false;
-  final role = session.user.primaryRole;
-  // Super admin, CEO, admin always can manage.
-  if (role == UserRole.superAdmin ||
-      role == UserRole.ceo ||
-      role == UserRole.admin) {
-    return true;
-  }
-  // Creator can manage their own form.
-  if (form.creatorId == session.user.id) return true;
-  // Manager can manage forms in their org.
-  if (role == UserRole.manager) return true;
-  return false;
 }
 
 enum FormWorkspaceSection {
@@ -1713,6 +1724,7 @@ class _PublishSection extends StatefulWidget {
 
 class _PublishSectionState extends State<_PublishSection> {
   PublishMode _mode = PublishMode.organization;
+  Set<UserRole> _selectedRoles = {};
   bool _busy = false;
 
   @override
@@ -1750,6 +1762,20 @@ class _PublishSectionState extends State<_PublishSection> {
                 labelFor: (value) => context.l10n.enumLabel(value.toJson()),
                 onChanged: (value) => setState(() => _mode = value),
               ),
+              if (_mode == PublishMode.roleBased) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  context.l10n.t('selectTargetRoles'),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                _RoleMultiSelect(
+                  selected: _selectedRoles,
+                  onChanged: (roles) => setState(() => _selectedRoles = roles),
+                ),
+              ],
               const SizedBox(height: 16),
               Wrap(
                 spacing: AppSpacing.sm,
@@ -2032,6 +2058,48 @@ String _joinUrl(String base, String path) {
       base.endsWith('/') ? base.substring(0, base.length - 1) : base;
   final normalizedPath = path.startsWith('/') ? path : '/$path';
   return '$normalizedBase$normalizedPath';
+}
+
+class _RoleMultiSelect extends StatelessWidget {
+  const _RoleMultiSelect({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final Set<UserRole> selected;
+  final ValueChanged<Set<UserRole>> onChanged;
+
+  static const _selectableRoles = [
+    UserRole.teacher,
+    UserRole.parent,
+    UserRole.student,
+    UserRole.manager,
+    UserRole.admin,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        for (final role in _selectableRoles)
+          FilterChip(
+            selected: selected.contains(role),
+            label: Text(context.l10n.enumLabel(role.toJson())),
+            onSelected: (value) {
+              final next = {...selected};
+              if (value) {
+                next.add(role);
+              } else {
+                next.remove(role);
+              }
+              onChanged(next);
+            },
+          ),
+      ],
+    );
+  }
 }
 
 class _ResultsSection extends ConsumerWidget {
