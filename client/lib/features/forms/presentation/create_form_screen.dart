@@ -231,20 +231,6 @@ class _BasicsPanel extends ConsumerWidget {
           subtitle: context.l10n.t('settingsSubtitle'),
           child: Column(
             children: [
-              _EnumDropdown<VisibilityMode>(
-                label: context.l10n.t('visibility'),
-                value: state.visibilityMode,
-                values: const [
-                  VisibilityMode.private,
-                  VisibilityMode.organization,
-                  VisibilityMode.selectedRoles,
-                  VisibilityMode.subordinates,
-                  VisibilityMode.publicLink,
-                ],
-                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
-                onChanged: enabled ? controller.changeVisibility : null,
-              ),
-              const SizedBox(height: AppSpacing.sm),
               _EnumDropdown<ScoringMode>(
                 label: context.l10n.t('scoringMode'),
                 value: state.scoringMode,

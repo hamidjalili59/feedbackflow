@@ -958,7 +958,6 @@ fn analytics_bucket_label(key: &str) -> String {
         "parent" => "Parent",
         "no_code" => "No code",
         "unlabeled_code" => "Unlabeled code",
-        "unknown" => "Unknown",
         value => value,
     }
     .to_owned()

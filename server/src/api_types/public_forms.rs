@@ -72,6 +72,7 @@ pub struct PublicSubmissionRequest {
     pub fingerprint_token: Option<String>,
     pub public_access_token: Option<String>,
     pub captcha_token: Option<String>,
+    pub respondent_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

@@ -28,6 +28,7 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
   final _accessFormKey = GlobalKey<FormState>();
   final _formPasswordController = TextEditingController();
   final _identityCodeController = TextEditingController();
+  final _guestNameController = TextEditingController();
   final Map<String, Object?> _answers = <String, Object?>{};
   bool _validatingAccess = false;
   bool _submitting = false;
@@ -56,6 +57,7 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
   void dispose() {
     _formPasswordController.dispose();
     _identityCodeController.dispose();
+    _guestNameController.dispose();
     super.dispose();
   }
 
@@ -138,6 +140,7 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
               selectedMode: mode,
               formPasswordController: _formPasswordController,
               identityCodeController: _identityCodeController,
+              guestNameController: _guestNameController,
               validating: _validatingAccess,
               identityLabel: _identityLabel,
               onModeChanged: (value) {
@@ -278,6 +281,9 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             request: PublicSubmissionRequest(
               anonymous: (_respondentMode ?? 'anonymous') == 'anonymous',
               respondentMode: _respondentMode,
+              respondentName: _guestNameController.text.trim().isEmpty
+                  ? null
+                  : _guestNameController.text.trim(),
               publicAccessToken: publicAccessToken,
               answers: answers,
             ),
@@ -370,6 +376,7 @@ class _PublicFormEntryGate extends StatelessWidget {
     required this.selectedMode,
     required this.formPasswordController,
     required this.identityCodeController,
+    required this.guestNameController,
     required this.validating,
     required this.identityLabel,
     required this.onModeChanged,
@@ -381,6 +388,7 @@ class _PublicFormEntryGate extends StatelessWidget {
   final String selectedMode;
   final TextEditingController formPasswordController;
   final TextEditingController identityCodeController;
+  final TextEditingController guestNameController;
   final bool validating;
   final String? identityLabel;
   final ValueChanged<String> onModeChanged;
@@ -454,6 +462,21 @@ class _PublicFormEntryGate extends StatelessWidget {
                         decoration: InputDecoration(
                           labelText: context.l10n.t('formPassword'),
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        ),
+                        validator:
+                            (value) =>
+                                value == null || value.trim().isEmpty
+                                    ? context.l10n.t('requiredField')
+                                    : null,
+                      ),
+                      AppSpacing.gapMd,
+                    ],
+                    if (selectedMode == 'guest') ...[
+                      TextFormField(
+                        controller: guestNameController,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.t('guestName'),
+                          prefixIcon: const Icon(Icons.person_outline_rounded),
                         ),
                         validator:
                             (value) =>

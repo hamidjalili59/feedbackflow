@@ -140,6 +140,7 @@ class _StepFormViewState extends State<StepFormView>
           child: PageView.builder(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
+            reverse: Directionality.of(context) == TextDirection.rtl,
             itemCount: _answerableFields.length,
             onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
@@ -172,26 +173,7 @@ class _StepFormViewState extends State<StepFormView>
               ),
               child: Row(
                 children: [
-                  // Back button
-                  if (_currentPage > 0)
-                    Expanded(
-                      child: SizedBox(
-                        height: 52,
-                        child: OutlinedButton.icon(
-                          onPressed: _goBack,
-                          icon: Icon(
-                            l10n.textDirection == TextDirection.rtl
-                                ? Icons.arrow_forward_rounded
-                                : Icons.arrow_back_rounded,
-                          ),
-                          label: Text(l10n.t('back')),
-                        ),
-                      ),
-                    )
-                  else
-                    const Spacer(),
-                  const SizedBox(width: AppSpacing.sm),
-                  // Next / Submit button
+                  // Next / Submit button (leading = start side)
                   Expanded(
                     flex: 2,
                     child: SizedBox(
@@ -230,6 +212,25 @@ class _StepFormViewState extends State<StepFormView>
                             ),
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Back button (trailing = end side)
+                  if (_currentPage > 0)
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: _goBack,
+                          icon: Icon(
+                            l10n.textDirection == TextDirection.rtl
+                                ? Icons.arrow_forward_rounded
+                                : Icons.arrow_back_rounded,
+                          ),
+                          label: Text(l10n.t('back')),
+                        ),
+                      ),
+                    )
+                  else
+                    const Spacer(),
                 ],
               ),
             ),

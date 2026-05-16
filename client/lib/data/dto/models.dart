@@ -1171,6 +1171,7 @@ abstract class PublicSubmissionRequest with _$PublicSubmissionRequest {
     @JsonKey(name: 'fingerprint_token') String? fingerprintToken,
     @JsonKey(name: 'public_access_token') String? publicAccessToken,
     @JsonKey(name: 'captcha_token') String? captchaToken,
+    @JsonKey(name: 'respondent_name') String? respondentName,
   }) = _PublicSubmissionRequest;
 
   factory PublicSubmissionRequest.fromJson(Map<String, dynamic> json) =>
