@@ -51,9 +51,9 @@ class ApiFailure implements Exception {
   }
 
   factory ApiFailure.network({String? message}) {
-    return ApiFailure(
+    return const ApiFailure(
       code: ErrorCode.serviceUnavailable,
-      message: message ?? 'Could not reach the server. Check your connection and try again.',
+      message: '',
       kind: ApiFailureKind.network,
     );
   }
@@ -61,7 +61,7 @@ class ApiFailure implements Exception {
   factory ApiFailure.timeout() {
     return const ApiFailure(
       code: ErrorCode.serviceUnavailable,
-      message: 'The server took too long to respond. Please try again.',
+      message: '',
       kind: ApiFailureKind.timeout,
     );
   }
@@ -69,7 +69,7 @@ class ApiFailure implements Exception {
   factory ApiFailure.cancelled() {
     return const ApiFailure(
       code: ErrorCode.serviceUnavailable,
-      message: 'The request was cancelled.',
+      message: '',
       kind: ApiFailureKind.cancelled,
     );
   }

@@ -98,10 +98,26 @@ class FriendlyApiErrorMessage {
           canRetry: false,
         );
       case ErrorCode.serviceUnavailable:
+        if (failure.kind == ApiFailureKind.timeout) {
+          return UserFacingError(
+            title: l10n?.t('requestTimedOut') ?? 'Request timed out',
+            message: l10n?.t('requestTimedOutMessage') ?? 'The server took too long to respond. Please try again.',
+            icon: Icons.timer_off_rounded,
+            canRetry: true,
+          );
+        }
+        if (failure.kind == ApiFailureKind.network) {
+          return UserFacingError(
+            title: l10n?.t('connectionProblem') ?? 'Connection problem',
+            message: l10n?.t('connectionProblemMessage') ?? 'Could not reach the server. Check your connection and try again.',
+            icon: Icons.wifi_off_rounded,
+            canRetry: true,
+          );
+        }
         return UserFacingError(
-          title: failure.kind == ApiFailureKind.timeout ? (l10n?.t('requestTimedOut') ?? 'Request timed out') : (l10n?.t('connectionProblem') ?? 'Connection problem'),
-          message: _messageOrFallback(failure, 'The server is unavailable right now. Please try again.'),
-          icon: Icons.wifi_off_rounded,
+          title: l10n?.t('serviceUnavailable') ?? 'Service unavailable',
+          message: _messageOrFallback(failure, l10n?.t('serviceUnavailableMessage') ?? 'The server is unavailable right now. Please try again.'),
+          icon: Icons.cloud_off_rounded,
           canRetry: true,
         );
       case ErrorCode.internalServerError:
