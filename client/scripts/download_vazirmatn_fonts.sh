@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Downloads the Vazirmatn font files used by the FeedbackFlow Flutter client.
-# Pulls the official static TTF files from the Rastikerdar/vazirmatn release.
+#
+# Pulls the official release archive from
+# https://github.com/rastikerdar/vazirmatn/releases and copies the TTF
+# weights referenced in pubspec.yaml under assets/fonts/.
 set -euo pipefail
 
 VERSION="${1:-33.003}"
@@ -10,12 +13,14 @@ mkdir -p "${DEST_DIR}"
 
 WEIGHTS=("Regular" "Medium" "SemiBold" "Bold" "ExtraBold" "Black")
 
-URL="https://github.com/rastikerdar/vazirmatn/releases/download/v${VERSION}/Vazirmatn-fonts-static-v${VERSION}.zip"
+URL="https://github.com/rastikerdar/vazirmatn/releases/download/v${VERSION}/vazirmatn-v${VERSION}.zip"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "Downloading Vazirmatn v${VERSION}..."
-curl -L "${URL}" -o "${TMP_DIR}/vazirmatn.zip"
+# -L follows redirects, --fail makes curl exit non-zero on HTTP errors so
+# we don't silently pretend a 404 page is a zip.
+curl -fL "${URL}" -o "${TMP_DIR}/vazirmatn.zip"
 unzip -q "${TMP_DIR}/vazirmatn.zip" -d "${TMP_DIR}/extracted"
 
 for weight in "${WEIGHTS[@]}"; do

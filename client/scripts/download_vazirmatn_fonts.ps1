@@ -1,12 +1,14 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  Downloads the Vazirmatn font files used by the FeedbackFlow Flutter client.
+    Downloads the Vazirmatn font files used by the FeedbackFlow Flutter client.
 
 .DESCRIPTION
-  Pulls the official static TTF files from the Rastikerdar/vazirmatn release
-  on GitHub and places them under assets/fonts so pubspec.yaml can register
-  them. Re-running the script is safe; existing files are overwritten.
+    Pulls the official release archive from
+    https://github.com/rastikerdar/vazirmatn/releases and copies the TTF
+    weights referenced in pubspec.yaml under assets/fonts/.
+
+    Re-running the script is safe; existing files are overwritten.
 #>
 
 [CmdletBinding()]
@@ -16,6 +18,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $weights = @(
     "Regular",
@@ -30,20 +33,20 @@ if (-not (Test-Path -LiteralPath $Destination)) {
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 }
 
-$baseUrl = "https://github.com/rastikerdar/vazirmatn/releases/download/v$Version/Vazirmatn-fonts-static-v$Version.zip"
-$tempZip = Join-Path $env:TEMP "vazirmatn-$Version.zip"
-$tempDir = Join-Path $env:TEMP "vazirmatn-$Version"
+$url    = "https://github.com/rastikerdar/vazirmatn/releases/download/v$Version/vazirmatn-v$Version.zip"
+$tmpZip = Join-Path $env:TEMP "vazirmatn-$Version.zip"
+$tmpDir = Join-Path $env:TEMP "vazirmatn-$Version"
 
 Write-Host "Downloading Vazirmatn v$Version..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $baseUrl -OutFile $tempZip
+Invoke-WebRequest -Uri $url -OutFile $tmpZip
 
-if (Test-Path -LiteralPath $tempDir) {
-    Remove-Item -Recurse -Force -LiteralPath $tempDir
+if (Test-Path -LiteralPath $tmpDir) {
+    Remove-Item -Recurse -Force -LiteralPath $tmpDir
 }
-Expand-Archive -LiteralPath $tempZip -DestinationPath $tempDir -Force
+Expand-Archive -LiteralPath $tmpZip -DestinationPath $tmpDir -Force
 
 foreach ($weight in $weights) {
-    $source = Get-ChildItem -Path $tempDir -Recurse `
+    $source = Get-ChildItem -Path $tmpDir -Recurse `
         -Filter "Vazirmatn-$weight.ttf" | Select-Object -First 1
     if (-not $source) {
         Write-Warning "Vazirmatn-$weight.ttf not found in archive."
@@ -54,7 +57,7 @@ foreach ($weight in $weights) {
     Write-Host "  -> $target"
 }
 
-Remove-Item -LiteralPath $tempZip -Force
-Remove-Item -LiteralPath $tempDir -Recurse -Force
+Remove-Item -LiteralPath $tmpZip -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "Done." -ForegroundColor Green
