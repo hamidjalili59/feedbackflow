@@ -1249,6 +1249,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
 
   Future<void> _save(WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     setState(() => _saving = true);
     try {
       await ref
@@ -1288,7 +1289,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
       ref.invalidate(formsControllerProvider);
       if (context.mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text(context.l10n.t('settingsSaved'))),
+          SnackBar(content: Text(l10n.t('settingsSaved'))),
         );
       }
     } catch (error) {
@@ -1296,7 +1297,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              FriendlyApiErrorMessage.from(error, context: context),
+              FriendlyApiErrorMessage.from(error),
             ),
           ),
         );
@@ -1668,15 +1669,16 @@ class _PublishSectionState extends State<_PublishSection> {
   }
 
   Future<void> _close(WidgetRef ref) async {
+    final l10n = context.l10n;
     final reason = await _reasonDialog(
       context,
-      title: context.l10n.t('closeForm'),
-      hint: context.l10n.t('optionalReason'),
+      title: l10n.t('closeForm'),
+      hint: l10n.t('optionalReason'),
     );
     if (reason == null) return;
     await _runAction(
       ref,
-      successMessage: context.l10n.t('formClosedToast'),
+      successMessage: l10n.t('formClosedToast'),
       action:
           () => ref
               .read(formsRepositoryProvider)
@@ -1690,16 +1692,17 @@ class _PublishSectionState extends State<_PublishSection> {
   }
 
   Future<void> _archive(WidgetRef ref) async {
+    final l10n = context.l10n;
     final reason = await _reasonDialog(
       context,
-      title: context.l10n.t('archiveForm'),
-      hint: context.l10n.t('optionalReason'),
+      title: l10n.t('archiveForm'),
+      hint: l10n.t('optionalReason'),
     );
     if (reason == null) return;
     if (context.mounted) {
       await _runAction(
         ref,
-        successMessage: context.l10n.t('formArchivedToast'),
+        successMessage: l10n.t('formArchivedToast'),
         action:
             () => ref
                 .read(formsRepositoryProvider)
@@ -1726,15 +1729,11 @@ class _PublishSectionState extends State<_PublishSection> {
       ref.invalidate(formsControllerProvider);
       messenger.showSnackBar(SnackBar(content: Text(successMessage)));
     } catch (error) {
-      if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              FriendlyApiErrorMessage.from(error, context: context),
-            ),
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

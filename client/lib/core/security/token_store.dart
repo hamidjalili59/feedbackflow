@@ -1,5 +1,5 @@
 import 'token_store_impl.dart'
-    if (dart.library.html) 'token_store_web.dart';
+    if (dart.library.js_interop) 'token_store_web.dart';
 
 /// Platform-aware token store.
 ///

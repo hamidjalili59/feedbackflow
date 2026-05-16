@@ -1,5 +1,4 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 import 'token_store.dart';
 
@@ -14,12 +13,12 @@ class WebAuthTokenStore implements AuthTokenStore {
 
   @override
   Future<String?> readAccessToken() async {
-    return html.window.localStorage[_accessKey];
+    return web.window.localStorage.getItem(_accessKey);
   }
 
   @override
   Future<String?> readRefreshToken() async {
-    return html.window.localStorage[_refreshKey];
+    return web.window.localStorage.getItem(_refreshKey);
   }
 
   @override
@@ -27,14 +26,14 @@ class WebAuthTokenStore implements AuthTokenStore {
     required String accessToken,
     required String refreshToken,
   }) async {
-    html.window.localStorage[_accessKey] = accessToken;
-    html.window.localStorage[_refreshKey] = refreshToken;
+    web.window.localStorage.setItem(_accessKey, accessToken);
+    web.window.localStorage.setItem(_refreshKey, refreshToken);
   }
 
   @override
   Future<void> clear() async {
-    html.window.localStorage.remove(_accessKey);
-    html.window.localStorage.remove(_refreshKey);
+    web.window.localStorage.removeItem(_accessKey);
+    web.window.localStorage.removeItem(_refreshKey);
   }
 }
 
