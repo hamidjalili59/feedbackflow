@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: feedbackflow
+      POSTGRES_USER: feedbackflow
+      POSTGRES_PASSWORD: feedbackflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - feedbackflow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedbackflow -d feedbackflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - feedbackflow_redis:/data
+
+  api:
+    build: .
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    command: ["/app/feedbackflow-server"]
+
+volumes:
+  feedbackflow_pg:
+  feedbackflow_redis:

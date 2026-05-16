@@ -1,0 +1,12 @@
+FeedbackFlow Flutter Client - Riverpod Generator Rewrite
+
+Important files:
+- lib/app/providers.dart: @Riverpod provider declarations and generated Notifier/AsyncNotifier source classes.
+- lib/app/providers.g.dart: generated compatibility output; regenerate with build_runner.
+- lib/app/router.dart: @Riverpod routerProvider declaration using Raw<GoRouter>.
+- lib/app/router.g.dart: generated compatibility output; regenerate with build_runner.
+- lib/data/dto/: OpenAPI DTOs/enums/envelopes.
+- lib/data/repositories/: DTO-first repositories matching backend operationIds.
+- lib/presentation/screens/: ConsumerWidget/ConsumerStatefulWidget UI.
+- tool/static_riverpod_generator_check.py: static check for generator migration.
+- tool/static_contract_check.py: OpenAPI smoke check.

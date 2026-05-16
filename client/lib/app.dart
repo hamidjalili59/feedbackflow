@@ -1,0 +1,33 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'app/providers.dart';
+import 'app/router.dart';
+import 'l10n/app_localizations.dart';
+import 'presentation/theme/app_theme.dart';
+
+class FeedbackFlowApp extends ConsumerWidget {
+  const FeedbackFlowApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeControllerProvider);
+    return MaterialApp.router(
+      title: 'FeedbackFlow',
+      debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ref.watch(themeControllerProvider),
+      routerConfig: ref.watch(routerProvider),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: context.l10n.textDirection,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+  }
+}

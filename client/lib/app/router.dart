@@ -1,0 +1,56 @@
+import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../features/forms/presentation/create_form_screen.dart';
+import '../features/dashboard/presentation/dashboard_screen.dart';
+import '../features/forms/presentation/form_detail_screen.dart';
+import '../features/forms/presentation/forms_list_screen.dart';
+import '../features/auth/presentation/login_screen.dart';
+import '../features/profile/presentation/profile_screen.dart';
+import '../features/public_forms/presentation/public_form_screen.dart';
+import '../features/shell/presentation/splash_screen.dart';
+
+part 'router.g.dart';
+
+@Riverpod(keepAlive: true)
+Raw<GoRouter> router(Ref ref) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => LoginScreen(
+          redirectLocation: state.uri.queryParameters['redirect'],
+          noticeKey: state.uri.queryParameters['notice'],
+        ),
+      ),
+      GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
+      GoRoute(path: '/forms', builder: (context, state) => const FormsListScreen()),
+      GoRoute(path: '/forms/new', builder: (context, state) => const CreateFormScreen()),
+      GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
+      GoRoute(
+        path: '/forms/:id',
+        builder: (context, state) => FormDetailScreen(
+          formId: state.pathParameters['id']!,
+          initialSection: FormWorkspaceSection.builder,
+        ),
+      ),
+      GoRoute(
+        path: '/forms/:id/:section',
+        builder: (context, state) => FormDetailScreen(
+          formId: state.pathParameters['id']!,
+          initialSection: formWorkspaceSectionFromWire(state.pathParameters['section']),
+        ),
+      ),
+      GoRoute(
+        path: '/public/:token',
+        builder: (context, state) => PublicFormScreen(
+          publicToken: state.pathParameters['token']!,
+        ),
+      ),
+    ],
+  );
+  ref.onDispose(router.dispose);
+  return router;
+}

@@ -1,0 +1,167 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  RUST_TARGET: x86_64-unknown-linux-musl
+  FLUTTER_VERSION: "3.38.4"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Path filter: skip heavy builds when only docs/unrelated files change.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-22.04
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            server:
+              - 'server/**'
+              - '.github/workflows/**'
+              - 'deploy/**'
+            client:
+              - 'client/**'
+              - '.github/workflows/**'
+
+  # ---------------------------------------------------------------------------
+  # Build Flutter web bundle from client/.
+  # ---------------------------------------------------------------------------
+  build-flutter-web:
+    name: Build Flutter web
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Download Vazirmatn fonts
+        run: bash scripts/download_vazirmatn_fonts.sh
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Run code generators
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build web release
+        run: flutter build web --release --base-href "/"
+
+      - name: Upload web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web
+          path: client/build/web
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Build Rust server as a static musl binary.
+  # ---------------------------------------------------------------------------
+  build-server:
+    name: Build server (musl)
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.changes.outputs.server == 'true' }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Cache cargo registry & target
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: musl
+          workspaces: server -> target
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ env.RUST_TARGET }}
+
+      - name: Stage binary
+        run: |
+          install -Dm755 \
+            target/${{ env.RUST_TARGET }}/release/feedbackflow-server \
+            "${GITHUB_WORKSPACE}/staging/feedbackflow-server"
+
+      - name: Upload server binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-binary
+          path: staging/feedbackflow-server
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Combine everything into one tarball that the server can pull and run.
+  # ---------------------------------------------------------------------------
+  package:
+    name: Package release bundle
+    needs: [build-flutter-web, build-server]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: server-binary
+          path: bundle
+
+      - name: Download Flutter web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web
+          path: bundle/web
+
+      - name: Lay out bundle
+        run: |
+          chmod +x bundle/feedbackflow-server
+          cp deploy/feedbackflow.service bundle/feedbackflow.service
+          cp deploy/install.sh bundle/install.sh
+          chmod +x bundle/install.sh
+          cp server/.env.example bundle/.env.example
+          (cd bundle && tar -czf "../feedbackflow-${GITHUB_SHA}.tar.gz" .)
+
+      - name: Upload combined release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedbackflow-bundle
+          path: feedbackflow-${{ github.sha }}.tar.gz
+          retention-days: 30
+
+      - name: Publish GitHub Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: feedbackflow-${{ github.sha }}.tar.gz
+          generate_release_notes: true

@@ -1,0 +1,12 @@
+This folder must contain the Drift web runtime assets when running on Chrome/Web:
+
+- sqlite3.wasm
+- drift_worker.js
+
+Run one of these from the project root:
+
+PowerShell:
+  .\scripts\download_drift_web_assets.ps1
+
+Bash:
+  ./scripts/download_drift_web_assets.sh

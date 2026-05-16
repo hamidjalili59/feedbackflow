@@ -1,0 +1,2932 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/providers.dart';
+import '../../../data/dto/dto.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../presentation/common/field_type_ui.dart';
+import '../../../presentation/common/friendly_api_error_message.dart';
+import '../../../presentation/models/form_builder_models.dart';
+import '../../../presentation/widgets/app_chrome.dart';
+import '../../../presentation/widgets/error_panel.dart';
+import '../../../presentation/widgets/feedback_field_kit.dart';
+import '../../../presentation/widgets/field_renderer.dart';
+import '../../../presentation/theme/app_spacing.dart';
+
+class FormDetailScreen extends ConsumerWidget {
+  const FormDetailScreen({
+    super.key,
+    required this.formId,
+    this.initialSection = FormWorkspaceSection.builder,
+  });
+
+  final String formId;
+  final FormWorkspaceSection initialSection;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detailAsync = ref.watch(formDetailProvider(formId));
+    return GradientScaffold(
+      appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsetsDirectional.only(start: 8),
+          child: AppBackButton(fallbackLocation: '/forms'),
+        ),
+        title: Text(context.l10n.t('formWorkspace')),
+        actions: const [
+          LanguageButton(),
+          ThemeModeButton(),
+          SizedBox(width: 12),
+        ],
+      ),
+      body: detailAsync.when(
+        loading:
+            () => LoadingPanel(message: context.l10n.t('loadingFormWorkspace')),
+        error:
+            (error, stackTrace) => ErrorPanel(
+              error: error,
+              onRetry: () => ref.invalidate(formDetailProvider(formId)),
+              onBack: () => context.go('/forms'),
+              onSignIn: () => context.go('/login'),
+            ),
+        data: (form) => _FormWorkspaceView(form: form, section: initialSection),
+      ),
+    );
+  }
+}
+
+enum FormWorkspaceSection {
+  builder,
+  preview,
+  settings,
+  publish,
+  share,
+  results,
+}
+
+extension FormWorkspaceSectionX on FormWorkspaceSection {
+  String get wire => switch (this) {
+    FormWorkspaceSection.builder => 'builder',
+    FormWorkspaceSection.preview => 'preview',
+    FormWorkspaceSection.settings => 'settings',
+    FormWorkspaceSection.publish => 'publish',
+    FormWorkspaceSection.share => 'share',
+    FormWorkspaceSection.results => 'results',
+  };
+
+  String get labelKey => switch (this) {
+    FormWorkspaceSection.builder => 'builder',
+    FormWorkspaceSection.preview => 'preview',
+    FormWorkspaceSection.settings => 'settings',
+    FormWorkspaceSection.publish => 'publish',
+    FormWorkspaceSection.share => 'share',
+    FormWorkspaceSection.results => 'results',
+  };
+
+  String label(BuildContext context) => context.l10n.t(labelKey);
+
+  IconData get icon => switch (this) {
+    FormWorkspaceSection.builder => Icons.construction_rounded,
+    FormWorkspaceSection.preview => Icons.visibility_rounded,
+    FormWorkspaceSection.settings => Icons.tune_rounded,
+    FormWorkspaceSection.publish => Icons.rocket_launch_rounded,
+    FormWorkspaceSection.share => Icons.ios_share_rounded,
+    FormWorkspaceSection.results => Icons.analytics_rounded,
+  };
+}
+
+FormWorkspaceSection formWorkspaceSectionFromWire(String? value) {
+  return FormWorkspaceSection.values.firstWhere(
+    (section) => section.wire == value,
+    orElse: () => FormWorkspaceSection.builder,
+  );
+}
+
+class _FormWorkspaceView extends StatelessWidget {
+  const _FormWorkspaceView({required this.form, required this.section});
+
+  final FormDetailDto form;
+  final FormWorkspaceSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 36),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PageHeaderCard(
+                      icon: Icons.dynamic_form_rounded,
+                      title: form.title,
+                      subtitle: _headerSubtitle(form, context),
+                      trailing: _StatusBadge(status: form.status),
+                      badges: [
+                        _MetaChip(
+                          label: context.l10n.enumLabel(form.status.toJson()),
+                          icon: Icons.flag_outlined,
+                        ),
+                        _MetaChip(
+                          label: context.l10n.enumLabel(
+                            form.visibilityMode.toJson(),
+                          ),
+                          icon: Icons.visibility_outlined,
+                        ),
+                        _MetaChip(
+                          label: context.l10n.enumLabel(
+                            form.publishMode.toJson(),
+                          ),
+                          icon: Icons.publish_outlined,
+                        ),
+                        _MetaChip(
+                          label: context.l10n.enumLabel(
+                            form.scoringMode.toJson(),
+                          ),
+                          icon: Icons.speed_outlined,
+                        ),
+                        if ((form.category ?? '').trim().isNotEmpty)
+                          _MetaChip(
+                            label: form.category!,
+                            icon: Icons.folder_outlined,
+                          ),
+                        for (final tag in form.tags ?? const <String>[])
+                          _MetaChip(label: tag, icon: Icons.sell_outlined),
+                        _MetaChip(
+                          label: context.l10n.countFields(form.fields.length),
+                          icon: Icons.list_alt_rounded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _WorkspaceNav(formId: form.id, selected: section),
+                    const SizedBox(height: 16),
+                    _ProgressChecklist(form: form, selected: section),
+                    const SizedBox(height: 16),
+                    _SectionBody(form: form, section: section),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _headerSubtitle(FormDetailDto form, BuildContext context) {
+    final description = (form.description ?? '').trim();
+    if (description.isNotEmpty) return description;
+    return context.l10n.t('workspaceHeaderFallback');
+  }
+}
+
+class _WorkspaceNav extends StatelessWidget {
+  const _WorkspaceNav({required this.formId, required this.selected});
+
+  final String formId;
+  final FormWorkspaceSection selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      padding: const EdgeInsets.all(10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final section in FormWorkspaceSection.values)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  selected: selected == section,
+                  avatar: Icon(section.icon, size: 18),
+                  label: Text(section.label(context)),
+                  onSelected:
+                      (_) => context.go('/forms/$formId/${section.wire}'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressChecklist extends StatelessWidget {
+  const _ProgressChecklist({required this.form, required this.selected});
+
+  final FormDetailDto form;
+  final FormWorkspaceSection selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _ChecklistItem(
+        label: context.l10n.t('addFields'),
+        done: form.fields.isNotEmpty,
+        target: FormWorkspaceSection.builder,
+        message:
+            form.fields.isEmpty
+                ? context.l10n.t('addFieldsBeforePublish')
+                : '${context.l10n.countFields(form.fields.length)} ${context.l10n.t('fieldsReady')}',
+      ),
+      _ChecklistItem(
+        label: context.l10n.t('preview'),
+        done: form.fields.isNotEmpty,
+        target: FormWorkspaceSection.preview,
+        message: context.l10n.t('reviewRespondentExperience'),
+      ),
+      _ChecklistItem(
+        label: context.l10n.t('configureAccess'),
+        done:
+            form.visibility.metadata != null || form.settings.metadata != null,
+        target: FormWorkspaceSection.settings,
+        message: context.l10n.enumLabel(form.visibilityMode.toJson()),
+      ),
+      _ChecklistItem(
+        label:
+            _isPublished(form)
+                ? context.l10n.t('enum.published')
+                : context.l10n.t('publishOrSubmit'),
+        done: _isPublished(form),
+        target: FormWorkspaceSection.publish,
+        message: _publishMessage(context, form),
+      ),
+    ];
+
+    return SoftCard(
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: 12,
+        children: [
+          for (final item in items)
+            _ChecklistChip(
+              item: item,
+              selected: selected == item.target,
+              onTap: () => context.go('/forms/${form.id}/${item.target.wire}'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _publishMessage(BuildContext context, FormDetailDto form) {
+    return switch (form.status) {
+      FormStatus.published => context.l10n.t('collectingResponses'),
+      FormStatus.pendingReview => context.l10n.t('waitingForApproval'),
+      FormStatus.closed => context.l10n.t('closedToResponses'),
+      FormStatus.archived => context.l10n.t('enum.archived'),
+      _ => context.l10n.t('draftWorkflow'),
+    };
+  }
+}
+
+class _ChecklistItem {
+  const _ChecklistItem({
+    required this.label,
+    required this.done,
+    required this.target,
+    required this.message,
+  });
+
+  final String label;
+  final bool done;
+  final FormWorkspaceSection target;
+  final String message;
+}
+
+class _ChecklistChip extends StatelessWidget {
+  const _ChecklistChip({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _ChecklistItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 250,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? scheme.primaryContainer
+                  : scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+          border: Border.all(
+            color:
+                item.done
+                    ? scheme.primary.withValues(alpha: 0.48)
+                    : scheme.outlineVariant,
+          ),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              item.done
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: item.done ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.label,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.message,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionBody extends StatelessWidget {
+  const _SectionBody({required this.form, required this.section});
+
+  final FormDetailDto form;
+  final FormWorkspaceSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (section) {
+      FormWorkspaceSection.builder => _BuilderSection(form: form),
+      FormWorkspaceSection.preview => _PreviewSection(form: form),
+      FormWorkspaceSection.settings => _SettingsSection(form: form),
+      FormWorkspaceSection.publish => _PublishSection(form: form),
+      FormWorkspaceSection.share => _ShareSection(form: form),
+      FormWorkspaceSection.results => _ResultsSection(form: form),
+    };
+  }
+}
+
+class _BuilderSection extends ConsumerWidget {
+  const _BuilderSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(
+            icon: Icons.construction_rounded,
+            title: context.l10n.t('builder'),
+            message: context.l10n.t('builderMessage'),
+            trailing: FilledButton.icon(
+              onPressed: () => _pickAndAddField(context, ref),
+              icon: const Icon(Icons.add_rounded),
+              label: Text(context.l10n.t('addField')),
+            ),
+          ),
+          AppSpacing.gapLg,
+          if (form.fields.isEmpty)
+            _EmptyActionPanel(
+              icon: Icons.add_box_outlined,
+              title: context.l10n.t('noFieldsYet'),
+              message: context.l10n.t('addFirstQuestion'),
+              actionLabel: context.l10n.t('addField'),
+              onAction: () => _pickAndAddField(context, ref),
+            )
+          else
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: form.fields.length,
+              onReorder:
+                  (oldIndex, newIndex) =>
+                      _reorderField(context, ref, oldIndex, newIndex),
+              itemBuilder: (context, index) {
+                final field = form.fields[index];
+                return _EditableFieldTile(
+                  key: ValueKey(field.id),
+                  formId: form.id,
+                  index: index,
+                  field: field,
+                  formScoringEnabled: form.scoringMode != ScoringMode.none,
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndAddField(BuildContext context, WidgetRef ref) async {
+    final selected = await showModalBottomSheet<FieldType>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => const _FieldPickerSheet(),
+    );
+    if (selected == null) return;
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final draft = DraftFormField.forType(selected);
+      await ref
+          .read(fieldsRepositoryProvider)
+          .createFormField(
+            id: form.id,
+            request: draft.toCreateRequest(orderIndex: form.fields.length),
+          );
+      ref.invalidate(formDetailProvider(form.id));
+      ref.invalidate(formsControllerProvider);
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('fieldAdded'))),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reorderField(
+    BuildContext context,
+    WidgetRef ref,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final fields = [...form.fields]
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    var target = newIndex;
+    if (target > oldIndex) target -= 1;
+    if (oldIndex < 0 ||
+        oldIndex >= fields.length ||
+        target < 0 ||
+        target >= fields.length) {
+      return;
+    }
+    final moved = fields.removeAt(oldIndex);
+    fields.insert(target, moved);
+    try {
+      for (var index = 0; index < fields.length; index++) {
+        if (fields[index].orderIndex != index) {
+          await ref
+              .read(fieldsRepositoryProvider)
+              .updateFormField(
+                id: form.id,
+                fieldId: fields[index].id,
+                request: UpdateFormFieldRequest(orderIndex: index),
+              );
+        }
+      }
+      ref.invalidate(formDetailProvider(form.id));
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('fieldOrderSaved'))),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _EditableFieldTile extends ConsumerWidget {
+  const _EditableFieldTile({
+    required super.key,
+    required this.formId,
+    required this.index,
+    required this.field,
+    required this.formScoringEnabled,
+  });
+
+  final String formId;
+  final int index;
+  final FormFieldDto field;
+  final bool formScoringEnabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // todo: why doesn't use this?
+    // final info = fieldTypeInfo(field.type);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: scheme.primaryContainer,
+            foregroundColor: scheme.onPrimaryContainer,
+            child: Text('${index + 1}'),
+          ),
+          title: Text(
+            field.label,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: Text(
+            '${context.l10n.fieldType(field.type.toJson())}${field.isRequired ? ' • ${context.l10n.t('required')}' : ''}',
+          ),
+          trailing: Wrap(
+            spacing: 4,
+            children: [
+              IconButton(
+                tooltip: context.l10n.t('editField'),
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () => _editField(context, ref),
+              ),
+              IconButton(
+                tooltip: context.l10n.t('deleteField'),
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: () => _deleteField(context, ref),
+              ),
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Icon(Icons.drag_handle_rounded),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editField(BuildContext context, WidgetRef ref) async {
+    final request = await showDialog<UpdateFormFieldRequest>(
+      context: context,
+      builder:
+          (context) => _FieldEditDialog(
+            field: field,
+            formScoringEnabled: formScoringEnabled,
+          ),
+    );
+    if (request == null) return;
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(fieldsRepositoryProvider)
+          .updateFormField(id: formId, fieldId: field.id, request: request);
+      ref.invalidate(formDetailProvider(formId));
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('fieldUpdated'))),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteField(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text(context.l10n.t('deleteField')),
+            content: Text(
+              '${context.l10n.t('deleteFieldQuestion')} ${field.label}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(context.l10n.t('cancel')),
+              ),
+              FilledButton.tonal(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(context.l10n.t('delete')),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(fieldsRepositoryProvider)
+          .deleteFormField(id: formId, fieldId: field.id);
+      ref.invalidate(formDetailProvider(formId));
+      ref.invalidate(formsControllerProvider);
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('fieldDeleted'))),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _FieldEditDialog extends StatefulWidget {
+  const _FieldEditDialog({
+    required this.field,
+    required this.formScoringEnabled,
+  });
+
+  final FormFieldDto field;
+  final bool formScoringEnabled;
+
+  @override
+  State<_FieldEditDialog> createState() => _FieldEditDialogState();
+}
+
+class _FieldEditDialogState extends State<_FieldEditDialog> {
+  late final TextEditingController _labelController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _placeholderController;
+  late final TextEditingController _optionsController;
+  late final TextEditingController _minController;
+  late final TextEditingController _maxController;
+  late final TextEditingController _stepController;
+  late final TextEditingController _maxScoreController;
+  late final TextEditingController _weightController;
+  late bool _required;
+  late bool _scoringEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _labelController = TextEditingController(text: widget.field.label);
+    _descriptionController = TextEditingController(
+      text: widget.field.description ?? '',
+    );
+    _placeholderController = TextEditingController(
+      text: widget.field.placeholder ?? '',
+    );
+    _optionsController = TextEditingController(
+      text: (widget.field.config.options ?? const <FieldOptionDto>[])
+          .map((option) => option.label)
+          .join('\n'),
+    );
+    _minController = TextEditingController(
+      text: widget.field.config.min?.toString() ?? '',
+    );
+    _maxController = TextEditingController(
+      text: widget.field.config.max?.toString() ?? '',
+    );
+    _stepController = TextEditingController(
+      text: widget.field.config.step?.toString() ?? '',
+    );
+    _maxScoreController = TextEditingController(
+      text: widget.field.scoringConfig.maxScore?.toString() ?? '1',
+    );
+    _weightController = TextEditingController(
+      text: widget.field.scoringConfig.weight?.toString() ?? '1',
+    );
+    _required = widget.field.isRequired;
+    _scoringEnabled = widget.field.scoringConfig.enabled == true;
+  }
+
+  @override
+  void dispose() {
+    _labelController.dispose();
+    _descriptionController.dispose();
+    _placeholderController.dispose();
+    _optionsController.dispose();
+    _minController.dispose();
+    _maxController.dispose();
+    _stepController.dispose();
+    _maxScoreController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.t('editField')),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _labelController,
+                decoration: InputDecoration(labelText: context.l10n.t('label')),
+              ),
+              AppSpacing.gapSm,
+              TextField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('description'),
+                ),
+                maxLines: 2,
+              ),
+              AppSpacing.gapSm,
+              TextField(
+                controller: _placeholderController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('placeholder'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _required,
+                onChanged: (value) => setState(() => _required = value),
+                title: Text(context.l10n.t('required')),
+              ),
+              if (_fieldTypeUsesOptions(widget.field.type)) ...[
+                AppSpacing.gapSm,
+                TextField(
+                  controller: _optionsController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('options'),
+                    helperText: context.l10n.t('optionsHelper'),
+                  ),
+                ),
+              ],
+              if (_fieldTypeUsesRange(widget.field.type)) ...[
+                AppSpacing.gapSm,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _minController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.t('min'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _maxController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.t('max'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _stepController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.t('step'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (widget.formScoringEnabled &&
+                  fieldTypeCanScore(widget.field.type)) ...[
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _scoringEnabled,
+                  onChanged: (value) => setState(() => _scoringEnabled = value),
+                  title: Text(context.l10n.t('enableFieldScoring')),
+                ),
+                if (_scoringEnabled)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _maxScoreController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.t('maxScore'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.t('weight'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ] else if (fieldTypeCanScore(widget.field.type)) ...[
+                const SizedBox(height: 8),
+                _InlineNotice(
+                  icon: Icons.info_outline_rounded,
+                  title: context.l10n.t('scoringMode'),
+                  message: context.l10n.t('enableFormScoringFirst'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton(
+          onPressed: () {
+            final label = _labelController.text.trim();
+            if (label.isEmpty) return;
+            Navigator.pop(
+              context,
+              UpdateFormFieldRequest(
+                label: label,
+                description:
+                    _descriptionController.text.trim().isEmpty
+                        ? null
+                        : _descriptionController.text.trim(),
+                placeholder:
+                    _placeholderController.text.trim().isEmpty
+                        ? null
+                        : _placeholderController.text.trim(),
+                isRequired: _required,
+                config: _buildConfig(),
+                scoringConfig:
+                    _scoringEnabled && widget.formScoringEnabled
+                        ? FieldScoringConfigDto(
+                          enabled: true,
+                          maxScore:
+                              double.tryParse(
+                                _maxScoreController.text.trim(),
+                              ) ??
+                              1,
+                          weight:
+                              double.tryParse(_weightController.text.trim()) ??
+                              1,
+                          optionScores: widget.field.scoringConfig.optionScores,
+                        )
+                        : null,
+              ),
+            );
+          },
+          child: Text(context.l10n.t('save')),
+        ),
+      ],
+    );
+  }
+
+  FieldConfigDto _buildConfig() {
+    var config = widget.field.config;
+    if (_fieldTypeUsesOptions(widget.field.type)) {
+      config = config.copyWith(
+        options: _optionDtosFromText(_optionsController.text),
+      );
+    }
+    if (_fieldTypeUsesRange(widget.field.type)) {
+      config = config.copyWith(
+        min: _nullableDouble(_minController.text),
+        max: _nullableDouble(_maxController.text),
+        step: _nullableDouble(_stepController.text),
+      );
+    }
+    return config;
+  }
+}
+
+bool _fieldTypeUsesOptions(FieldType type) => switch (type) {
+  FieldType.singleChoice ||
+  FieldType.multipleChoice ||
+  FieldType.dropdown ||
+  FieldType.ranking ||
+  FieldType.quizQuestion => true,
+  _ => false,
+};
+
+bool _fieldTypeUsesRange(FieldType type) => switch (type) {
+  FieldType.slider ||
+  FieldType.nps ||
+  FieldType.ratingStars ||
+  FieldType.numericRating => true,
+  _ => false,
+};
+
+List<FieldOptionDto> _optionDtosFromText(String text) {
+  final labels = text
+      .split('\n')
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
+  return [
+    for (var index = 0; index < labels.length; index++)
+      FieldOptionDto(
+        id: _fieldOptionId(labels[index], index),
+        label: labels[index],
+        value: _fieldOptionId(labels[index], index),
+        orderIndex: index,
+      ),
+  ];
+}
+
+String _fieldOptionId(String label, int index) {
+  final normalized = label
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+  return normalized.isEmpty ? 'option-${index + 1}' : normalized;
+}
+
+double? _nullableDouble(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  return double.tryParse(trimmed);
+}
+
+class _PreviewSection extends StatefulWidget {
+  const _PreviewSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  State<_PreviewSection> createState() => _PreviewSectionState();
+}
+
+class _PreviewSectionState extends State<_PreviewSection> {
+  final Map<String, Object?> _values = <String, Object?>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = [...widget.form.fields]
+      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(
+            icon: Icons.visibility_rounded,
+            title: context.l10n.t('respondentPreview'),
+            message: context.l10n.t('respondentPreviewSubtitle'),
+          ),
+          AppSpacing.gapLg,
+          if (fields.isEmpty)
+            _EmptyStateMessage(
+              icon: Icons.view_agenda_outlined,
+              title: context.l10n.t('nothingToPreviewYet'),
+              message: context.l10n.t('addFieldsToPreview'),
+            )
+          else
+            FeedbackSheetFrame(
+              children: [
+                for (var index = 0; index < fields.length; index++) ...[
+                  FieldRenderer(
+                    index: index,
+                    field: fields[index],
+                    values: _values,
+                    onChanged:
+                        (value) =>
+                            setState(() => _values[fields[index].id] = value),
+                  ),
+                  if (index != fields.length - 1) AppSpacing.gapMd,
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsSection extends StatefulWidget {
+  const _SettingsSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  State<_SettingsSection> createState() => _SettingsSectionState();
+}
+
+class _SettingsSectionState extends State<_SettingsSection> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _categoryController;
+  late final TextEditingController _tagsController;
+  late VisibilityMode _visibilityMode;
+  late ScoringMode _scoringMode;
+  late bool _allowAnonymous;
+  late bool _guestCanAnswer;
+  late bool _oneSubmissionPerUser;
+  late bool _editableAfterSubmission;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final form = widget.form;
+    _titleController = TextEditingController(text: form.title);
+    _descriptionController = TextEditingController(
+      text: form.description ?? '',
+    );
+    _categoryController = TextEditingController(text: form.category ?? '');
+    _tagsController = TextEditingController(
+      text: (form.tags ?? const <String>[]).join(', '),
+    );
+    _visibilityMode = form.visibility.mode;
+    _scoringMode = form.scoringMode;
+    _allowAnonymous = form.settings.allowAnonymousAnswers;
+    _guestCanAnswer = form.settings.guestsCanAnswer;
+    _oneSubmissionPerUser = form.settings.oneSubmissionPerUser;
+    _editableAfterSubmission = form.settings.answersEditableAfterSubmission;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _categoryController.dispose();
+    _tagsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        return SoftCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionHeader(
+                icon: Icons.tune_rounded,
+                title: context.l10n.t('settings'),
+                message: context.l10n.t('settingsMessage'),
+                trailing: FilledButton.icon(
+                  onPressed: _saving ? null : () => _save(ref),
+                  icon:
+                      _saving
+                          ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.save_rounded),
+                  label: Text(
+                    _saving
+                        ? context.l10n.t('saving')
+                        : context.l10n.t('saveSettings'),
+                  ),
+                ),
+              ),
+              AppSpacing.gapLg,
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('title'),
+                  prefixIcon: const Icon(Icons.title_rounded),
+                ),
+              ),
+              AppSpacing.gapSm,
+              TextField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('description'),
+                  prefixIcon: const Icon(Icons.description_rounded),
+                ),
+              ),
+              AppSpacing.gapSm,
+              TextField(
+                controller: _categoryController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('category'),
+                  prefixIcon: const Icon(Icons.folder_outlined),
+                ),
+              ),
+              AppSpacing.gapSm,
+              TextField(
+                controller: _tagsController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('tags'),
+                  helperText: context.l10n.t('tagsCommaHelper'),
+                  prefixIcon: const Icon(Icons.sell_outlined),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _EnumDropdown<VisibilityMode>(
+                label: context.l10n.t('visibility'),
+                value: _visibilityMode,
+                values: const [
+                  VisibilityMode.private,
+                  VisibilityMode.organization,
+                  VisibilityMode.selectedRoles,
+                  VisibilityMode.subordinates,
+                  VisibilityMode.publicLink,
+                ],
+                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
+                onChanged: (value) => setState(() => _visibilityMode = value),
+              ),
+              AppSpacing.gapSm,
+              _EnumDropdown<ScoringMode>(
+                label: context.l10n.t('scoringMode'),
+                value: _scoringMode,
+                values: const [
+                  ScoringMode.none,
+                  ScoringMode.quiz,
+                  ScoringMode.satisfaction,
+                  ScoringMode.riskAssessment,
+                  ScoringMode.weighted,
+                  ScoringMode.custom,
+                ],
+                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
+                onChanged: (value) => setState(() => _scoringMode = value),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _allowAnonymous,
+                onChanged: (value) => setState(() => _allowAnonymous = value),
+                title: Text(context.l10n.t('allowAnonymousAnswers')),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _guestCanAnswer,
+                onChanged: (value) => setState(() => _guestCanAnswer = value),
+                title: Text(context.l10n.t('guestsCanAnswer')),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _oneSubmissionPerUser,
+                onChanged:
+                    (value) => setState(() => _oneSubmissionPerUser = value),
+                title: Text(context.l10n.t('oneSubmissionPerUser')),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _editableAfterSubmission,
+                onChanged:
+                    (value) => setState(() => _editableAfterSubmission = value),
+                title: Text(context.l10n.t('answersEditableAfterSubmission')),
+              ),
+              AppSpacing.gapMd,
+              _AccessCodesPanel(formId: widget.form.id),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _save(WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(formsRepositoryProvider)
+          .updateForm(
+            id: widget.form.id,
+            request: UpdateFormRequest(
+              title: _titleController.text.trim(),
+              description:
+                  _descriptionController.text.trim().isEmpty
+                      ? null
+                      : _descriptionController.text.trim(),
+              category:
+                  _categoryController.text.trim().isEmpty
+                      ? null
+                      : _categoryController.text.trim(),
+              tags: _tagsController.text
+                  .split(',')
+                  .map(
+                    (tag) =>
+                        tag
+                            .trim()
+                            .replaceFirst(RegExp(r'^#+'), '')
+                            .toLowerCase(),
+                  )
+                  .where((tag) => tag.isNotEmpty)
+                  .toSet()
+                  .toList(growable: false),
+              settings: _settings(),
+              visibility: _visibility(),
+              scoringMode: _scoringMode,
+              scoringConfig:
+                  widget.form.scoringConfig ?? const <String, Object?>{},
+            ),
+          );
+      ref.invalidate(formDetailProvider(widget.form.id));
+      ref.invalidate(formsControllerProvider);
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('settingsSaved'))),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  FormSettingsDto _settings() {
+    return FormSettingsDto(
+      allowAnonymousAnswers: _allowAnonymous,
+      oneSubmissionPerUser: _oneSubmissionPerUser,
+      answersEditableAfterSubmission: _editableAfterSubmission,
+      startAt: widget.form.settings.startAt,
+      endAt: widget.form.settings.endAt,
+      maxSubmissions: widget.form.settings.maxSubmissions,
+      submissionCooldownSeconds: widget.form.settings.submissionCooldownSeconds,
+      submissionMode:
+          _allowAnonymous
+              ? SubmissionMode.anonymousSubmission
+              : _editableAfterSubmission
+              ? SubmissionMode.editableSubmission
+              : _oneSubmissionPerUser
+              ? SubmissionMode.singleSubmission
+              : SubmissionMode.multipleSubmissions,
+      answerVisibility:
+          _allowAnonymous
+              ? AnswerVisibility.anonymous
+              : widget.form.settings.answerVisibility,
+      guestsCanAnswer: _guestCanAnswer,
+      metadata: widget.form.settings.metadata ?? const <String, Object?>{},
+    );
+  }
+
+  FormVisibilityDto _visibility() {
+    final current = widget.form.visibility;
+    return FormVisibilityDto(
+      mode: _visibilityMode,
+      canSee: current.canSee ?? const <AudienceRuleDto>[],
+      canAnswer: current.canAnswer ?? const <AudienceRuleDto>[],
+      cannotSee: current.cannotSee ?? const <AudienceRuleDto>[],
+      cannotAnswer: current.cannotAnswer ?? const <AudienceRuleDto>[],
+      guestCanAnswer: _guestCanAnswer,
+      anonymousAllowed: _allowAnonymous,
+      metadata: current.metadata ?? const <String, Object?>{},
+    );
+  }
+}
+
+class _AccessCodesPanel extends ConsumerStatefulWidget {
+  const _AccessCodesPanel({required this.formId});
+
+  final String formId;
+
+  @override
+  ConsumerState<_AccessCodesPanel> createState() => _AccessCodesPanelState();
+}
+
+class _AccessCodesPanelState extends ConsumerState<_AccessCodesPanel> {
+  final _sharedController = TextEditingController();
+  final _identityController = TextEditingController();
+  bool _clearShared = false;
+  bool _saving = false;
+  late Future<FormAccessCodesResponse> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void dispose() {
+    _sharedController.dispose();
+    _identityController.dispose();
+    super.dispose();
+  }
+
+  Future<FormAccessCodesResponse> _load() {
+    return ref
+        .read(formsRepositoryProvider)
+        .listFormAccessCodes(id: widget.formId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<FormAccessCodesResponse>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        return FeedbackInlinePanel(
+          icon: Icons.key_rounded,
+          title: context.l10n.t('formAccessCodes'),
+          message:
+              data == null
+                  ? context.l10n.t('loading')
+                  : context.l10n.t('formAccessCodesMessage'),
+          trailing: TextButton.icon(
+            onPressed:
+                snapshot.connectionState == ConnectionState.waiting
+                    ? null
+                    : () => _openEditor(data),
+            icon: const Icon(Icons.edit_rounded),
+            label: Text(context.l10n.t('edit')),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openEditor(FormAccessCodesResponse? current) async {
+    _sharedController.clear();
+    _identityController.clear();
+    _clearShared = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    context.l10n.t('formAccessCodes'),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  AppSpacing.gapMd,
+                  if (current?.sharedPassword != null)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _clearShared,
+                      onChanged:
+                          (value) => setSheetState(
+                            () => _clearShared = value ?? false,
+                          ),
+                      title: Text(context.l10n.t('clearFormPassword')),
+                    ),
+                  TextField(
+                    controller: _sharedController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('newFormPasswordOptional'),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    ),
+                  ),
+                  AppSpacing.gapMd,
+                  TextField(
+                    controller: _identityController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('identityCodes'),
+                      helperText: context.l10n.t('identityCodesHelper'),
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  AppSpacing.gapMd,
+                  FilledButton.icon(
+                    onPressed: _saving ? null : () => _save(context),
+                    icon:
+                        _saving
+                            ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.save_rounded),
+                    label: Text(context.l10n.t('save')),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _save(BuildContext sheetContext) async {
+    final sheetNavigator = Navigator.of(sheetContext);
+    final identityCodes = _identityController.text
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty && line.contains(':'))
+        .map((line) {
+          final separator = line.indexOf(':');
+          return FormAccessCodeInputDto(
+            label: line.substring(0, separator).trim(),
+            code: line.substring(separator + 1).trim(),
+            enabled: true,
+          );
+        })
+        .where((code) => code.label.isNotEmpty && code.code.isNotEmpty)
+        .toList(growable: false);
+
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(formsRepositoryProvider)
+          .setFormAccessCodes(
+            id: widget.formId,
+            request: SetFormAccessCodesRequest(
+              sharedPassword:
+                  _sharedController.text.trim().isEmpty
+                      ? null
+                      : SharedFormPasswordInputDto(
+                        code: _sharedController.text.trim(),
+                        enabled: true,
+                      ),
+              clearSharedPassword: _clearShared,
+              identityCodes: identityCodes,
+            ),
+          );
+      if (!mounted) return;
+      setState(() => _future = _load());
+      sheetNavigator.pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.t('settingsSaved'))));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(FriendlyApiErrorMessage.from(error, context: context)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _PublishSection extends StatefulWidget {
+  const _PublishSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  State<_PublishSection> createState() => _PublishSectionState();
+}
+
+class _PublishSectionState extends State<_PublishSection> {
+  PublishMode _mode = PublishMode.organization;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.form.publishMode;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        return SoftCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionHeader(
+                icon: Icons.rocket_launch_rounded,
+                title: context.l10n.t('publishWorkflow'),
+                message: context.l10n.t('publishMessage'),
+              ),
+              AppSpacing.gapLg,
+              _StatusGuidance(form: widget.form),
+              AppSpacing.gapLg,
+              _EnumDropdown<PublishMode>(
+                label: context.l10n.t('publishMode'),
+                value: _mode,
+                values: const [
+                  PublishMode.private,
+                  PublishMode.organization,
+                  PublishMode.subordinates,
+                  PublishMode.roleBased,
+                  PublishMode.publicLink,
+                ],
+                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
+                onChanged: (value) => setState(() => _mode = value),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: 12,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => _publish(ref),
+                    icon: const Icon(Icons.publish_rounded),
+                    label: Text(context.l10n.t('publish')),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _submitForApproval(ref),
+                    icon: const Icon(Icons.fact_check_rounded),
+                    label: Text(context.l10n.t('submitForApproval')),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed:
+                        _busy || widget.form.status == FormStatus.closed
+                            ? null
+                            : () => _close(ref),
+                    icon: const Icon(Icons.lock_rounded),
+                    label: Text(context.l10n.t('close')),
+                  ),
+                  TextButton.icon(
+                    onPressed:
+                        _busy || widget.form.status == FormStatus.archived
+                            ? null
+                            : () => _archive(ref),
+                    icon: const Icon(Icons.archive_rounded),
+                    label: Text(context.l10n.t('enum.archived')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _publish(WidgetRef ref) async {
+    await _runAction(
+      ref,
+      successMessage:
+          _mode == PublishMode.publicLink
+              ? context.l10n.t('publishedShareHint')
+              : context.l10n.t('formPublished'),
+      action:
+          () => ref
+              .read(formsRepositoryProvider)
+              .publishForm(
+                id: widget.form.id,
+                request: PublishFormRequest(
+                  publishMode: _mode,
+                  visibility: _safeVisibility(widget.form.visibility),
+                  publicProtection: widget.form.publicProtection,
+                ),
+              ),
+    );
+    if (mounted && _mode == PublishMode.publicLink) {
+      context.go('/forms/${widget.form.id}/share');
+    }
+  }
+
+  Future<void> _submitForApproval(WidgetRef ref) async {
+    await _runAction(
+      ref,
+      successMessage: context.l10n.t('submittedForApproval'),
+      action:
+          () => ref
+              .read(formsRepositoryProvider)
+              .submitFormForApproval(
+                id: widget.form.id,
+                request: SubmitForApprovalRequest(
+                  note: context.l10n.t('submittedFromClient'),
+                ),
+              ),
+    );
+  }
+
+  Future<void> _close(WidgetRef ref) async {
+    final reason = await _reasonDialog(
+      context,
+      title: context.l10n.t('closeForm'),
+      hint: context.l10n.t('optionalReason'),
+    );
+    if (reason == null) return;
+    await _runAction(
+      ref,
+      successMessage: context.l10n.t('formClosedToast'),
+      action:
+          () => ref
+              .read(formsRepositoryProvider)
+              .closeForm(
+                id: widget.form.id,
+                request: CloseFormRequest(
+                  reason: reason.isEmpty ? null : reason,
+                ),
+              ),
+    );
+  }
+
+  Future<void> _archive(WidgetRef ref) async {
+    final reason = await _reasonDialog(
+      context,
+      title: context.l10n.t('archiveForm'),
+      hint: context.l10n.t('optionalReason'),
+    );
+    if (reason == null) return;
+    if (context.mounted) {
+      await _runAction(
+        ref,
+        successMessage: context.l10n.t('formArchivedToast'),
+        action:
+            () => ref
+                .read(formsRepositoryProvider)
+                .archiveForm(
+                  id: widget.form.id,
+                  request: ArchiveFormRequest(
+                    reason: reason.isEmpty ? null : reason,
+                  ),
+                ),
+      );
+    }
+  }
+
+  Future<void> _runAction(
+    WidgetRef ref, {
+    required String successMessage,
+    required Future<FormDetailDto> Function() action,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await action();
+      ref.invalidate(formDetailProvider(widget.form.id));
+      ref.invalidate(formsControllerProvider);
+      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+    } catch (error) {
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _ShareSection extends StatelessWidget {
+  const _ShareSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  Widget build(BuildContext context) {
+    final token = form.publicToken;
+    final publicPath = token == null ? null : '/public/$token';
+    final publicUrl = token == null ? null : _buildPublicShareUrl(token);
+    final copyValue = publicUrl ?? publicPath;
+
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(
+            icon: Icons.ios_share_rounded,
+            title: context.l10n.t('share'),
+            message: context.l10n.t('shareMessage'),
+          ),
+          AppSpacing.gapLg,
+          if (token == null)
+            _EmptyActionPanel(
+              icon: Icons.link_off_rounded,
+              title: context.l10n.t('noPublicLinkYet'),
+              message: context.l10n.t('publishPublicLinkHint'),
+              actionLabel: context.l10n.t('goToPublish'),
+              onAction: () => context.go('/forms/${form.id}/publish'),
+            )
+          else ...[
+            _InlineNotice(
+              icon:
+                  publicUrl == null
+                      ? Icons.info_outline_rounded
+                      : Icons.verified_rounded,
+              title:
+                  publicUrl == null
+                      ? context.l10n.t('relativePublicLinkTitle')
+                      : context.l10n.t('publicLinkReady'),
+              message:
+                  publicUrl == null
+                      ? context.l10n.t('publicBaseUrlMissing')
+                      : context.l10n.t('publicLinkReadyMessage'),
+            ),
+            AppSpacing.gapMd,
+            TextField(
+              readOnly: true,
+              controller: TextEditingController(text: copyValue ?? ''),
+              decoration: InputDecoration(
+                labelText:
+                    publicUrl == null
+                        ? context.l10n.t('publicPath')
+                        : context.l10n.t('publicUrl'),
+                prefixIcon: const Icon(Icons.link_rounded),
+              ),
+            ),
+            AppSpacing.gapSm,
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                FilledButton.icon(
+                  onPressed:
+                      copyValue == null
+                          ? null
+                          : () {
+                            Clipboard.setData(ClipboardData(text: copyValue));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  context.l10n.t('publicLinkCopied'),
+                                ),
+                              ),
+                            );
+                          },
+                  icon: const Icon(Icons.copy_rounded),
+                  label: Text(context.l10n.t('copyLink')),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/public/$token'),
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: Text(context.l10n.t('openPublicForm')),
+                ),
+              ],
+            ),
+            AppSpacing.gapSm,
+            Text(
+              context.l10n.t('publicLinkServerNote'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String? _buildPublicShareUrl(String token) {
+  const configuredBase = String.fromEnvironment(
+    'PUBLIC_APP_BASE_URL',
+    defaultValue: '',
+  );
+  final configured = configuredBase.trim();
+  if (configured.isNotEmpty) return _joinUrl(configured, '/public/$token');
+
+  final base = Uri.base;
+  final isHttp = base.scheme == 'http' || base.scheme == 'https';
+  if (isHttp && base.host.isNotEmpty) {
+    return base
+        .replace(
+          path: '/public/$token',
+          queryParameters: const <String, String>{},
+          fragment: '',
+        )
+        .toString();
+  }
+
+  // Do not generate file:///public/... links. On mobile/desktop there is no browser
+  // origin, so the deployer must pass --dart-define=PUBLIC_APP_BASE_URL=https://app.example.com.
+  return null;
+}
+
+String _joinUrl(String base, String path) {
+  final normalizedBase =
+      base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+  final normalizedPath = path.startsWith('/') ? path : '/$path';
+  return '$normalizedBase$normalizedPath';
+}
+
+class _ResultsSection extends ConsumerWidget {
+  const _ResultsSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final analytics = ref.watch(formAnalyticsProvider(form.id));
+    final submissions = ref.watch(submissionsProvider(form.id));
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(
+            icon: Icons.analytics_rounded,
+            title: context.l10n.t('results'),
+            message: context.l10n.t('resultsMessage'),
+            trailing: IconButton.filledTonal(
+              tooltip: context.l10n.t('refresh'),
+              onPressed: () {
+                ref.invalidate(formAnalyticsProvider(form.id));
+                ref.invalidate(submissionsProvider(form.id));
+              },
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ),
+          AppSpacing.gapLg,
+          analytics.when(
+            loading:
+                () => LoadingPanel(message: context.l10n.t('loadingResults')),
+            error:
+                (error, stackTrace) => ErrorPanel(
+                  error: error,
+                  onRetry: () => ref.invalidate(formAnalyticsProvider(form.id)),
+                  onBack: () => context.go('/forms'),
+                  onSignIn: () => context.go('/login'),
+                ),
+            data: (value) => _AnalyticsOverview(analytics: value),
+          ),
+          AppSpacing.gapLg,
+          submissions.when(
+            loading:
+                () =>
+                    LoadingPanel(message: context.l10n.t('loadingSubmissions')),
+            error:
+                (error, stackTrace) => ErrorPanel(
+                  error: error,
+                  onRetry: () => ref.invalidate(submissionsProvider(form.id)),
+                  onBack: () => context.go('/forms'),
+                  onSignIn: () => context.go('/login'),
+                ),
+            data: (value) => _SubmissionsPanel(form: form, response: value),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsOverview extends StatelessWidget {
+  const _AnalyticsOverview({required this.analytics});
+
+  final FormAnalyticsDto analytics;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = <Widget>[
+      _MetricCard(
+        title: context.l10n.t('totalSubmissions'),
+        value: '${analytics.submissions.total}',
+        icon: Icons.inbox_rounded,
+      ),
+      _MetricCard(
+        title: context.l10n.t('validSubmissions'),
+        value: '${analytics.submissions.valid}',
+        icon: Icons.verified_rounded,
+      ),
+      _MetricCard(
+        title: context.l10n.t('anonymousSubmissions'),
+        value: '${analytics.submissions.anonymous}',
+        icon: Icons.visibility_off_rounded,
+      ),
+      _MetricCard(
+        title: context.l10n.t('completionRate'),
+        value: '${analytics.completion.completionRate.toStringAsFixed(1)}%',
+        icon: Icons.task_alt_rounded,
+      ),
+      _MetricCard(
+        title: context.l10n.t('averageScore'),
+        value: analytics.score.averageScore.toStringAsFixed(1),
+        icon: Icons.stacked_line_chart_rounded,
+      ),
+      _MetricCard(
+        title: context.l10n.t('averagePercentage'),
+        value: '${analytics.score.averagePercentage.toStringAsFixed(1)}%',
+        icon: Icons.percent_rounded,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ResponsiveCardGrid(children: cards),
+        AppSpacing.gapLg,
+        _FieldAnalyticsPanel(fields: analytics.fields),
+      ],
+    );
+  }
+}
+
+class _FieldAnalyticsPanel extends StatelessWidget {
+  const _FieldAnalyticsPanel({required this.fields});
+
+  final List<FieldAnalyticsDto> fields;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    if (fields.isEmpty) {
+      return _InlineNotice(
+        icon: Icons.query_stats_rounded,
+        title: context.l10n.t('fieldAnalytics'),
+        message: context.l10n.t('noFieldAnalyticsYet'),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.l10n.t('fieldAnalytics'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        for (final field in fields)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.46),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.analytics_outlined, color: scheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        field.label,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${context.l10n.t('responseCount')}: ${field.responseCount}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (field.summary != null)
+                  Tooltip(
+                    message: _formatJsonLike(field.summary),
+                    child: Icon(
+                      Icons.info_outline_rounded,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SubmissionsPanel extends StatelessWidget {
+  const _SubmissionsPanel({required this.form, required this.response});
+
+  final FormDetailDto form;
+  final ListResponse<SubmissionSummaryDto> response;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = response.data ?? const <SubmissionSummaryDto>[];
+    final total = response.meta?.pagination.totalItems ?? items.length;
+    if (items.isEmpty) {
+      return _EmptyStateMessage(
+        icon: Icons.hourglass_empty_rounded,
+        title: context.l10n.t('noSubmissionsYet'),
+        message: context.l10n.t('publishAndShareHint'),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l10n.t('latestSubmissions'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            Text(
+              context.l10n
+                  .t('showingSubmissions')
+                  .replaceAll('{shown}', '${items.length}')
+                  .replaceAll('{total}', '$total'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        for (final submission in items)
+          _SubmissionSummaryTile(form: form, submission: submission),
+      ],
+    );
+  }
+}
+
+class _SubmissionSummaryTile extends StatelessWidget {
+  const _SubmissionSummaryTile({required this.form, required this.submission});
+
+  final FormDetailDto form;
+  final SubmissionSummaryDto submission;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final respondent = _submissionRespondentLabel(context, submission);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.46),
+        ),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: scheme.primaryContainer,
+          foregroundColor: scheme.onPrimaryContainer,
+          child: const Icon(Icons.receipt_long_rounded),
+        ),
+        title: Text(
+          '${context.l10n.t('submission')} ${_shortId(submission.id)}',
+        ),
+        subtitle: Text(
+          '${context.l10n.t('submitted')} ${_formatDateTime(submission.submittedAt)}\n$respondent',
+        ),
+        isThreeLine: true,
+        trailing: Wrap(
+          spacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Chip(
+              label: Text(
+                '${submission.score.percentageScore.toStringAsFixed(0)}%',
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed:
+                  () => _showSubmissionDetailSheet(
+                    context,
+                    form: form,
+                    submissionId: submission.id,
+                  ),
+              icon: const Icon(Icons.visibility_rounded),
+              label: Text(context.l10n.t('viewDetails')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showSubmissionDetailSheet(
+  BuildContext context, {
+  required FormDetailDto form,
+  required String submissionId,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder:
+        (context) =>
+            _SubmissionDetailSheet(form: form, submissionId: submissionId),
+  );
+}
+
+class _SubmissionDetailSheet extends ConsumerWidget {
+  const _SubmissionDetailSheet({
+    required this.form,
+    required this.submissionId,
+  });
+
+  final FormDetailDto form;
+  final String submissionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = ref.watch(submissionDetailProvider(submissionId));
+    return Directionality(
+      textDirection: context.l10n.textDirection,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+          top: 8,
+        ),
+        child: detail.when(
+          loading:
+              () => LoadingPanel(
+                message: context.l10n.t('loadingSubmissionDetail'),
+              ),
+          error:
+              (error, stackTrace) => ErrorPanel(
+                error: error,
+                onRetry:
+                    () =>
+                        ref.invalidate(submissionDetailProvider(submissionId)),
+                onBack: () => Navigator.of(context).maybePop(),
+                onSignIn: () => context.go('/login'),
+              ),
+          data:
+              (submission) =>
+                  _SubmissionDetailContent(form: form, submission: submission),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubmissionDetailContent extends StatelessWidget {
+  const _SubmissionDetailContent({
+    required this.form,
+    required this.submission,
+  });
+
+  final FormDetailDto form;
+  final SubmissionDetailDto submission;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final fieldsById = {for (final field in form.fields) field.id: field};
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.t('submissionDetail'),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${context.l10n.t('submitted')} ${_formatDateTime(submission.submittedAt)}\n${_submissionDetailRespondentLabel(context, submission)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _ResponsiveCardGrid(
+            children: [
+              _MetricCard(
+                title: context.l10n.t('score'),
+                value: submission.score.totalScore.toStringAsFixed(1),
+                icon: Icons.score_rounded,
+              ),
+              _MetricCard(
+                title: context.l10n.t('percentage'),
+                value:
+                    '${submission.score.percentageScore.toStringAsFixed(1)}%',
+                icon: Icons.percent_rounded,
+              ),
+              _MetricCard(
+                title: context.l10n.t('valid'),
+                value:
+                    submission.valid
+                        ? context.l10n.t('yes')
+                        : context.l10n.t('no'),
+                icon: Icons.verified_rounded,
+              ),
+              _MetricCard(
+                title: context.l10n.t('anonymous'),
+                value:
+                    submission.anonymous
+                        ? context.l10n.t('yes')
+                        : context.l10n.t('no'),
+                icon: Icons.visibility_off_rounded,
+              ),
+            ],
+          ),
+          AppSpacing.gapLg,
+          Text(
+            context.l10n.t('answers'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          for (final answer in submission.answers)
+            _AnswerCard(
+              label: fieldsById[answer.fieldId]?.label ?? answer.fieldId,
+              value: answer.value,
+              metadata: answer.metadata,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerCard extends StatelessWidget {
+  const _AnswerCard({required this.label, required this.value, this.metadata});
+
+  final String label;
+  final Object? value;
+  final Object? metadata;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.46),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            _formatJsonLike(value),
+            style: theme.textTheme.bodyMedium,
+          ),
+          if (metadata != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${context.l10n.t('metadata')}: ${_formatJsonLike(metadata)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResponsiveCardGrid extends StatelessWidget {
+  const _ResponsiveCardGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns =
+            constraints.maxWidth >= 980
+                ? 3
+                : constraints.maxWidth >= 620
+                ? 2
+                : 1;
+        return GridView.count(
+          crossAxisCount: columns,
+          childAspectRatio: columns == 1 ? 4.2 : 3.2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: children,
+        );
+      },
+    );
+  }
+}
+
+String _formatDateTime(DateTime value) =>
+    value.toLocal().toString().split('.').first;
+
+String _shortId(String value) =>
+    value.length <= 8 ? value : value.substring(0, 8);
+
+String _submissionRespondentLabel(
+  BuildContext context,
+  SubmissionSummaryDto submission,
+) {
+  final mode = _localizedRespondentMode(context, submission.respondentMode);
+  final label = submission.respondentLabel?.trim();
+  if (label != null && label.isNotEmpty) {
+    return '${context.l10n.t('respondent')}: $mode - $label';
+  }
+  if (submission.respondentUserId != null) {
+    return '${context.l10n.t('respondent')}: $mode - ${_shortId(submission.respondentUserId!)}';
+  }
+  return '${context.l10n.t('respondent')}: $mode';
+}
+
+String _submissionDetailRespondentLabel(
+  BuildContext context,
+  SubmissionDetailDto submission,
+) {
+  final mode = _localizedRespondentMode(context, submission.respondentMode);
+  final label = submission.respondentLabel?.trim();
+  if (label != null && label.isNotEmpty) {
+    return '${context.l10n.t('respondent')}: $mode - $label';
+  }
+  if (submission.respondentUserId != null) {
+    return '${context.l10n.t('respondent')}: $mode - ${_shortId(submission.respondentUserId!)}';
+  }
+  return '${context.l10n.t('respondent')}: $mode';
+}
+
+String _localizedRespondentMode(BuildContext context, String mode) {
+  switch (mode) {
+    case 'anonymous':
+    case 'guest':
+    case 'authenticated':
+    case 'identity_code':
+      return context.l10n.t(mode);
+    default:
+      return mode;
+  }
+}
+
+String _formatJsonLike(Object? value) {
+  if (value == null) return '—';
+  if (value is List) return value.map(_formatJsonLike).join(', ');
+  if (value is Map) {
+    if (value.isEmpty) return '{}';
+    return value.entries
+        .map((entry) => '${entry.key}: ${_formatJsonLike(entry.value)}')
+        .join(', ');
+  }
+  return value.toString();
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer.withValues(alpha: 0.76),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(icon, color: scheme.onPrimaryContainer),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+      ],
+    );
+  }
+}
+
+class _StatusGuidance extends StatelessWidget {
+  const _StatusGuidance({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, title, message) = switch (form.status) {
+      FormStatus.published => (
+        Icons.check_circle_rounded,
+        context.l10n.t('enum.published'),
+        context.l10n.t('statusPublishedMessage'),
+      ),
+      FormStatus.pendingReview => (
+        Icons.rate_review_rounded,
+        context.l10n.t('enum.pending_review'),
+        context.l10n.t('statusPendingMessage'),
+      ),
+      FormStatus.closed => (
+        Icons.lock_rounded,
+        context.l10n.t('enum.closed'),
+        context.l10n.t('statusClosedMessage'),
+      ),
+      FormStatus.archived => (
+        Icons.archive_rounded,
+        context.l10n.t('enum.archived'),
+        context.l10n.t('statusArchivedMessage'),
+      ),
+      _ => (
+        Icons.edit_note_rounded,
+        context.l10n.t('draftWorkflow'),
+        context.l10n.t('statusDraftMessage'),
+      ),
+    };
+    return _InlineNotice(icon: icon, title: title, message: message);
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.52),
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyActionPanel extends StatelessWidget {
+  const _EmptyActionPanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EmptyStateMessage(
+      icon: icon,
+      title: title,
+      message: message,
+      action: FilledButton.icon(
+        onPressed: onAction,
+        icon: const Icon(Icons.arrow_forward_rounded),
+        label: Text(actionLabel),
+      ),
+    );
+  }
+}
+
+class _EmptyStateMessage extends StatelessWidget {
+  const _EmptyStateMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 42, color: scheme.primary),
+          AppSpacing.gapSm,
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          if (action != null) ...[const SizedBox(height: 16), action!],
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldPickerSheet extends StatelessWidget {
+  const _FieldPickerSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final types = FieldType.values
+        .where((type) => type != FieldType.unknown)
+        .toList(growable: false);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.l10n.t('addField'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            AppSpacing.gapSm,
+            Flexible(
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 230,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  mainAxisExtent: 82,
+                ),
+                itemCount: types.length,
+                itemBuilder: (context, index) {
+                  final type = types[index];
+                  final info = fieldTypeInfo(type);
+                  return Card(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () => Navigator.pop(context, type),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Icon(info.icon),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                info.localizedLabel(context),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EnumDropdown<T> extends StatelessWidget {
+  const _EnumDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.labelFor,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<T> values;
+  final String Function(T value) labelFor;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      decoration: InputDecoration(labelText: label),
+      items: values
+          .map(
+            (value) =>
+                DropdownMenuItem<T>(value: value, child: Text(labelFor(value))),
+          )
+          .toList(growable: false),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final FormStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final published = status == FormStatus.published;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color:
+            published ? scheme.primary : scheme.surface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        context.l10n.enumLabel(status.toJson()),
+        style: TextStyle(
+          color: published ? scheme.onPrimary : scheme.onSurface,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppInfoChip(icon: icon, label: label);
+  }
+}
+
+Future<String?> _reasonDialog(
+  BuildContext context, {
+  required String title,
+  required String hint,
+}) async {
+  final controller = TextEditingController();
+  final result = await showDialog<String>(
+    context: context,
+    builder:
+        (context) => AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(labelText: hint),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.t('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: Text(context.l10n.t('continue')),
+            ),
+          ],
+        ),
+  );
+  controller.dispose();
+  return result;
+}
+
+FormVisibilityDto _safeVisibility(FormVisibilityDto visibility) {
+  return FormVisibilityDto(
+    mode: visibility.mode,
+    canSee: visibility.canSee ?? const <AudienceRuleDto>[],
+    canAnswer: visibility.canAnswer ?? const <AudienceRuleDto>[],
+    cannotSee: visibility.cannotSee ?? const <AudienceRuleDto>[],
+    cannotAnswer: visibility.cannotAnswer ?? const <AudienceRuleDto>[],
+    guestCanAnswer: visibility.guestCanAnswer,
+    anonymousAllowed: visibility.anonymousAllowed,
+    metadata: visibility.metadata ?? const <String, Object?>{},
+  );
+}
+
+bool _isPublished(FormDetailDto form) =>
+    form.status == FormStatus.published || form.publishedAt != null;
