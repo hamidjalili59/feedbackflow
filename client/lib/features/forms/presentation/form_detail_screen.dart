@@ -2241,137 +2241,272 @@ class _SubmissionDetailContent extends StatelessWidget {
     final fieldsById = {for (final field in form.fields) field.id: field};
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // --- Header ---
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       context.l10n.t('submissionDetail'),
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      '${context.l10n.t('submitted')} ${_formatDateTime(submission.submittedAt)}\n${_submissionDetailRespondentLabel(context, submission)}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      _formatDateTime(submission.submittedAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      _submissionDetailRespondentLabel(context, submission),
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
+              IconButton.filledTonal(
                 onPressed: () => Navigator.of(context).maybePop(),
                 icon: const Icon(Icons.close_rounded),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _ResponsiveCardGrid(
-            children: [
-              _MetricCard(
-                title: context.l10n.t('score'),
-                value: submission.score.totalScore.toStringAsFixed(1),
-                icon: Icons.score_rounded,
+          const SizedBox(height: AppSpacing.lg),
+
+          // --- Score summary ---
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  scheme.primaryContainer.withValues(alpha: 0.7),
+                  scheme.tertiaryContainer.withValues(alpha: 0.5),
+                ],
               ),
-              _MetricCard(
-                title: context.l10n.t('percentage'),
-                value:
-                    '${submission.score.percentageScore.toStringAsFixed(1)}%',
-                icon: Icons.percent_rounded,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
               ),
-              _MetricCard(
-                title: context.l10n.t('valid'),
-                value:
-                    submission.valid
-                        ? context.l10n.t('yes')
-                        : context.l10n.t('no'),
-                icon: Icons.verified_rounded,
-              ),
-              _MetricCard(
-                title: context.l10n.t('anonymous'),
-                value:
-                    submission.anonymous
-                        ? context.l10n.t('yes')
-                        : context.l10n.t('no'),
-                icon: Icons.visibility_off_rounded,
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                _ScoreBadge(
+                  label: context.l10n.t('score'),
+                  value: submission.score.totalScore.toStringAsFixed(1),
+                  icon: Icons.score_rounded,
+                  scheme: scheme,
+                  theme: theme,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _ScoreBadge(
+                  label: context.l10n.t('percentage'),
+                  value:
+                      '${submission.score.percentageScore.toStringAsFixed(0)}%',
+                  icon: Icons.percent_rounded,
+                  scheme: scheme,
+                  theme: theme,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _ScoreBadge(
+                  label: submission.anonymous
+                      ? context.l10n.t('anonymous')
+                      : context.l10n.t('identified'),
+                  value: submission.anonymous
+                      ? context.l10n.t('yes')
+                      : context.l10n.t('no'),
+                  icon: submission.anonymous
+                      ? Icons.visibility_off_rounded
+                      : Icons.person_rounded,
+                  scheme: scheme,
+                  theme: theme,
+                ),
+              ],
+            ),
           ),
-          AppSpacing.gapLg,
+          const SizedBox(height: AppSpacing.xl),
+
+          // --- Answers ---
           Text(
             context.l10n.t('answers'),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          for (final answer in submission.answers)
-            _AnswerCard(
-              label: fieldsById[answer.fieldId]?.label ?? answer.fieldId,
-              value: answer.value,
-              metadata: answer.metadata,
+          const SizedBox(height: AppSpacing.sm),
+          for (var i = 0; i < submission.answers.length; i++) ...[
+            _AnswerTile(
+              index: i,
+              label:
+                  fieldsById[submission.answers[i].fieldId]?.label ??
+                  submission.answers[i].fieldId,
+              value: submission.answers[i].value,
+              scheme: scheme,
+              theme: theme,
             ),
+            if (i < submission.answers.length - 1)
+              const SizedBox(height: AppSpacing.sm),
+          ],
         ],
       ),
     );
   }
 }
 
-class _AnswerCard extends StatelessWidget {
-  const _AnswerCard({required this.label, required this.value, this.metadata});
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.scheme,
+    required this.theme,
+  });
 
   final String label;
-  final Object? value;
-  final Object? metadata;
+  final String value;
+  final IconData icon;
+  final ColorScheme scheme;
+  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.46),
-        ),
-      ),
+    return Expanded(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, color: scheme.onPrimaryContainer, size: 22),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
           Text(
             label,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          SelectableText(
-            _formatJsonLike(value),
-            style: theme.textTheme.bodyMedium,
-          ),
-          if (metadata != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              '${context.l10n.t('metadata')}: ${_formatJsonLike(metadata)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
+}
+
+class _AnswerTile extends StatelessWidget {
+  const _AnswerTile({
+    required this.index,
+    required this.label,
+    required this.value,
+    required this.scheme,
+    required this.theme,
+  });
+
+  final int index;
+  final String label;
+  final Object? value;
+  final ColorScheme scheme;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                SelectableText(
+                  _formatAnswerValue(value),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatAnswerValue(Object? value) {
+  if (value == null) return '—';
+  if (value is String) return value.isEmpty ? '—' : value;
+  if (value is num) return value.toString();
+  if (value is bool) return value ? '✓' : '✗';
+  if (value is List) {
+    if (value.isEmpty) return '—';
+    return value.map((e) => e.toString()).join('، ');
+  }
+  return value.toString();
 }
 
 class _ResponsiveCardGrid extends StatelessWidget {
