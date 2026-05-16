@@ -35,7 +35,8 @@ installer. Two flows:
   [`deploy/README.md`](deploy/README.md) (uses `gh` CLI on the server).
 - **Server is offline / firewalled / behind a slow link** →
   [`deploy/OFFLINE-INSTALL.md`](deploy/OFFLINE-INSTALL.md) (manual download
-  on your laptop, then `scp` to the server).
+  on your laptop, then `scp` to the server) — also available in
+  [Persian](deploy/OFFLINE-INSTALL.fa.md).
 
 ## Local development
 

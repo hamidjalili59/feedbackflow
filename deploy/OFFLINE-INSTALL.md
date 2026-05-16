@@ -1,5 +1,7 @@
 # Offline server install
 
+> 🇮🇷 نسخه فارسی: [`OFFLINE-INSTALL.fa.md`](OFFLINE-INSTALL.fa.md)
+
 Use this flow when the server cannot reach GitHub directly. You build the
 installer on GitHub Actions, download it to your laptop, then `scp` it to the
 server and run a single script.
