@@ -5,6 +5,7 @@ import 'app/providers.dart';
 import 'app/router.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/theme/app_theme.dart';
+import 'presentation/widgets/smart_app_banner.dart';
 
 class FeedbackFlowApp extends ConsumerWidget {
   const FeedbackFlowApp({super.key});
@@ -25,7 +26,12 @@ class FeedbackFlowApp extends ConsumerWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: context.l10n.textDirection,
-          child: child ?? const SizedBox.shrink(),
+          child: Column(
+            children: [
+              const SmartAppBanner(),
+              Expanded(child: child ?? const SizedBox.shrink()),
+            ],
+          ),
         );
       },
     );

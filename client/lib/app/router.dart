@@ -9,6 +9,7 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/public_forms/presentation/public_form_screen.dart';
 import '../features/shell/presentation/splash_screen.dart';
+import 'providers.dart';
 
 part 'router.g.dart';
 
@@ -16,6 +17,25 @@ part 'router.g.dart';
 Raw<GoRouter> router(Ref ref) {
   final router = GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      // Deep link auth guard: if user lands on a protected route without
+      // being logged in, redirect to login with a redirect param so they
+      // come back after authentication.
+      final path = state.matchedLocation;
+      final publicPaths = {'/', '/login', '/public'};
+      final isPublic = publicPaths.contains(path) ||
+          path.startsWith('/public/') ||
+          path.startsWith('/login');
+      if (!isPublic) {
+        // Check auth synchronously from the provider cache.
+        final auth = ref.read(authControllerProvider);
+        final isLoggedIn = auth.asData?.value != null;
+        if (!isLoggedIn) {
+          return '/login?redirect=${Uri.encodeComponent(path)}';
+        }
+      }
+      return null;
+    },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(
