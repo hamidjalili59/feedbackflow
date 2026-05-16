@@ -694,14 +694,14 @@ class _EmptyForms extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  context.l10n.t('templatesUiOnly'),
+                  context.l10n.t('getStartedTitle'),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  context.l10n.t('apiContractNote'),
+                  context.l10n.t('getStartedSubtitle'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

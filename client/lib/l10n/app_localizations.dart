@@ -161,8 +161,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'createFirstForm': 'اولین فرم خود را بسازید',
     'createFirstFormSubtitle':
         'از نظرسنجی بازخورد، آزمون، ثبت‌نام، رضایت‌نامه، ارزیابی ریسک یا فرم خالی شروع کنید.',
-    'templatesUiOnly': 'قالب‌ها فقط preset رابط کاربری هستند',
-    'apiContractNote': 'در API فقط DTOهای معتبر OpenAPI ارسال می‌شوند.',
+    'templatesUiOnly': 'از قالب‌های آماده شروع کنید',
+    'apiContractNote': 'با انتخاب یک قالب، فرم شما با تنظیمات پیش‌فرض ساخته می‌شود.',
+    'getStartedTitle': 'شروع سریع',
+    'getStartedSubtitle': 'یک قالب انتخاب کنید یا فرم خالی بسازید. فیلدها، تنظیمات و ظاهر فرم بعداً قابل ویرایش هستند.',
     'welcomeBack': 'خوش برگشتید',
     'loginSubtitle':
         'با شماره موبایل وارد شوید و فرم‌ها، پاسخ‌ها و لینک‌های عمومی را مدیریت کنید.',
@@ -326,17 +328,17 @@ const Map<String, Map<String, String>> _localizedValues = {
     'openDraft': 'باز کردن پیش\u200cنویس',
     'modernFormBuilder': 'فرم\u200cساز مدرن',
     'modernFormBuilderSubtitle':
-        'ابتدا اسکلت فرم ساخته می\u200cشود، سپس فیلدهای پشتیبانی\u200cشده توسط بک\u200cاند اضافه می\u200cشوند.',
+        'فرم خود را بسازید، فیلدها را اضافه کنید و تنظیمات را شخصی\u200cسازی کنید.',
     'formType': 'نوع فرم',
     'formTypeSubtitle':
-        'این\u200cها فقط قالب رابط کاربری هستند؛ فیلد form_type به API ارسال نمی\u200cشود.',
+        'یک قالب آماده انتخاب کنید تا فرم با تنظیمات مناسب ساخته شود.',
     'basics': 'اطلاعات پایه',
     'basicsSubtitle':
-        'به title و description در CreateFormRequest نگاشت می\u200cشود.',
+        'عنوان و توضیحات فرم خود را وارد کنید.',
     'settingsSubtitle':
-        'به FormSettingsDto، FormVisibilityDto و ScoringMode نگاشت می\u200cشود.',
+        'دسترسی، حالت نمایش و نحوه امتیازدهی فرم را تنظیم کنید.',
     'fields': 'فیلدها',
-    'fieldsWillCreate': 'پس از ساخت اسکلت فرم، این فیلدها ایجاد می\u200cشوند.',
+    'fieldsWillCreate': 'پس از ساخت فرم، این فیلدها به آن اضافه می\u200cشوند.',
     'add': 'افزودن',
     'chooseField': 'انتخاب فیلد',
     'noFieldsYet': 'هنوز فیلدی وجود ندارد',
@@ -428,7 +430,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'closedToResponses': 'بسته برای پاسخ\u200cهای جدید',
     'draftWorkflow': 'جریان پیش\u200cنویس',
     'builderMessage':
-        'فیلدهایی را که پاسخ\u200cدهندگان تکمیل می\u200cکنند ویرایش کنید. تغییرات با DTOهای بک\u200cاند ذخیره می\u200cشوند.',
+        'فیلدهایی را که پاسخ\u200cدهندگان تکمیل می\u200cکنند ویرایش کنید. تغییرات خودکار ذخیره می\u200cشوند.',
     'addField': 'افزودن فیلد',
     'addFirstQuestion':
         'اولین سؤال را اضافه کنید و سپس فرم را پیش از انتشار بررسی کنید.',
@@ -462,7 +464,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'publishedShareHint':
         'منتشر شد. برای کپی لینک عمومی به بخش اشتراک\u200cگذاری بروید.',
     'submittedForApproval': 'برای تأیید ارسال شد.',
-    'submittedFromClient': 'از کلاینت Flutter ارسال شد.',
+    'submittedFromClient': 'پاسخ ثبت شد.',
     'formClosedToast': 'فرم بسته شد.',
     'formArchivedToast': 'فرم آرشیو شد.',
     'shareMessage':
@@ -685,9 +687,11 @@ const Map<String, Map<String, String>> _localizedValues = {
     'createFirstForm': 'Create your first form',
     'createFirstFormSubtitle':
         'Start with a feedback survey, quiz, registration, consent form, risk assessment, or a blank canvas.',
-    'templatesUiOnly': 'Templates are UI presets only',
+    'templatesUiOnly': 'Start with a template',
     'apiContractNote':
-        'The API still receives only the OpenAPI-backed request models.',
+        'Pick a template and your form will be created with sensible defaults.',
+    'getStartedTitle': 'Get started',
+    'getStartedSubtitle': 'Choose a template or start from scratch. Fields, settings, and appearance can all be changed later.',
     'welcomeBack': 'Welcome back',
     'loginSubtitle':
         'Sign in with your mobile number to manage forms, submissions, scoring, and public links.',
@@ -851,16 +855,16 @@ const Map<String, Map<String, String>> _localizedValues = {
     'openDraft': 'Open draft',
     'modernFormBuilder': 'Modern form builder',
     'modernFormBuilderSubtitle':
-        'Create the form shell first, then attach backend-supported fields through createFormField.',
+        'Build your form, add fields, and customize settings.',
     'formType': 'Form type',
     'formTypeSubtitle':
-        'UI presets only. No custom form_type is sent to the API.',
+        'Pick a template to start with sensible defaults.',
     'basics': 'Basics',
-    'basicsSubtitle': 'Mapped to CreateFormRequest.title and description.',
+    'basicsSubtitle': 'Enter the title and description for your form.',
     'settingsSubtitle':
-        'Mapped to FormSettingsDto, FormVisibilityDto, and ScoringMode.',
+        'Configure access, visibility, and scoring mode.',
     'fields': 'Fields',
-    'fieldsWillCreate': 'These fields will be created after the form shell.',
+    'fieldsWillCreate': 'These fields will be added to your form.',
     'add': 'Add',
     'chooseField': 'Choose a field',
     'noFieldsYet': 'No fields yet',
@@ -952,7 +956,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'closedToResponses': 'Closed to new responses',
     'draftWorkflow': 'Draft workflow',
     'builderMessage':
-        'Edit the fields respondents will answer. Changes are saved to the backend contract DTOs.',
+        'Edit the fields that respondents will fill out. Changes are saved automatically.',
     'addField': 'Add field',
     'addFirstQuestion':
         'Add a first question, then preview the form before publishing.',
@@ -984,7 +988,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'formPublished': 'Form published.',
     'publishedShareHint': 'Published. Open Share to copy the public link.',
     'submittedForApproval': 'Submitted for approval.',
-    'submittedFromClient': 'Submitted from Flutter client.',
+    'submittedFromClient': 'Response submitted successfully.',
     'formClosedToast': 'Form closed.',
     'formArchivedToast': 'Form archived.',
     'shareMessage':
@@ -1203,8 +1207,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'couldNotLoadForms': '无法加载表单',
     'createFirstForm': '创建第一个表单',
     'createFirstFormSubtitle': '从反馈调查、测验、注册、同意书、风险评估或空白表单开始。',
-    'templatesUiOnly': '模板只是界面预设',
-    'apiContractNote': 'API 仍然只接收 OpenAPI 定义的请求模型。',
+    'templatesUiOnly': '从模板开始',
+    'apiContractNote': '选择模板后，表单将使用默认设置创建。',
+    'getStartedTitle': '快速开始',
+    'getStartedSubtitle': '选择一个模板或从空白开始。字段、设置和外观之后都可以修改。',
     'welcomeBack': '欢迎回来',
     'loginSubtitle': '使用手机号登录以管理表单、提交、评分和公开链接。',
     'email': '邮箱',
@@ -1359,14 +1365,14 @@ const Map<String, Map<String, String>> _localizedValues = {
     'formCreated': '表单已创建。',
     'openDraft': '打开草稿',
     'modernFormBuilder': '现代化表单构建器',
-    'modernFormBuilderSubtitle': '先创建表单主体，再通过 createFormField 添加后端支持的字段。',
+    'modernFormBuilderSubtitle': '创建表单、添加字段并自定义设置。',
     'formType': '表单类型',
-    'formTypeSubtitle': '仅为界面预设，不会向 API 发送自定义 form_type。',
+    'formTypeSubtitle': '选择一个模板，表单将使用合理的默认设置创建。',
     'basics': '基础信息',
-    'basicsSubtitle': '映射到 CreateFormRequest.title 和 description。',
-    'settingsSubtitle': '映射到 FormSettingsDto、FormVisibilityDto 和 ScoringMode。',
+    'basicsSubtitle': '输入表单的标题和描述。',
+    'settingsSubtitle': '配置访问权限、可见性和评分模式。',
     'fields': '字段',
-    'fieldsWillCreate': '这些字段将在表单主体创建后生成。',
+    'fieldsWillCreate': '这些字段将添加到您的表单中。',
     'add': '添加',
     'chooseField': '选择字段',
     'noFieldsYet': '还没有字段',
@@ -1456,7 +1462,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'waitingForApproval': '等待审核',
     'closedToResponses': '已关闭新回复',
     'draftWorkflow': '草稿流程',
-    'builderMessage': '编辑答题者需要填写的字段。更改会保存为后端契约 DTO。',
+    'builderMessage': '编辑答题者需要填写的字段。更改会自动保存。',
     'addField': '添加字段',
     'addFirstQuestion': '添加第一个问题，然后在发布前预览表单。',
     'fieldAdded': '字段已添加。',
@@ -1485,7 +1491,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'formPublished': '表单已发布。',
     'publishedShareHint': '已发布。请到分享页复制公开链接。',
     'submittedForApproval': '已提交审核。',
-    'submittedFromClient': '从 Flutter 客户端提交。',
+    'submittedFromClient': '回复已成功提交。',
     'formClosedToast': '表单已关闭。',
     'formArchivedToast': '表单已归档。',
     'shareMessage': '发布公开链接表单后使用此页，或查看内部受众摘要。',
