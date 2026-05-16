@@ -13,14 +13,14 @@ Future<void> main() async {
 
   const configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'http://185.8.173.191',
   );
   final baseUrl =
       configuredBaseUrl.isNotEmpty
           ? configuredBaseUrl
           : kIsWeb
           ? Uri.base.origin
-          : 'http://localhost:8080';
+          : 'http://185.8.173.191';
 
   final dependencies = AppDependencies.create(baseUrl: baseUrl);
 
