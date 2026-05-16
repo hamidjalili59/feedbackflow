@@ -31,6 +31,7 @@ pub struct CreateSubmissionRequest {
     pub answers: Vec<AnswerInputDto>,
     pub anonymous: Option<bool>,
     pub fingerprint_token: Option<String>,
+    pub respondent_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
