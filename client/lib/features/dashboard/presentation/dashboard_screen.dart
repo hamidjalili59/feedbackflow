@@ -1033,11 +1033,14 @@ class _GenderDropdown extends StatelessWidget {
           value: null,
           child: Text(context.l10n.t('notSpecified')),
         ),
-        for (final item in const ['female', 'male', 'other', 'prefer_not_to_say'])
-          DropdownMenuItem<String?>(
-            value: item,
-            child: Text(context.l10n.t(item)),
-          ),
+        DropdownMenuItem<String?>(
+          value: 'male',
+          child: Text(context.l10n.t('male')),
+        ),
+        DropdownMenuItem<String?>(
+          value: 'female',
+          child: Text(context.l10n.t('female')),
+        ),
       ],
       onChanged: onChanged,
     );

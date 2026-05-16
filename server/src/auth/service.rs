@@ -336,15 +336,12 @@ pub fn normalize_optional_gender(input: Option<&str>) -> Result<Option<String>, 
         return Ok(None);
     };
     let gender = gender.to_lowercase();
-    if matches!(
-        gender.as_str(),
-        "female" | "male" | "other" | "prefer_not_to_say"
-    ) {
+    if matches!(gender.as_str(), "female" | "male") {
         Ok(Some(gender))
     } else {
         Err(AppError::validation(
             "Invalid gender",
-            json!({"gender":"Allowed values are female, male, other, prefer_not_to_say."}),
+            json!({"gender":"Allowed values are female, male."}),
         ))
     }
 }

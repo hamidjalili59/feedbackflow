@@ -944,8 +944,7 @@ fn analytics_bucket_label(key: &str) -> String {
     match key {
         "female" => "Female",
         "male" => "Male",
-        "other" => "Other",
-        "prefer_not_to_say" => "Prefer not to say",
+        "unknown" => "Unknown",
         "anonymous" => "Anonymous",
         "guest" => "Guest",
         "authenticated" => "Authenticated",
