@@ -322,34 +322,23 @@ class _FieldsPanel extends ConsumerWidget {
               buildDefaultDragHandles: false,
               proxyDecorator: (child, index, animation) => Material(
                 color: Colors.transparent,
+                elevation: 4,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                 child: child,
               ),
               itemBuilder: (context, index) {
                 final field = state.fields[index];
                 final isLast = index == state.fields.length - 1;
-                return Padding(
+                return _ReorderableFieldItem(
                   key: ValueKey(field.draftId),
-                  padding: EdgeInsets.only(
-                    bottom: isLast ? 0 : AppSpacing.md,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _DraftFieldCard(
-                        index: index,
-                        field: field,
-                        enabled: enabled,
-                        formScoringEnabled:
-                            state.scoringMode != ScoringMode.none,
-                        onChanged: controller.changeField,
-                        onRemove: () => controller.removeField(field.draftId),
-                      ),
-                      if (!isLast) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        const _FieldDivider(),
-                      ],
-                    ],
-                  ),
+                  index: index,
+                  field: field,
+                  enabled: enabled,
+                  isLast: isLast,
+                  formScoringEnabled:
+                      state.scoringMode != ScoringMode.none,
+                  onChanged: controller.changeField,
+                  onRemove: () => controller.removeField(field.draftId),
                 );
               },
             ),
@@ -357,11 +346,58 @@ class _FieldsPanel extends ConsumerWidget {
   }
 }
 
-/// Visual separator between consecutive draft field cards.
+/// Wrapper widget for each field item in the ReorderableListView.
 ///
-/// Uses an inset gradient line with a soft icon in the middle so the
-/// boundary between two fields is easy to scan even with deeply nested
-/// content inside each card.
+/// This is the direct child of the list — it must be a single widget with a
+/// key. The divider is rendered below the card as part of this widget's
+/// bottom margin area so it doesn't interfere with drag proxy sizing.
+class _ReorderableFieldItem extends StatelessWidget {
+  const _ReorderableFieldItem({
+    required super.key,
+    required this.index,
+    required this.field,
+    required this.enabled,
+    required this.isLast,
+    required this.formScoringEnabled,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final DraftFormField field;
+  final bool enabled;
+  final bool isLast;
+  final bool formScoringEnabled;
+  final ValueChanged<DraftFormField> onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.sm),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _DraftFieldCard(
+            index: index,
+            field: field,
+            enabled: enabled,
+            formScoringEnabled: formScoringEnabled,
+            onChanged: onChanged,
+            onRemove: onRemove,
+          ),
+          if (!isLast) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const _FieldDivider(),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Visual separator between consecutive draft field cards.
 class _FieldDivider extends StatelessWidget {
   const _FieldDivider();
 
