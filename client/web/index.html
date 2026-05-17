@@ -44,8 +44,8 @@
   <script>
     // Force local CanvasKit to avoid loading from gstatic.com (unreachable on internal networks).
     window._flutter = window._flutter || {};
-    window._flutter.loader = window._flutter.loader || {};
-    window._flutter.config = { canvasKitBaseUrl: "canvaskit/" };
+    window._flutter.buildConfig = window._flutter.buildConfig || {};
+    window._flutter.buildConfig.useLocalCanvasKit = true;
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
