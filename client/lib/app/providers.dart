@@ -170,16 +170,22 @@ class FormsController extends _$FormsController {
   @override
   Future<ListResponse<FormSummaryDto>> build() => _load();
 
-  Future<ListResponse<FormSummaryDto>> _load() {
-    return ref.read(formsRepositoryProvider).listForms(
-          page: _page,
-          pageSize: _pageSize,
-          search: _search.trim().isEmpty ? null : _search.trim(),
-          category: _category.trim().isEmpty ? null : _category.trim(),
-          tags: _tag.trim().isEmpty ? null : _tag.trim(),
-          sortBy: _sortBy,
-          sortOrder: _sortOrder,
-        );
+  Future<ListResponse<FormSummaryDto>> _load() async {
+    try {
+      return await ref.read(formsRepositoryProvider).listForms(
+            page: _page,
+            pageSize: _pageSize,
+            search: _search.trim().isEmpty ? null : _search.trim(),
+            category: _category.trim().isEmpty ? null : _category.trim(),
+            tags: _tag.trim().isEmpty ? null : _tag.trim(),
+            sortBy: _sortBy,
+            sortOrder: _sortOrder,
+          );
+    } catch (e) {
+      // Re-throw so AsyncValue transitions to error state properly.
+      // This ensures the UI shows ErrorPanel instead of staying in loading.
+      rethrow;
+    }
   }
 
   Future<void> refresh() async {

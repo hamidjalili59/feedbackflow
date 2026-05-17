@@ -32,10 +32,10 @@ impl Config {
             jwt_access_secret: std::env::var("JWT_ACCESS_SECRET")
                 .context("JWT_ACCESS_SECRET is required")?,
             jwt_issuer: env("JWT_ISSUER", "feedbackflow-server"),
-            access_token_ttl_seconds: env("ACCESS_TOKEN_TTL_SECONDS", "900")
+            access_token_ttl_seconds: env("ACCESS_TOKEN_TTL_SECONDS", "3600")
                 .parse()
                 .context("ACCESS_TOKEN_TTL_SECONDS must be an integer")?,
-            refresh_token_ttl_seconds: env("REFRESH_TOKEN_TTL_SECONDS", "2592000")
+            refresh_token_ttl_seconds: env("REFRESH_TOKEN_TTL_SECONDS", "604800")
                 .parse()
                 .context("REFRESH_TOKEN_TTL_SECONDS must be an integer")?,
             cors_allowed_origins: env("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
