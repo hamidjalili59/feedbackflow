@@ -4,6 +4,7 @@ import '../dto/dto.dart';
 
 abstract class AuthRepository {
   Future<LoginResponse> login({required LoginRequest request});
+  Future<LoginResponse> guestLogin({required GuestLoginRequest request});
   Future<LogoutResponse> logout({required LogoutRequest request});
   Future<MeResponse> getMe();
   Future<RefreshTokenResponse> refreshToken({required RefreshTokenRequest request});
@@ -18,6 +19,12 @@ class DioAuthRepository implements AuthRepository {
   @override
   Future<LoginResponse> login({required LoginRequest request}) async {
     return EnvelopeGuard.data(await _api.login(request: request));
+  }
+
+
+  @override
+  Future<LoginResponse> guestLogin({required GuestLoginRequest request}) async {
+    return EnvelopeGuard.data(await _api.guestLogin(request: request));
   }
 
   @override

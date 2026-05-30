@@ -33,6 +33,17 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct GuestLoginRequest {
+    pub organization_id: Option<Uuid>,
+    #[validate(length(min = 1, max = 180))]
+    pub organization_slug: Option<String>,
+    #[validate(length(min = 8, max = 160))]
+    pub public_token: Option<String>,
+    #[validate(length(max = 160))]
+    pub display_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct LoginResponse {
     pub access_token: String,

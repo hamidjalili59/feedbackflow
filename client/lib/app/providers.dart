@@ -141,6 +141,30 @@ class AuthController extends _$AuthController {
     });
   }
 
+  Future<void> guestLogin({
+    String? organizationId,
+    String? organizationSlug,
+    String? publicToken,
+    String? displayName,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard<AuthSession?>(() async {
+      final response = await ref.read(authRepositoryProvider).guestLogin(
+            request: GuestLoginRequest(
+              organizationId: organizationId,
+              organizationSlug: organizationSlug,
+              publicToken: publicToken,
+              displayName: displayName,
+            ),
+          );
+      await ref.read(tokenStoreProvider).saveTokens(
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken,
+          );
+      return AuthSession(user: response.user);
+    });
+  }
+
   Future<void> logout() async {
     final tokenStore = ref.read(tokenStoreProvider);
     final refreshToken = await tokenStore.readRefreshToken();
@@ -249,6 +273,10 @@ final audienceSegmentsProvider = rp.FutureProvider<ListResponse<AudienceSegmentD
 
 final formAssignmentsProvider = rp.FutureProvider.family<List<FormAssignmentDto2>, String>((ref, formId) {
   return ref.watch(analyticsRepositoryProvider).listFormAssignments(id: formId);
+});
+
+final formAnswerAccessProvider = rp.FutureProvider.family<FormAnswerAccessDto2, String>((ref, formId) {
+  return ref.watch(formsRepositoryProvider).getFormAnswerAccess(id: formId);
 });
 
 @Riverpod(keepAlive: true)

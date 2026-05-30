@@ -173,6 +173,130 @@ pub async fn login(state: &AppState, request: LoginRequest) -> Result<LoginRespo
     })
 }
 
+pub async fn guest_login(
+    state: &AppState,
+    request: GuestLoginRequest,
+) -> Result<LoginResponse, AppError> {
+    let org_id = resolve_guest_organization(state, &request).await?;
+    let display_name = request
+        .display_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .unwrap_or("Guest")
+        .chars()
+        .take(160)
+        .collect::<String>();
+
+    let guest_id = Uuid::new_v4();
+    let phone = format!("guest:{}", guest_id.simple());
+    let password_hash = hash_secret(&Uuid::new_v4().to_string())?;
+    let profile = json!({
+        "metadata": {
+            "source": "guest_login",
+            "public_token": request.public_token,
+            "organization_slug": request.organization_slug
+        }
+    });
+    let row = sqlx::query("insert into users (id, organization_id, phone, email, password_hash, display_name, gender, primary_role, profile, status) values ($1,$2,$3,null,$4,$5,null,'guest',$6,'active') returning id, organization_id, phone, email, display_name, gender, primary_role, profile, status, created_at, updated_at")
+        .bind(guest_id)
+        .bind(org_id)
+        .bind(&phone)
+        .bind(password_hash)
+        .bind(&display_name)
+        .bind(profile)
+        .fetch_one(&state.db)
+        .await?;
+    let user = row_to_user_detail(&row)?;
+    let access_token = issue_access_token(state, user.id, user.organization_id, user.primary_role)?;
+    let refresh_token = create_refresh_token(state, user.id).await?;
+    audit(
+        state,
+        user.organization_id,
+        Some(user.id),
+        AuditAction::Login,
+        "user",
+        Some(user.id),
+        json!({"source":"guest_login"}),
+    )
+    .await?;
+    Ok(LoginResponse {
+        access_token,
+        refresh_token,
+        token_type: "Bearer".to_owned(),
+        expires_in: state.config.access_token_ttl_seconds,
+        user,
+    })
+}
+
+async fn resolve_guest_organization(
+    state: &AppState,
+    request: &GuestLoginRequest,
+) -> Result<Option<Uuid>, AppError> {
+    if let Some(public_token) = request
+        .public_token
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let org_id: Option<Uuid> = sqlx::query_scalar(
+            "select f.organization_id from public_form_tokens p join forms f on f.id=p.form_id where p.token=$1 and p.enabled=true and p.revoked_at is null and (p.expires_at is null or p.expires_at > now()) and f.deleted_at is null",
+        )
+        .bind(public_token)
+        .fetch_optional(&state.db)
+        .await?;
+        return org_id.map(Some).ok_or_else(|| {
+            AppError::validation(
+                "Public form token was not found",
+                json!({"public_token":"invalid"}),
+            )
+        });
+    }
+
+    if let Some(org_id) = request.organization_id {
+        let exists: bool = sqlx::query_scalar(
+            "select exists(select 1 from organizations where id=$1 and deleted_at is null)",
+        )
+        .bind(org_id)
+        .fetch_one(&state.db)
+        .await?;
+        return if exists {
+            Ok(Some(org_id))
+        } else {
+            Err(AppError::validation(
+                "Organization does not exist",
+                json!({"organization_id":"invalid"}),
+            ))
+        };
+    }
+
+    if let Some(slug) = request
+        .organization_slug
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let org_id: Option<Uuid> =
+            sqlx::query_scalar("select id from organizations where slug=$1 and deleted_at is null")
+                .bind(slug)
+                .fetch_optional(&state.db)
+                .await?;
+        return org_id.map(Some).ok_or_else(|| {
+            AppError::validation(
+                "Organization does not exist",
+                json!({"organization_slug":"invalid"}),
+            )
+        });
+    }
+
+    Err(AppError::validation(
+        "Guest login requires organization_id, organization_slug, or public_token",
+        json!({
+            "organization": "Guest sessions must be scoped to an organization or a public form link"
+        }),
+    ))
+}
+
 pub async fn refresh(
     state: &AppState,
     request: RefreshTokenRequest,

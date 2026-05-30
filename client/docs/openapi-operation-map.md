@@ -20,6 +20,7 @@ Every generated API service/repository method is named after the backend `operat
 - `getEffectivePermissions` → `GET /api/v1/permissions/effective`
 - `getFieldTypePermissions` → `GET /api/v1/permissions/field-types`
 - `getForm` → `GET /api/v1/forms/{id}`
+- `getFormAnswerAccess` → `GET /api/v1/forms/{id}/answer-access`
 - `getFormAnalytics` → `GET /api/v1/forms/{id}/analytics`
 - `getMe` → `GET /api/v1/auth/me`
 - `getMyUser` → `GET /api/v1/users/me`
@@ -39,6 +40,7 @@ Every generated API service/repository method is named after the backend `operat
 - `listScoreTemplates` → `GET /api/v1/score-templates`
 - `listSubmissions` → `GET /api/v1/forms/{id}/submissions`
 - `login` → `POST /api/v1/auth/login`
+- `guestLogin` → `POST /api/v1/auth/guest`
 - `logout` → `POST /api/v1/auth/logout`
 - `publishForm` → `POST /api/v1/forms/{id}/publish`
 - `refreshToken` → `POST /api/v1/auth/refresh`

@@ -28,6 +28,7 @@ pub fn routes() -> Router<AppState> {
             "/forms/{id}",
             get(get_form).patch(update_form).delete(delete_form),
         )
+        .route("/forms/{id}/answer-access", get(get_answer_access))
         .route("/forms/{id}/fields", post(create_field))
         .route(
             "/forms/{id}/fields/{field_id}",
@@ -86,6 +87,16 @@ pub async fn get_form(
     Path(id): Path<Uuid>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
     Ok(response::ok(service::get_form(&state, &auth, id).await?))
+}
+
+pub async fn get_answer_access(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    Ok(response::ok(
+        service::answer_access(&state, &auth, id).await?,
+    ))
 }
 pub async fn update_form(
     State(state): State<AppState>,
@@ -267,5 +278,7 @@ pub async fn get_dashboard_analytics(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::dashboard_analytics(&state, &auth).await?))
+    Ok(response::ok(
+        service::dashboard_analytics(&state, &auth).await?,
+    ))
 }

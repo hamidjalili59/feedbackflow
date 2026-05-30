@@ -219,6 +219,16 @@ pub struct FormSummaryDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FormAnswerAccessDto {
+    pub allowed: bool,
+    pub can_view: bool,
+    pub can_edit_workspace: bool,
+    pub requires_public_link: bool,
+    pub reason: Option<String>,
+    pub reason_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct FormDetailDto {
     pub id: Uuid,
     pub organization_id: Uuid,

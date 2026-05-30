@@ -147,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           backgroundColor: const Color(0xFF91A8F7),
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: loading ? null : _guestLoginNotice,
+                        onPressed: loading ? null : _startGuestLogin,
                         child: const Text('ورود میهمان'),
                       ),
                     ),
@@ -206,10 +206,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authControllerProvider.notifier).login(phone: phone, password: password);
   }
 
-  void _guestLoginNotice() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('برای ورود میهمان، لینک عمومی یا کد دسترسی نظرسنجی را باز کنید.')),
+  Future<void> _startGuestLogin() async {
+    final publicToken = _publicTokenFromRedirect(widget.redirectLocation);
+    if (publicToken != null) {
+      await ref.read(authControllerProvider.notifier).guestLogin(
+            publicToken: publicToken,
+            displayName: 'مهمان',
+          );
+      return;
+    }
+
+    final input = await showModalBottomSheet<_GuestLoginInput>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => const _GuestOrganizationSheet(),
     );
+    if (!mounted || input == null) return;
+    await ref.read(authControllerProvider.notifier).guestLogin(
+          organizationSlug: input.organizationSlug,
+          displayName: input.displayName,
+        );
   }
 }
 
@@ -350,3 +367,111 @@ String _safeRedirectLocation(String? location) {
   if (uri == null || uri.hasScheme || uri.hasAuthority) return '/dashboard';
   return location.startsWith('/') ? location : '/dashboard';
 }
+
+String? _publicTokenFromRedirect(String? location) {
+  final safe = _safeRedirectLocation(location);
+  final uri = Uri.tryParse(safe);
+  if (uri == null || uri.pathSegments.length != 2) return null;
+  if (uri.pathSegments.first != 'public') return null;
+  final token = uri.pathSegments.last.trim();
+  return token.isEmpty ? null : token;
+}
+
+class _GuestLoginInput {
+  const _GuestLoginInput({required this.organizationSlug, required this.displayName});
+
+  final String organizationSlug;
+  final String displayName;
+}
+
+class _GuestOrganizationSheet extends StatefulWidget {
+  const _GuestOrganizationSheet();
+
+  @override
+  State<_GuestOrganizationSheet> createState() => _GuestOrganizationSheetState();
+}
+
+class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _organizationController = TextEditingController();
+  final _nameController = TextEditingController(text: 'مهمان');
+
+  @override
+  void dispose() {
+    _organizationController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, bottom + 20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'ورود میهمان',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'برای ورود میهمان باید سازمان مشخص باشد. اگر از لینک عمومی نظرسنجی وارد شوید، سازمان از همان لینک تشخیص داده می‌شود؛ در غیر این صورت کد یا slug سازمان را وارد کنید.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.6,
+                  ),
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              controller: _organizationController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'کد سازمان / slug',
+                hintText: 'مثلا main-school',
+                prefixIcon: Icon(Icons.apartment_rounded),
+              ),
+              validator: (value) {
+                if ((value ?? '').trim().isEmpty) return 'کد سازمان را وارد کنید.';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _nameController,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: 'نام نمایشی',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _submit,
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('ورود به عنوان میهمان'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() != true) return;
+    Navigator.of(context).pop(
+      _GuestLoginInput(
+        organizationSlug: _organizationController.text.trim(),
+        displayName: _nameController.text.trim().isEmpty ? 'مهمان' : _nameController.text.trim(),
+      ),
+    );
+  }
+}
+

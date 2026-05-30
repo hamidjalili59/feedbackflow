@@ -43,10 +43,7 @@ impl Config {
                 .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty())
                 .collect(),
-            flutter_web_dist_dir: PathBuf::from(env(
-                "FLUTTER_WEB_DIST_DIR",
-                "./web",
-            )),
+            flutter_web_dist_dir: PathBuf::from(env("FLUTTER_WEB_DIST_DIR", "./web")),
             run_migrations: env("RUN_MIGRATIONS", "true").parse().unwrap_or(true),
         })
     }

@@ -447,28 +447,25 @@ class _SingleChoiceInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final options = _options(field);
+    return _ChoiceListFrame(
+      helper: 'فقط یک گزینه را انتخاب کنید.',
       children: [
-        for (final option in _options(field)) ...[
+        for (var index = 0; index < options.length; index++)
           Builder(
             builder: (context) {
+              final option = options[index];
               final selected = _sameOption(value, option);
-              return FeedbackOptionChip(
-                selected: selected,
+              return _ChoiceCard(
+                index: index + 1,
                 label: _localizedOptionLabel(context, option),
-                icon:
-                    field.type == FieldType.emojiReaction
-                        ? Icons.mood_rounded
-                        : selected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                expand: field.type != FieldType.emojiReaction,
+                description: _optionDescription(option),
+                selected: selected,
+                multiple: false,
                 onTap: () => onChanged(_optionValue(option)),
               );
             },
           ),
-          const SizedBox(height: 8),
-        ],
       ],
     );
   }
@@ -489,29 +486,311 @@ class _MultiChoiceInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected =
         value is List ? Set<Object?>.from(value as List) : <Object?>{};
+    final options = _options(field);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final option in _options(field)) ...[
-          FeedbackOptionChip(
-            selected: selected.contains(_optionValue(option)),
-            label: _localizedOptionLabel(context, option),
-            icon:
-                selected.contains(_optionValue(option))
-                    ? Icons.done_rounded
-                    : Icons.add_rounded,
-            expand: true,
-            onTap: () {
-              final next = {...selected};
-              final optionValue = _optionValue(option);
-              next.contains(optionValue)
-                  ? next.remove(optionValue)
-                  : next.add(optionValue);
-              onChanged(next.toList(growable: false));
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
+        _ChoiceCounterBadge(
+          selectedCount: selected.length,
+          totalCount: options.length,
+        ),
+        const SizedBox(height: 10),
+        _ChoiceListFrame(
+          helper: 'می‌توانید چند گزینه را انتخاب کنید.',
+          children: [
+            for (var index = 0; index < options.length; index++)
+              Builder(
+                builder: (context) {
+                  final option = options[index];
+                  final optionValue = _optionValue(option);
+                  final isSelected = selected.contains(optionValue);
+                  return _ChoiceCard(
+                    index: index + 1,
+                    label: _localizedOptionLabel(context, option),
+                    description: _optionDescription(option),
+                    selected: isSelected,
+                    multiple: true,
+                    onTap: () {
+                      final next = {...selected};
+                      next.contains(optionValue)
+                          ? next.remove(optionValue)
+                          : next.add(optionValue);
+                      onChanged(next.toList(growable: false));
+                    },
+                  );
+                },
+              ),
+          ],
+        ),
       ],
+    );
+  }
+}
+
+class _ChoiceListFrame extends StatelessWidget {
+  const _ChoiceListFrame({required this.children, required this.helper});
+
+  final List<Widget> children;
+  final String helper;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useGrid = constraints.maxWidth.isFinite &&
+            constraints.maxWidth >= 620 &&
+            children.length > 3;
+        final itemWidth = useGrid ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
+        final list = useGrid
+            ? Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  for (final child in children)
+                    SizedBox(width: itemWidth, child: child),
+                ],
+              )
+            : Column(
+                children: [
+                  for (var i = 0; i < children.length; i++) ...[
+                    children[i],
+                    if (i != children.length - 1) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.055),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.touch_app_rounded,
+                    size: 17,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      helper,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            list,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ChoiceCard extends StatelessWidget {
+  const _ChoiceCard({
+    required this.index,
+    required this.label,
+    this.description,
+    required this.selected,
+    required this.multiple,
+    required this.onTap,
+  });
+
+  final int index;
+  final String label;
+  final String? description;
+  final bool selected;
+  final bool multiple;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final borderColor = selected
+        ? scheme.primary
+        : scheme.outlineVariant.withValues(alpha: dark ? 0.42 : 0.72);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primary.withValues(alpha: dark ? 0.20 : 0.08)
+                : scheme.surface.withValues(alpha: dark ? 0.12 : 0.92),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor, width: selected ? 1.7 : 1),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      blurRadius: 22,
+                      offset: const Offset(0, 12),
+                      color: scheme.primary.withValues(alpha: dark ? 0.16 : 0.11),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              _ChoiceIndicator(selected: selected, multiple: multiple),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                            color: selected ? scheme.primary : scheme.onSurface,
+                            fontWeight: FontWeight.w900,
+                            height: 1.25,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      description?.trim().isNotEmpty == true
+                          ? description!.trim()
+                          : selected
+                              ? 'انتخاب شده'
+                              : 'برای انتخاب لمس کنید',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                            color: selected
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                            fontWeight: FontWeight.w700,
+                            height: 1.35,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? scheme.primary
+                      : scheme.surfaceContainerHighest.withValues(alpha: 0.58),
+                  shape: BoxShape.circle,
+                ),
+                child: selected
+                    ? Icon(
+                        multiple ? Icons.done_all_rounded : Icons.done_rounded,
+                        color: scheme.onPrimary,
+                        size: 17,
+                      )
+                    : Text(
+                        '$index',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceIndicator extends StatelessWidget {
+  const _ChoiceIndicator({required this.selected, required this.multiple});
+
+  final bool selected;
+  final bool multiple;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final shape = multiple ? BoxShape.rectangle : BoxShape.circle;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: selected ? scheme.primary : Colors.transparent,
+        shape: shape,
+        borderRadius: multiple ? BorderRadius.circular(8) : null,
+        border: Border.all(
+          color: selected ? scheme.primary : scheme.outline.withValues(alpha: 0.46),
+          width: 2,
+        ),
+      ),
+      child: selected
+          ? Icon(
+              multiple ? Icons.check_rounded : Icons.circle,
+              size: multiple ? 18 : 10,
+              color: scheme.onPrimary,
+            )
+          : null,
+    );
+  }
+}
+
+class _ChoiceCounterBadge extends StatelessWidget {
+  const _ChoiceCounterBadge({required this.selectedCount, required this.totalCount});
+
+  final int selectedCount;
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.checklist_rounded, size: 16, color: scheme.onSecondaryContainer),
+            const SizedBox(width: 6),
+            Text(
+              '$selectedCount از $totalCount انتخاب شده',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1242,6 +1521,17 @@ String _localizedOptionLabel(BuildContext context, FieldOptionDto option) {
 }
 
 Object? _optionValue(FieldOptionDto option) => option.value ?? option.id;
+
+String? _optionDescription(FieldOptionDto option) {
+  final metadata = option.metadata;
+  if (metadata is Map<String, dynamic>) {
+    return metadata['description']?.toString();
+  }
+  if (metadata is Map) {
+    return metadata['description']?.toString();
+  }
+  return null;
+}
 
 bool _sameOption(Object? value, FieldOptionDto option) =>
     value?.toString() == _optionValue(option).toString();

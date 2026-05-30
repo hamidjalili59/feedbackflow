@@ -36,24 +36,28 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
   @override
   Widget build(BuildContext context) {
     final formsAsync = ref.watch(formsControllerProvider);
+    final authSession = ref.watch(authControllerProvider).asData?.value;
+    final canCreate = _canCreateForms(authSession);
     final compact = context.isCompactWidth;
     return AppShell(
       selected: AppDestination.forms,
       appBar: AdaptiveAppBar(
         title: Text(context.l10n.t('forms')),
-        primaryAction: compact
-            ? IconButton.filledTonal(
-                tooltip: context.l10n.t('newForm'),
-                onPressed: () => context.push('/forms/new'),
-                icon: const Icon(Icons.add_rounded),
-              )
-            : FilledButton.icon(
-                onPressed: () => context.push('/forms/new'),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(context.l10n.t('newForm')),
-              ),
+        primaryAction: canCreate
+            ? compact
+                ? IconButton.filledTonal(
+                    tooltip: context.l10n.t('newForm'),
+                    onPressed: () => context.push('/forms/new'),
+                    icon: const Icon(Icons.add_rounded),
+                  )
+                : FilledButton.icon(
+                    onPressed: () => context.push('/forms/new'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(context.l10n.t('newForm')),
+                  )
+            : null,
       ),
-      floatingActionButton: compact
+      floatingActionButton: compact && canCreate
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/forms/new'),
               icon: const Icon(Icons.add_rounded),
@@ -110,7 +114,7 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     if (forms.isEmpty)
-                      const _EmptyForms()
+                      _EmptyForms(canCreate: canCreate)
                     else
                       for (final form in forms)
                         Padding(
@@ -663,7 +667,9 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _EmptyForms extends StatelessWidget {
-  const _EmptyForms();
+  const _EmptyForms({required this.canCreate});
+
+  final bool canCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -677,11 +683,13 @@ class _EmptyForms extends StatelessWidget {
             icon: Icons.assignment_outlined,
             title: context.l10n.t('createFirstForm'),
             subtitle: context.l10n.t('createFirstFormSubtitle'),
-            trailing: FilledButton.icon(
-              onPressed: () => context.push('/forms/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: Text(context.l10n.t('create')),
-            ),
+            trailing: canCreate
+                ? FilledButton.icon(
+                    onPressed: () => context.push('/forms/new'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(context.l10n.t('create')),
+                  )
+                : null,
           ),
           const SizedBox(height: 18),
           SoftCard(
@@ -752,3 +760,13 @@ class _FormsListSkeleton extends StatelessWidget {
     );
   }
 }
+
+bool _canCreateForms(AuthSession? session) {
+  final role = session?.user.primaryRole;
+  return role == UserRole.teacher ||
+      role == UserRole.manager ||
+      role == UserRole.admin ||
+      role == UserRole.ceo ||
+      role == UserRole.superAdmin;
+}
+

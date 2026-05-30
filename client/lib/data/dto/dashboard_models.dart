@@ -672,3 +672,58 @@ class FormAssignmentDto2 {
     );
   }
 }
+class GuestLoginRequest {
+  const GuestLoginRequest({
+    this.organizationId,
+    this.organizationSlug,
+    this.publicToken,
+    this.displayName,
+  });
+
+  final String? organizationId;
+  final String? organizationSlug;
+  final String? publicToken;
+  final String? displayName;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        if (organizationId != null && organizationId!.trim().isNotEmpty)
+          'organization_id': organizationId,
+        if (organizationSlug != null && organizationSlug!.trim().isNotEmpty)
+          'organization_slug': organizationSlug,
+        if (publicToken != null && publicToken!.trim().isNotEmpty)
+          'public_token': publicToken,
+        if (displayName != null && displayName!.trim().isNotEmpty)
+          'display_name': displayName,
+      };
+}
+
+class FormAnswerAccessDto2 {
+  const FormAnswerAccessDto2({
+    required this.allowed,
+    required this.canView,
+    required this.canEditWorkspace,
+    required this.requiresPublicLink,
+    this.reason,
+    this.reasonCode,
+  });
+
+  final bool allowed;
+  final bool canView;
+  final bool canEditWorkspace;
+  final bool requiresPublicLink;
+  final String? reason;
+  final String? reasonCode;
+
+  factory FormAnswerAccessDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return FormAnswerAccessDto2(
+      allowed: _bool(map['allowed']),
+      canView: _bool(map['can_view']),
+      canEditWorkspace: _bool(map['can_edit_workspace']),
+      requiresPublicLink: _bool(map['requires_public_link']),
+      reason: _string(map['reason']),
+      reasonCode: _string(map['reason_code']),
+    );
+  }
+}
+

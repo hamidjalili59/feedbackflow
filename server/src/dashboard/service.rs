@@ -4,7 +4,10 @@ use crate::{
         dashboard::*,
         enums::{enum_from_str, FormStatus, UserRole},
         forms::FormVisibilityDto,
-        metrics::{MetricAggregationMethod, MetricDefinitionDto, MetricMappingSourceType, MetricPositiveDirection},
+        metrics::{
+            MetricAggregationMethod, MetricDefinitionDto, MetricMappingSourceType,
+            MetricPositiveDirection,
+        },
     },
     app_state::AppState,
     audience::service as audience_service,
@@ -30,7 +33,9 @@ pub async fn dashboard_me(
     } else {
         vec![]
     };
-    let selected_child_id = q.child_id.or_else(|| children.first().map(|child| child.id));
+    let selected_child_id = q
+        .child_id
+        .or_else(|| children.first().map(|child| child.id));
     let latest_surveys = my_surveys(
         state,
         auth,
@@ -44,36 +49,40 @@ pub async fn dashboard_me(
     .await?;
     let survey_summary = summarize_surveys(&latest_surveys);
     let metrics = dashboard_metrics(state, auth, &period).await?;
-    let charts = vec![timeseries(
-        state,
-        auth,
-        TimeseriesQuery {
-            metric: Some("participation".to_owned()),
-            period: Some(period.clone()),
-            compare: q.compare,
-            granularity: Some("month".to_owned()),
-            scope: q.scope,
-            scope_id: q.scope_id,
-        },
-    )
-    .await?];
+    let charts = vec![
+        timeseries(
+            state,
+            auth,
+            TimeseriesQuery {
+                metric: Some("participation".to_owned()),
+                period: Some(period.clone()),
+                compare: q.compare,
+                granularity: Some("month".to_owned()),
+                scope: q.scope,
+                scope_id: q.scope_id,
+            },
+        )
+        .await?,
+    ];
     let activities = activity_feed(state, auth, 10).await?;
     let rankings = if matches!(
         auth.role,
         UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
     ) {
-        vec![rankings(
-            state,
-            auth,
-            RankingQuery {
-                metric: Some("satisfaction".to_owned()),
-                dimension: Some("teacher".to_owned()),
-                period: Some(period.clone()),
-                order: Some("best".to_owned()),
-                limit: 5,
-            },
-        )
-        .await?]
+        vec![
+            rankings(
+                state,
+                auth,
+                RankingQuery {
+                    metric: Some("satisfaction".to_owned()),
+                    dimension: Some("teacher".to_owned()),
+                    period: Some(period.clone()),
+                    order: Some("best".to_owned()),
+                    limit: 5,
+                },
+            )
+            .await?,
+        ]
     } else {
         vec![]
     };
@@ -142,7 +151,10 @@ pub async fn children_for_parent(
                 class_name: row.try_get("class_name")?,
                 branch_id: row.try_get("branch_id")?,
                 branch_name: row.try_get("branch_name")?,
-                metadata: profile.get("metadata").cloned().unwrap_or_else(|| json!({})),
+                metadata: profile
+                    .get("metadata")
+                    .cloned()
+                    .unwrap_or_else(|| json!({})),
             })
         })
         .collect()
@@ -175,25 +187,17 @@ pub async fn my_surveys(
         let form_id: Uuid = row.try_get("id")?;
         let creator_id: Uuid = row.try_get("creator_id")?;
         let form_org_id: Uuid = row.try_get("organization_id")?;
-        let status: FormStatus = enum_from_str(&row.try_get::<String, _>("status")?)
-            .unwrap_or(FormStatus::Draft);
+        let status: FormStatus =
+            enum_from_str(&row.try_get::<String, _>("status")?).unwrap_or(FormStatus::Draft);
         let vis_value: Value = row.try_get("visibility").unwrap_or_else(|_| json!({}));
-        let visibility_dto: FormVisibilityDto = serde_json::from_value(vis_value).unwrap_or_default();
-        let visible_by_json = visibility::can_see_form(
-            status,
-            creator_id,
-            form_org_id,
-            &visibility_dto,
-            Some(auth),
-        );
-        let visible_by_assignment = audience_service::user_matches_form_assignment(
-            state,
-            form_id,
-            auth,
-            false,
-        )
-        .await
-        .unwrap_or(false);
+        let visibility_dto: FormVisibilityDto =
+            serde_json::from_value(vis_value).unwrap_or_default();
+        let visible_by_json =
+            visibility::can_see_form(status, creator_id, form_org_id, &visibility_dto, Some(auth));
+        let visible_by_assignment =
+            audience_service::user_matches_form_assignment(state, form_id, auth, false)
+                .await
+                .unwrap_or(false);
         if !visible_by_json && !visible_by_assignment {
             continue;
         }
@@ -219,19 +223,35 @@ pub async fn my_surveys(
             tags: row.try_get("tags").unwrap_or_default(),
             status: survey_status.to_owned(),
             my_submission_id,
-            progress: if my_submission_id.is_some() { 100.0 } else { 0.0 },
+            progress: if my_submission_id.is_some() {
+                100.0
+            } else {
+                0.0
+            },
             question_count: row.try_get("question_count").unwrap_or(0),
             estimated_minutes: settings
                 .get("metadata")
                 .and_then(|m| m.get("estimated_minutes"))
                 .and_then(|v| v.as_i64()),
-            cta: if my_submission_id.is_some() { "view" } else { "start" }.to_owned(),
+            cta: if my_submission_id.is_some() {
+                "view"
+            } else {
+                "start"
+            }
+            .to_owned(),
             date_label: date_label(published_at.clone().or(scheduled_at.clone())),
             scheduled_at,
             published_at,
             closed_at,
-            assigned_reason: if labels.is_empty() { None } else { Some(labels.join(", ")) },
-            metadata: settings.get("metadata").cloned().unwrap_or_else(|| json!({})),
+            assigned_reason: if labels.is_empty() {
+                None
+            } else {
+                Some(labels.join(", "))
+            },
+            metadata: settings
+                .get("metadata")
+                .cloned()
+                .unwrap_or_else(|| json!({})),
         });
         if out.len() >= limit as usize {
             break;
@@ -384,10 +404,17 @@ pub async fn rankings(
                 entity_id: row.try_get("entity_id")?,
                 entity_type: dimension.clone(),
                 title: row.try_get("title")?,
-                subtitle: Some(format!("{} submissions", row.try_get::<i64, _>("count").unwrap_or(0))),
+                subtitle: Some(format!(
+                    "{} submissions",
+                    row.try_get::<i64, _>("count").unwrap_or(0)
+                )),
                 score: row.try_get::<f64, _>("score").unwrap_or(0.0),
                 trend: None,
-                avatar_url: if avatar.is_empty() { None } else { Some(avatar) },
+                avatar_url: if avatar.is_empty() {
+                    None
+                } else {
+                    Some(avatar)
+                },
                 metadata: json!({}),
             })
         })
@@ -423,7 +450,10 @@ pub async fn alerts(
             if bad {
                 items.push(AnalyticsAlertDto {
                     id: format!("metric:{}", metric.key),
-                    severity: metric.status.clone().unwrap_or_else(|| "warning".to_owned()),
+                    severity: metric
+                        .status
+                        .clone()
+                        .unwrap_or_else(|| "warning".to_owned()),
                     title: format!("{} needs attention", metric.title),
                     description: Some(format!("Current value is {:.1}", value)),
                     entity_id: Some(metric.metric_id),
@@ -462,7 +492,11 @@ async fn dashboard_metrics(
             title: metric.title,
             value,
             label,
-            unit: metric.display.get("unit").and_then(|v| v.as_str()).map(str::to_owned),
+            unit: metric
+                .display
+                .get("unit")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned),
             scale_min: metric.scale_min,
             scale_max: metric.scale_max,
             status,
@@ -507,21 +541,23 @@ async fn compute_metric_value(
                     }
                 }
             }
-            MetricMappingSourceType::SubmissionScore | MetricMappingSourceType::SubmissionPercentage => {
+            MetricMappingSourceType::SubmissionScore
+            | MetricMappingSourceType::SubmissionPercentage => {
                 let column = if mapping.source_type == MetricMappingSourceType::SubmissionScore {
                     "total_score"
                 } else {
                     "percentage_score"
                 };
-                let form_clause = if mapping.form_id.is_some() { "and f.id=$4" } else { "" };
+                let form_clause = if mapping.form_id.is_some() {
+                    "and f.id=$4"
+                } else {
+                    ""
+                };
                 let sql = format!(
                     "select s.{column} value from form_submissions s join forms f on f.id=s.form_id \
                      where s.deleted_at is null and f.organization_id=$1 and s.submitted_at >= $2 and s.submitted_at < $3 {form_clause}"
                 );
-                let mut query = sqlx::query(&sql)
-                    .bind(org_id)
-                    .bind(start)
-                    .bind(end);
+                let mut query = sqlx::query(&sql).bind(org_id).bind(start).bind(end);
                 if let Some(form_id) = mapping.form_id {
                     query = query.bind(form_id);
                 }
@@ -532,7 +568,11 @@ async fn compute_metric_value(
                 }
             }
             MetricMappingSourceType::SubmissionCount => {
-                let form_clause = if mapping.form_id.is_some() { "and f.id=$4" } else { "" };
+                let form_clause = if mapping.form_id.is_some() {
+                    "and f.id=$4"
+                } else {
+                    ""
+                };
                 let sql = format!(
                     "select count(*)::double precision value from form_submissions s join forms f on f.id=s.form_id \
                      where s.deleted_at is null and f.organization_id=$1 and s.submitted_at >= $2 and s.submitted_at < $3 {form_clause}"
@@ -722,10 +762,16 @@ fn summarize_surveys(surveys: &[SurveyCardDto]) -> SurveyStatusSummaryDto {
     }
 }
 
-fn survey_status(status: FormStatus, submission_id: Option<Uuid>, scheduled_at: Option<DateTime<Utc>>) -> &'static str {
+fn survey_status(
+    status: FormStatus,
+    submission_id: Option<Uuid>,
+    scheduled_at: Option<DateTime<Utc>>,
+) -> &'static str {
     if submission_id.is_some() {
         "completed"
-    } else if status == FormStatus::Scheduled || scheduled_at.map(|dt| dt > Utc::now()).unwrap_or(false) {
+    } else if status == FormStatus::Scheduled
+        || scheduled_at.map(|dt| dt > Utc::now()).unwrap_or(false)
+    {
         "pending"
     } else if status == FormStatus::Closed {
         "closed"
@@ -741,16 +787,30 @@ fn json_to_f64(value: &Value) -> Option<f64> {
         Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
         Value::Array(items) => {
             let nums: Vec<_> = items.iter().filter_map(json_to_f64).collect();
-            if nums.is_empty() { None } else { Some(nums.iter().sum::<f64>() / nums.len() as f64) }
+            if nums.is_empty() {
+                None
+            } else {
+                Some(nums.iter().sum::<f64>() / nums.len() as f64)
+            }
         }
-        Value::Object(map) => ["score", "value", "rating", "percentage", "selected_score", "number"]
-            .iter()
-            .find_map(|key| map.get(*key).and_then(json_to_f64)),
+        Value::Object(map) => [
+            "score",
+            "value",
+            "rating",
+            "percentage",
+            "selected_score",
+            "number",
+        ]
+        .iter()
+        .find_map(|key| map.get(*key).and_then(json_to_f64)),
         Value::Null => None,
     }
 }
 
-fn aggregate_values(values: &[f64], method: MetricAggregationMethod) -> Result<Option<f64>, AppError> {
+fn aggregate_values(
+    values: &[f64],
+    method: MetricAggregationMethod,
+) -> Result<Option<f64>, AppError> {
     if values.is_empty() {
         return Ok(None);
     }
@@ -765,28 +825,55 @@ fn aggregate_values(values: &[f64], method: MetricAggregationMethod) -> Result<O
     Ok(Some(value))
 }
 
-fn metric_label_status(metric: &MetricDefinitionDto, value: Option<f64>) -> (Option<String>, Option<String>) {
+fn metric_label_status(
+    metric: &MetricDefinitionDto,
+    value: Option<f64>,
+) -> (Option<String>, Option<String>) {
     let Some(value) = value else {
         return (None, None);
     };
     if let Value::Array(thresholds) = &metric.thresholds {
         for item in thresholds {
-            let min_ok = item.get("min").and_then(|v| v.as_f64()).map(|min| value >= min).unwrap_or(true);
-            let max_ok = item.get("max").and_then(|v| v.as_f64()).map(|max| value <= max).unwrap_or(true);
+            let min_ok = item
+                .get("min")
+                .and_then(|v| v.as_f64())
+                .map(|min| value >= min)
+                .unwrap_or(true);
+            let max_ok = item
+                .get("max")
+                .and_then(|v| v.as_f64())
+                .map(|max| value <= max)
+                .unwrap_or(true);
             if min_ok && max_ok {
                 return (
-                    item.get("label").and_then(|v| v.as_str()).map(str::to_owned),
-                    item.get("status").and_then(|v| v.as_str()).map(str::to_owned),
+                    item.get("label")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_owned),
+                    item.get("status")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_owned),
                 );
             }
         }
     }
     let status = match metric.positive_direction {
         MetricPositiveDirection::HigherIsBetter => {
-            if value >= 80.0 { "success" } else if value >= 50.0 { "warning" } else { "danger" }
+            if value >= 80.0 {
+                "success"
+            } else if value >= 50.0 {
+                "warning"
+            } else {
+                "danger"
+            }
         }
         MetricPositiveDirection::LowerIsBetter => {
-            if value <= 20.0 { "success" } else if value <= 50.0 { "warning" } else { "danger" }
+            if value <= 20.0 {
+                "success"
+            } else if value <= 50.0 {
+                "warning"
+            } else {
+                "danger"
+            }
         }
         MetricPositiveDirection::Neutral => "neutral",
     };
@@ -797,20 +884,28 @@ fn period_range(period: &str) -> (DateTime<Utc>, DateTime<Utc>) {
     let now = Utc::now();
     match period {
         "today" => {
-            let start = Utc.with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0).unwrap();
+            let start = Utc
+                .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
+                .unwrap();
             (start, start + Duration::days(1))
         }
         "this_year" => {
             let start = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
-            (start, Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap())
+            (
+                start,
+                Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap(),
+            )
         }
         "last_30_days" => (now - Duration::days(30), now + Duration::seconds(1)),
         _ => {
-            let start = Utc.with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0).unwrap();
+            let start = Utc
+                .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+                .unwrap();
             let end = if now.month() == 12 {
                 Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap()
             } else {
-                Utc.with_ymd_and_hms(now.year(), now.month() + 1, 1, 0, 0, 0).unwrap()
+                Utc.with_ymd_and_hms(now.year(), now.month() + 1, 1, 0, 0, 0)
+                    .unwrap()
             };
             (start, end)
         }

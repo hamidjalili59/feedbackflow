@@ -43,14 +43,11 @@ pub async fn create_submission(
         user,
     );
     let can_answer_by_assignment = match user {
-        Some(auth_user) => crate::audience::service::user_matches_form_assignment(
-            state,
-            form_id,
-            auth_user,
-            true,
-        )
-        .await
-        .unwrap_or(false),
+        Some(auth_user) => {
+            crate::audience::service::user_matches_form_assignment(state, form_id, auth_user, true)
+                .await
+                .unwrap_or(false)
+        }
         None => false,
     };
     if !has_public_access_context && !can_answer_by_visibility && !can_answer_by_assignment {
@@ -126,7 +123,13 @@ pub async fn create_submission(
     let respondent_label = public_context
         .as_ref()
         .and_then(|ctx| ctx.respondent_label.clone())
-        .or_else(|| request.respondent_name.as_ref().map(|n| n.trim().to_owned()).filter(|n| !n.is_empty()));
+        .or_else(|| {
+            request
+                .respondent_name
+                .as_ref()
+                .map(|n| n.trim().to_owned())
+                .filter(|n| !n.is_empty())
+        });
     let mut tx = state.db.begin().await?;
     let row = sqlx::query("insert into form_submissions (form_id, respondent_user_id, guest_token_id, access_code_id, respondent_mode, respondent_label, anonymous, fingerprint_token, valid, total_score, max_score, percentage_score, score_category) values ($1,$2,$3,$4,$5,$6,$7,$8,true,$9,$10,$11,$12) returning id, form_id, respondent_user_id, guest_token_id, access_code_id, respondent_mode, respondent_label, anonymous, valid, total_score, max_score, percentage_score, score_category, submitted_at, updated_at")
         .bind(form_id).bind(user.map(|u| u.user_id)).bind(public_token_id).bind(access_code_id).bind(respondent_mode).bind(respondent_label).bind(anonymous).bind(request.fingerprint_token)

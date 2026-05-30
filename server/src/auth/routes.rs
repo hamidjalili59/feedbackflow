@@ -16,6 +16,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
+        .route("/auth/guest", post(guest_login))
         .route("/auth/refresh", post(refresh))
         .route("/auth/logout", post(logout))
         .route("/auth/me", get(get_me))
@@ -36,6 +37,14 @@ pub async fn login(
 ) -> Result<impl axum::response::IntoResponse, AppError> {
     payload.validate()?;
     Ok(response::ok(service::login(&state, payload).await?))
+}
+
+pub async fn guest_login(
+    State(state): State<AppState>,
+    Json(payload): Json<GuestLoginRequest>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    payload.validate()?;
+    Ok(response::ok(service::guest_login(&state, payload).await?))
 }
 
 pub async fn refresh(

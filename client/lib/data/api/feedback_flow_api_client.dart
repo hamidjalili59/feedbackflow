@@ -213,6 +213,23 @@ class FeedbackFlowApiClient {
     );
   }
 
+  /// operationId: guestLogin
+  /// POST /api/v1/auth/guest
+  /// Public endpoint; creates a limited guest session scoped to an organization
+  /// or to the organization inferred from a public form token.
+  Future<ApiResponse<LoginResponse>> guestLogin({
+    required GuestLoginRequest request,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/auth/guest',
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<LoginResponse>(
+      response.data,
+      (json) => LoginResponse.fromJson(_jsonObject(json)),
+    );
+  }
+
   /// operationId: logout
   /// POST /api/v1/auth/logout
   /// Requires Bearer JWT.
@@ -344,6 +361,21 @@ class FeedbackFlowApiClient {
     return _parseApiResponse<FormDetailDto>(
       response.data,
       (json) => FormDetailDto.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// operationId: getFormAnswerAccess
+  /// GET /api/v1/forms/{id}/answer-access
+  /// Requires Bearer JWT.
+  Future<ApiResponse<FormAnswerAccessDto2>> getFormAnswerAccess({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/answer-access', <String, String>{'id': id.toString()}),
+    );
+    return _parseApiResponse<FormAnswerAccessDto2>(
+      response.data,
+      (json) => FormAnswerAccessDto2.fromJson(_jsonObject(json)),
     );
   }
 

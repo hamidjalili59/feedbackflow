@@ -228,21 +228,42 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       );
     }
 
-    final fields = [...form.fields]
-      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    final accessAsync = ref.watch(formAnswerAccessProvider(form.id));
+    return accessAsync.when(
+      loading: () => LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
+      error: (error, stackTrace) => ErrorPanel(
+        error: error,
+        onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),
+        onBack: () => context.go('/forms'),
+      ),
+      data: (access) {
+        if (!access.allowed) {
+          return _AnswerAccessBlockedView(form: form, access: access);
+        }
+        final fields = [...form.fields]
+          ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
-    return StepFormView(
-      formTitle: form.title,
-      fields: fields,
-      answers: _answers,
-      onAnswerChanged: (fieldId, value) =>
-          setState(() => _answers[fieldId] = value),
-      onSubmit: _submit,
-      submitting: _submitting,
+        return StepFormView(
+          formTitle: form.title,
+          fields: fields,
+          answers: _answers,
+          onAnswerChanged: (fieldId, value) =>
+              setState(() => _answers[fieldId] = value),
+          onSubmit: _submit,
+          submitting: _submitting,
+        );
+      },
     );
   }
 
   Future<void> _submit() async {
+    final missing = _firstMissingRequiredField(widget.form.fields);
+    if (missing != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${context.l10n.t('answerRequiredField')} ${missing.label}')),
+      );
+      return;
+    }
     setState(() => _submitting = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -270,6 +291,93 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  FormFieldDto? _firstMissingRequiredField(List<FormFieldDto> fields) {
+    for (final field in fields) {
+      if (!field.isRequired || !_fieldSubmitsAnswer(field.type)) continue;
+      final value = _answers[field.id];
+      if (field.type == FieldType.consentCheckbox ||
+          field.type == FieldType.termsAcceptance) {
+        if (value != true) return field;
+        continue;
+      }
+      if (value == null) return field;
+      if (value is String && value.trim().isEmpty) return field;
+      if (value is Iterable && value.isEmpty) return field;
+    }
+    return null;
+  }
+}
+
+
+class _AnswerAccessBlockedView extends StatelessWidget {
+  const _AnswerAccessBlockedView({required this.form, required this.access});
+
+  final FormDetailDto form;
+  final FormAnswerAccessDto2 access;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final publicToken = form.publicToken;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: SoftCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_person_rounded, size: 62, color: scheme.error),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'دسترسی پاسخ‌دهی ندارید',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  access.reason ?? 'این فرم برای پاسخ‌دهی به حساب شما تخصیص داده نشده است.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/forms'),
+                      icon: const Icon(Icons.list_rounded),
+                      label: Text(context.l10n.t('forms')),
+                    ),
+                    if (publicToken != null && publicToken.isNotEmpty)
+                      FilledButton.icon(
+                        onPressed: () => context.go('/public/$publicToken'),
+                        icon: const Icon(Icons.public_rounded),
+                        label: const Text('باز کردن لینک عمومی'),
+                      ),
+                    if (access.canEditWorkspace)
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.go('/forms/${form.id}/settings'),
+                        icon: const Icon(Icons.tune_rounded),
+                        label: const Text('مدیریت فرم'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -3534,3 +3642,19 @@ FormVisibilityDto _safeVisibility(FormVisibilityDto visibility) {
 
 bool _isPublished(FormDetailDto form) =>
     form.status == FormStatus.published || form.publishedAt != null;
+
+bool _fieldSubmitsAnswer(FieldType type) {
+  return switch (type) {
+    FieldType.sectionTitle ||
+    FieldType.descriptionBlock ||
+    FieldType.divider ||
+    FieldType.pageBreak ||
+    FieldType.scoreDisplay ||
+    FieldType.calculated ||
+    FieldType.hidden ||
+    FieldType.conditionalLogic ||
+    FieldType.unknown => false,
+    _ => true,
+  };
+}
+
