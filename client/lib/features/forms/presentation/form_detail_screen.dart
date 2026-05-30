@@ -1551,7 +1551,7 @@ class _AssignmentsSection extends ConsumerWidget {
             ),
           ),
           AppSpacing.gapLg,
-          _InlineNotice(
+          const _InlineNotice(
             icon: Icons.info_outline_rounded,
             title: 'مدل جدید تخصیص',
             message:
@@ -1570,7 +1570,7 @@ class _AssignmentsSection extends ConsumerWidget {
             ),
             data: (assignments) {
               if (assignments.isEmpty) {
-                return _EmptyStateMessage(
+                return const _EmptyStateMessage(
                   icon: Icons.group_off_rounded,
                   title: 'هنوز تخصیصی ثبت نشده است',
                   message:

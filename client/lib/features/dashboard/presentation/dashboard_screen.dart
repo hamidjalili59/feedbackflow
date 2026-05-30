@@ -546,7 +546,7 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
           const SizedBox(height: 12),
           calendar.when(
             loading: () => const SizedBox(height: 74, child: Center(child: CircularProgressIndicator())),
-            error: (_, __) => _CalendarStrip(days: _mockCalendarDays()),
+            error: (_, _) => _CalendarStrip(days: _mockCalendarDays()),
             data: (value) => _CalendarStrip(days: value.days.isEmpty ? _mockCalendarDays() : value.days.take(14).toList()),
           ),
         ],
@@ -751,7 +751,7 @@ class _RankingsAndAlerts extends ConsumerWidget {
             const SizedBox(height: 12),
             alerts.when(
               loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
-              error: (_, __) => const _EmptyTiny(message: 'هشداری ثبت نشده است'),
+              error: (_, _) => const _EmptyTiny(message: 'هشداری ثبت نشده است'),
               data: (value) => value.items.isEmpty
                   ? const _EmptyTiny(message: 'هشداری ثبت نشده است')
                   : Column(children: [for (final item in value.items.take(5)) _AlertRow(item: item)]),
@@ -839,7 +839,7 @@ class _ManagementConfigurationRow extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [const Icon(Icons.insights_rounded, color: AppTheme.primary), const SizedBox(width: 8), const _SectionTitle(title: 'شاخص‌های داینامیک')]),
+            const Row(children: [Icon(Icons.insights_rounded, color: AppTheme.primary), SizedBox(width: 8), _SectionTitle(title: 'شاخص‌های داینامیک')]),
             const SizedBox(height: 10),
             metrics.when(
               loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
@@ -861,7 +861,7 @@ class _ManagementConfigurationRow extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [const Icon(Icons.groups_2_rounded, color: AppTheme.primary), const SizedBox(width: 8), const _SectionTitle(title: 'گروه‌های هدف و Segmentها')]),
+            const Row(children: [Icon(Icons.groups_2_rounded, color: AppTheme.primary), SizedBox(width: 8), _SectionTitle(title: 'گروه‌های هدف و Segmentها')]),
             const SizedBox(height: 10),
             segments.when(
               loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
@@ -1037,9 +1037,9 @@ class _TrendBadge extends StatelessWidget {
 class _ChartLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisSize: MainAxisSize.min,
-      children: const [
+      children: [
         _LegendItem(color: Color(0xFF3ACB82), label: 'نیمه دوم سال'),
         SizedBox(width: 10),
         _LegendItem(color: Color(0xFF23A7FF), label: 'نیمه اول سال'),
@@ -2012,7 +2012,7 @@ class _CardHeader extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
-        if (action != null) action!,
+        ?action,
       ],
     );
   }
@@ -2056,26 +2056,3 @@ bool _isManagementRole(UserRole role) => switch (role) {
   _ => false,
 };
 
-String _localizedBucket(BuildContext context, String key, String fallback) {
-  const known = {
-    'female',
-    'male',
-    'other',
-    'prefer_not_to_say',
-    'anonymous',
-    'guest',
-    'authenticated',
-    'identity_code',
-    'teacher',
-    'student',
-    'manager',
-    'admin',
-    'ceo',
-    'super_admin',
-    'parent',
-    'no_code',
-    'unlabeled_code',
-    'unknown',
-  };
-  return known.contains(key) ? context.l10n.t(key) : fallback;
-}

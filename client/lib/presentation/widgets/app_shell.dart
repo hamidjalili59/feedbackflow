@@ -252,7 +252,7 @@ class AdaptiveAppBar extends StatelessWidget implements PreferredSizeWidget {
     final compact = context.isCompactWidth;
     final actions = <Widget>[
       if (compact) ...[
-        if (primaryAction != null) primaryAction!,
+        ?primaryAction,
         const _OverflowMenu(),
         const SizedBox(width: AppSpacing.xs),
       ] else ...[
