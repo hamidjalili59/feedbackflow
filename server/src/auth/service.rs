@@ -173,6 +173,7 @@ pub async fn login(state: &AppState, request: LoginRequest) -> Result<LoginRespo
     })
 }
 
+
 pub async fn guest_login(
     state: &AppState,
     request: GuestLoginRequest,
@@ -245,12 +246,9 @@ async fn resolve_guest_organization(
         .bind(public_token)
         .fetch_optional(&state.db)
         .await?;
-        return org_id.map(Some).ok_or_else(|| {
-            AppError::validation(
-                "Public form token was not found",
-                json!({"public_token":"invalid"}),
-            )
-        });
+        return org_id
+            .map(Some)
+            .ok_or_else(|| AppError::validation("Public form token was not found", json!({"public_token":"invalid"})));
     }
 
     if let Some(org_id) = request.organization_id {
@@ -263,10 +261,7 @@ async fn resolve_guest_organization(
         return if exists {
             Ok(Some(org_id))
         } else {
-            Err(AppError::validation(
-                "Organization does not exist",
-                json!({"organization_id":"invalid"}),
-            ))
+            Err(AppError::validation("Organization does not exist", json!({"organization_id":"invalid"})))
         };
     }
 
@@ -276,17 +271,15 @@ async fn resolve_guest_organization(
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let org_id: Option<Uuid> =
-            sqlx::query_scalar("select id from organizations where slug=$1 and deleted_at is null")
-                .bind(slug)
-                .fetch_optional(&state.db)
-                .await?;
-        return org_id.map(Some).ok_or_else(|| {
-            AppError::validation(
-                "Organization does not exist",
-                json!({"organization_slug":"invalid"}),
-            )
-        });
+        let org_id: Option<Uuid> = sqlx::query_scalar(
+            "select id from organizations where slug=$1 and deleted_at is null",
+        )
+        .bind(slug)
+        .fetch_optional(&state.db)
+        .await?;
+        return org_id
+            .map(Some)
+            .ok_or_else(|| AppError::validation("Organization does not exist", json!({"organization_slug":"invalid"})));
     }
 
     Err(AppError::validation(

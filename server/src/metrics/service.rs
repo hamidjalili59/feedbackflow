@@ -1,9 +1,7 @@
 use crate::{
     api_types::{
         common::PaginationMeta,
-        enums::{
-            enum_from_str, enum_to_string, AuditAction, PermissionAction, ResourceType, UserRole,
-        },
+        enums::{enum_from_str, enum_to_string, AuditAction, PermissionAction, ResourceType, UserRole},
         metrics::*,
     },
     app_state::AppState,
@@ -165,11 +163,7 @@ pub async fn update_metric(
     let scale_min = request.scale_min.or(current.scale_min);
     let scale_max = request.scale_max.or(current.scale_max);
     validate_scale(scale_min, scale_max)?;
-    let key = request
-        .key
-        .as_deref()
-        .map(normalize_key)
-        .unwrap_or(current.key);
+    let key = request.key.as_deref().map(normalize_key).unwrap_or(current.key);
     let thresholds = request.thresholds.unwrap_or(current.thresholds);
     let display = request.display.unwrap_or(current.display);
     sqlx::query(
@@ -277,9 +271,7 @@ pub async fn set_mappings(
         .execute(&mut *tx)
         .await?;
     for mapping in request.mappings {
-        let source_type = mapping
-            .source_type
-            .unwrap_or(MetricMappingSourceType::FieldAnswer);
+        let source_type = mapping.source_type.unwrap_or(MetricMappingSourceType::FieldAnswer);
         sqlx::query(
             "insert into metric_mappings \
              (organization_id, metric_id, form_id, field_id, source_type, transform, weight, enabled) \
@@ -430,13 +422,7 @@ fn normalize_key(input: &str) -> String {
         .trim()
         .to_lowercase()
         .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
-                c
-            } else {
-                '_'
-            }
-        })
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
         .collect::<String>()
         .trim_matches('_')
         .chars()

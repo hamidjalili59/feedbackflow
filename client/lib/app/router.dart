@@ -67,10 +67,19 @@ Raw<GoRouter> router(Ref ref) {
         path: '/public/:token',
         builder: (context, state) => PublicFormScreen(
           publicToken: state.pathParameters['token']!,
+          initialRespondentMode: _publicFormRespondentMode(state),
         ),
       ),
     ],
   );
   ref.onDispose(router.dispose);
   return router;
+}
+
+String? _publicFormRespondentMode(GoRouterState state) {
+  final mode = state.uri.queryParameters['respondent_mode'];
+  if (mode != null && mode.trim().isNotEmpty) return mode.trim();
+  final anonymous = state.uri.queryParameters['anonymous'];
+  if (anonymous == '1' || anonymous == 'true') return 'anonymous';
+  return null;
 }

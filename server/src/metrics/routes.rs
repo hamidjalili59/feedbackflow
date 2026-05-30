@@ -17,14 +17,8 @@ use validator::Validate;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/metrics", get(list_metrics).post(create_metric))
-        .route(
-            "/metrics/{id}",
-            get(get_metric).patch(update_metric).delete(delete_metric),
-        )
-        .route(
-            "/metrics/{id}/mappings",
-            get(list_mappings).put(set_mappings),
-        )
+        .route("/metrics/{id}", get(get_metric).patch(update_metric).delete(delete_metric))
+        .route("/metrics/{id}/mappings", get(list_mappings).put(set_mappings))
 }
 
 async fn list_metrics(
@@ -81,9 +75,7 @@ async fn list_mappings(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(
-        service::list_mappings(&state, &auth, id).await?,
-    ))
+    Ok(response::ok(service::list_mappings(&state, &auth, id).await?))
 }
 
 async fn set_mappings(

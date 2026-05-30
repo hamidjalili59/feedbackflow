@@ -15,9 +15,14 @@ import '../../../presentation/widgets/step_form_view.dart';
 // Uses FeedbackFieldCard via FieldRenderer for the public feedback-sheet experience.
 
 class PublicFormScreen extends ConsumerStatefulWidget {
-  const PublicFormScreen({super.key, required this.publicToken});
+  const PublicFormScreen({
+    super.key,
+    required this.publicToken,
+    this.initialRespondentMode,
+  });
 
   final String publicToken;
+  final String? initialRespondentMode;
 
   @override
   ConsumerState<PublicFormScreen> createState() => _PublicFormScreenState();
@@ -47,7 +52,8 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
   @override
   void didUpdateWidget(covariant PublicFormScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.publicToken != widget.publicToken) {
+    if (oldWidget.publicToken != widget.publicToken ||
+        oldWidget.initialRespondentMode != widget.initialRespondentMode) {
       _resetEntryState();
       Future.microtask(() => ref.invalidate(publicFormProvider(widget.publicToken)));
     }
@@ -107,7 +113,11 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             ),
         data: (form) {
           final session = authAsync.asData?.value;
-          _respondentMode ??= _defaultRespondentMode(form, session != null);
+          _respondentMode ??= _defaultRespondentMode(
+            form,
+            session != null,
+            widget.initialRespondentMode,
+          );
           final mode = _respondentMode ?? 'authenticated';
 
           if (session == null && mode == 'authenticated') {
@@ -815,8 +825,26 @@ class _PublicAuthRequiredView extends StatelessWidget {
   }
 }
 
-String _defaultRespondentMode(PublicFormDto form, bool isAuthenticated) {
+String _defaultRespondentMode(
+  PublicFormDto form,
+  bool isAuthenticated,
+  String? requestedMode,
+) {
   final modes = form.accessPolicy.respondentModes;
+  final normalizedRequestedMode = requestedMode?.trim();
+
+  // A public form can be answered anonymously/guest while the user keeps the
+  // current app session. This is intentionally form-local and must not replace
+  // the global AuthController tokens.
+  if (normalizedRequestedMode != null &&
+      normalizedRequestedMode.isNotEmpty &&
+      modes.contains(normalizedRequestedMode)) {
+    if (normalizedRequestedMode == 'authenticated' && !isAuthenticated) {
+      return 'authenticated';
+    }
+    return normalizedRequestedMode;
+  }
+
   if (isAuthenticated && modes.contains('authenticated')) {
     return 'authenticated';
   }

@@ -595,7 +595,7 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
         children: [
           calendar.when(
             loading: () => const Row(
-              children: const [
+              children: [
                 _SectionTitle(title: 'تقویم نظرسنجی‌ها'),
                 Spacer(),
                 SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),

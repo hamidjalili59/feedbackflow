@@ -2,9 +2,7 @@ use crate::{
     api_types::{
         audience::*,
         common::PaginationMeta,
-        enums::{
-            enum_from_str, enum_to_string, AuditAction, PermissionAction, ResourceType, UserRole,
-        },
+        enums::{enum_from_str, enum_to_string, AuditAction, PermissionAction, ResourceType, UserRole},
     },
     app_state::AppState,
     auth::{service as auth_service, AuthUser},
@@ -236,11 +234,13 @@ pub async fn set_segment_members(
         .execute(&mut *tx)
         .await?;
     upsert_segment_members_tx(&mut tx, org_id, id, request.user_ids).await?;
-    sqlx::query("update audience_segments set updated_at=now(), updated_by_user_id=$2 where id=$1")
-        .bind(id)
-        .bind(auth.user_id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query(
+        "update audience_segments set updated_at=now(), updated_by_user_id=$2 where id=$1",
+    )
+    .bind(id)
+    .bind(auth.user_id)
+    .execute(&mut *tx)
+    .await?;
     tx.commit().await?;
     auth_service::audit(
         state,
@@ -285,12 +285,8 @@ pub async fn set_form_assignments(
     let org_id = attrs
         .organization_id
         .ok_or_else(|| AppError::forbidden("Form assignments require an organization"))?;
-    if !matches!(auth.role, UserRole::SuperAdmin | UserRole::Ceo)
-        && auth.organization_id != Some(org_id)
-    {
-        return Err(AppError::forbidden(
-            "You can only assign forms in your organization",
-        ));
+    if !matches!(auth.role, UserRole::SuperAdmin | UserRole::Ceo) && auth.organization_id != Some(org_id) {
+        return Err(AppError::forbidden("You can only assign forms in your organization"));
     }
     validate_assignment_targets(state, org_id, &request.assignments).await?;
     let mut tx = state.db.begin().await?;
@@ -339,11 +335,7 @@ pub async fn user_matches_form_assignment(
     auth: &AuthUser,
     require_answer: bool,
 ) -> Result<bool, AppError> {
-    let gate = if require_answer {
-        "fa.can_answer=true"
-    } else {
-        "fa.can_see=true"
-    };
+    let gate = if require_answer { "fa.can_answer=true" } else { "fa.can_see=true" };
     let sql = format!(
         "select exists( \
           select 1 from form_assignments fa \
@@ -432,10 +424,7 @@ async fn validate_assignment_targets(
             | AssignmentAudienceType::Class
             | AssignmentAudienceType::Department => {
                 let id = assignment.audience_group_id.ok_or_else(|| {
-                    AppError::validation(
-                        "Group/class/department assignment requires audience_group_id",
-                        json!({}),
-                    )
+                    AppError::validation("Group/class/department assignment requires audience_group_id", json!({}))
                 })?;
                 let ok: bool = sqlx::query_scalar(
                     "select exists(select 1 from groups where id=$1 and organization_id=$2 and deleted_at is null)",
@@ -450,10 +439,7 @@ async fn validate_assignment_targets(
             }
             AssignmentAudienceType::Segment => {
                 let id = assignment.audience_segment_id.ok_or_else(|| {
-                    AppError::validation(
-                        "Segment assignment requires audience_segment_id",
-                        json!({}),
-                    )
+                    AppError::validation("Segment assignment requires audience_segment_id", json!({}))
                 })?;
                 ensure_segment_in_org(state, org_id, id).await?;
             }
@@ -555,9 +541,8 @@ fn default_object(value: Value) -> Value {
 }
 
 fn row_to_segment(row: &sqlx::postgres::PgRow) -> Result<AudienceSegmentDto, AppError> {
-    let segment_type: AudienceSegmentType =
-        enum_from_str(&row.try_get::<String, _>("segment_type")?)
-            .unwrap_or(AudienceSegmentType::Static);
+    let segment_type: AudienceSegmentType = enum_from_str(&row.try_get::<String, _>("segment_type")?)
+        .unwrap_or(AudienceSegmentType::Static);
     Ok(AudienceSegmentDto {
         id: row.try_get("id")?,
         organization_id: row.try_get("organization_id")?,
@@ -579,8 +564,8 @@ fn row_to_segment(row: &sqlx::postgres::PgRow) -> Result<AudienceSegmentDto, App
 fn row_to_segment_member(
     row: &sqlx::postgres::PgRow,
 ) -> Result<AudienceSegmentMemberDto, AppError> {
-    let primary_role: UserRole =
-        enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Student);
+    let primary_role: UserRole = enum_from_str(&row.try_get::<String, _>("primary_role")?)
+        .unwrap_or(UserRole::Student);
     Ok(AudienceSegmentMemberDto {
         user_id: row.try_get("user_id")?,
         display_name: row.try_get("display_name")?,

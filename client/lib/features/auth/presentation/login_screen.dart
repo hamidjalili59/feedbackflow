@@ -148,12 +148,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: loading ? null : _startGuestLogin,
-                        child: const Text('ورود میهمان'),
+                        child: Text(_guestButtonLabel),
                       ),
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'کاربر گرامی، شما می‌توانید بصورت میهمان یا شناسنامه در نظرسنجی مشارکت کنید.',
+                      _guestHelpText,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF858BA6),
@@ -206,13 +206,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authControllerProvider.notifier).login(phone: phone, password: password);
   }
 
+
+
+  String get _guestButtonLabel =>
+      _publicTokenFromRedirect(widget.redirectLocation) == null
+          ? 'ورود میهمان'
+          : 'پاسخ ناشناس به همین فرم';
+
+  String get _guestHelpText =>
+      _publicTokenFromRedirect(widget.redirectLocation) == null
+          ? 'کاربر گرامی، شما می‌توانید بصورت میهمان یا شناسنامه در نظرسنجی مشارکت کنید.'
+          : 'پاسخ ناشناس فقط برای همین فرم استفاده می‌شود و حساب فعلی شما را خارج نمی‌کند.';
+
   Future<void> _startGuestLogin() async {
     final publicToken = _publicTokenFromRedirect(widget.redirectLocation);
     if (publicToken != null) {
-      await ref.read(authControllerProvider.notifier).guestLogin(
-            publicToken: publicToken,
-            displayName: 'مهمان',
-          );
+      // Public-form anonymous/guest answering is form-local. Do not call
+      // authController.guestLogin here because that would overwrite the
+      // user's existing access/refresh tokens and look like a logout.
+      context.go(
+        '/public/${Uri.encodeComponent(publicToken)}?respondent_mode=anonymous',
+      );
       return;
     }
 

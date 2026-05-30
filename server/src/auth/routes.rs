@@ -39,6 +39,7 @@ pub async fn login(
     Ok(response::ok(service::login(&state, payload).await?))
 }
 
+
 pub async fn guest_login(
     State(state): State<AppState>,
     Json(payload): Json<GuestLoginRequest>,
