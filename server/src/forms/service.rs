@@ -133,13 +133,16 @@ pub async fn get_form(
     id: Uuid,
 ) -> Result<FormDetailDto, AppError> {
     let detail = load_form_detail(state, id).await?;
-    if !visibility::can_see_form(
+    let can_see = visibility::can_see_form(
         detail.status,
         detail.creator_id,
         detail.organization_id,
         &detail.visibility,
         Some(auth),
-    ) {
+    ) || crate::audience::service::user_matches_form_assignment(state, id, auth, false)
+        .await
+        .unwrap_or(false);
+    if !can_see {
         return Err(AppError::forbidden("You cannot view this form"));
     }
     Ok(detail)
@@ -740,7 +743,7 @@ pub async fn analytics(
             average_percentage: row.try_get::<f64, _>("avg_pct").unwrap_or(0.0),
             category_distribution: json!({}),
         },
-        fields: vec![],
+        fields: field_analytics(state, id).await?,
         respondent_modes: analytics_buckets(
             state,
             "select coalesce(nullif(respondent_mode,''),'authenticated') key, count(*) count from form_submissions where form_id=$1 and deleted_at is null group by 1 order by count desc, key asc",
@@ -846,6 +849,186 @@ pub async fn dashboard_analytics(
         .await?,
         top_forms,
     })
+}
+
+
+async fn field_analytics(state: &AppState, form_id: Uuid) -> Result<Vec<FieldAnalyticsDto>, AppError> {
+    let fields = sqlx::query(
+        "select id, label, field_type from form_fields where form_id=$1 and deleted_at is null order by order_index asc",
+    )
+    .bind(form_id)
+    .fetch_all(&state.db)
+    .await?;
+    let mut out = Vec::new();
+    for field in fields {
+        let field_id: Uuid = field.try_get("id")?;
+        let label: String = field.try_get("label")?;
+        let field_type: String = field.try_get("field_type")?;
+        let rows = sqlx::query(
+            "select a.value from form_answers a join form_submissions s on s.id=a.submission_id \
+             where a.field_id=$1 and s.deleted_at is null and s.valid=true order by a.created_at desc",
+        )
+        .bind(field_id)
+        .fetch_all(&state.db)
+        .await?;
+        let values = rows
+            .iter()
+            .filter_map(|row| row.try_get::<Value, _>("value").ok())
+            .collect::<Vec<_>>();
+        out.push(FieldAnalyticsDto {
+            field_id,
+            label,
+            response_count: values.len() as i64,
+            summary: summarize_field_values(&field_type, &values),
+        });
+    }
+    Ok(out)
+}
+
+fn summarize_field_values(field_type: &str, values: &[Value]) -> Value {
+    match field_type {
+        "number" | "decimal" | "rating_stars" | "numeric_rating" | "slider" | "nps" => {
+            numeric_summary(values)
+        }
+        "single_choice" | "dropdown" | "yes_no" | "boolean_switch" | "likert_scale" | "emoji_reaction" => {
+            categorical_summary(values, false)
+        }
+        "multiple_choice" | "ranking" | "matrix_single_choice" | "matrix_multiple_choice" => {
+            categorical_summary(values, true)
+        }
+        "short_text" | "long_text" | "email" | "phone" => text_summary(values),
+        _ => json!({
+            "type": "raw",
+            "samples": values.iter().take(5).cloned().collect::<Vec<_>>()
+        }),
+    }
+}
+
+fn numeric_summary(values: &[Value]) -> Value {
+    let nums = values.iter().filter_map(json_number).collect::<Vec<_>>();
+    if nums.is_empty() {
+        return json!({"type":"numeric","count":0});
+    }
+    let sum: f64 = nums.iter().sum();
+    let avg = sum / nums.len() as f64;
+    let min = nums.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max = nums.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    json!({
+        "type": "numeric",
+        "count": nums.len(),
+        "average": avg,
+        "min": min,
+        "max": max,
+        "distribution": numeric_distribution(&nums)
+    })
+}
+
+fn categorical_summary(values: &[Value], explode_arrays: bool) -> Value {
+    let mut counts = std::collections::BTreeMap::<String, i64>::new();
+    for value in values {
+        if explode_arrays {
+            match value {
+                Value::Array(items) => {
+                    for item in items {
+                        *counts.entry(label_for_json(item)).or_default() += 1;
+                    }
+                }
+                Value::Object(map) => {
+                    for (key, item) in map {
+                        let label = format!("{}:{}", key, label_for_json(item));
+                        *counts.entry(label).or_default() += 1;
+                    }
+                }
+                other => *counts.entry(label_for_json(other)).or_default() += 1,
+            }
+        } else {
+            *counts.entry(label_for_json(value)).or_default() += 1;
+        }
+    }
+    let total: i64 = counts.values().sum();
+    let buckets = counts
+        .into_iter()
+        .map(|(key, count)| json!({
+            "key": key,
+            "label": key,
+            "count": count,
+            "percentage": if total > 0 { (count as f64 / total as f64) * 100.0 } else { 0.0 }
+        }))
+        .collect::<Vec<_>>();
+    json!({"type":"categorical","total":total,"buckets":buckets})
+}
+
+fn text_summary(values: &[Value]) -> Value {
+    let texts = values
+        .iter()
+        .filter_map(|value| value.as_str().map(str::to_owned).or_else(|| value.get("text").and_then(|v| v.as_str()).map(str::to_owned)))
+        .collect::<Vec<_>>();
+    let total_chars: usize = texts.iter().map(|s| s.chars().count()).sum();
+    json!({
+        "type": "text",
+        "count": texts.len(),
+        "average_length": if texts.is_empty() { 0.0 } else { total_chars as f64 / texts.len() as f64 },
+        "samples": texts.into_iter().take(5).collect::<Vec<_>>()
+    })
+}
+
+fn numeric_distribution(nums: &[f64]) -> Vec<Value> {
+    let mut buckets = std::collections::BTreeMap::<String, i64>::new();
+    for n in nums {
+        let label = if *n <= 1.0 {
+            "0-1"
+        } else if *n <= 2.0 {
+            "1-2"
+        } else if *n <= 3.0 {
+            "2-3"
+        } else if *n <= 4.0 {
+            "3-4"
+        } else if *n <= 5.0 {
+            "4-5"
+        } else if *n <= 10.0 {
+            "5-10"
+        } else if *n <= 50.0 {
+            "10-50"
+        } else {
+            "50+"
+        };
+        *buckets.entry(label.to_owned()).or_default() += 1;
+    }
+    buckets
+        .into_iter()
+        .map(|(key, count)| json!({"key": key, "count": count}))
+        .collect()
+}
+
+fn json_number(value: &Value) -> Option<f64> {
+    match value {
+        Value::Number(n) => n.as_f64(),
+        Value::String(s) => s.parse::<f64>().ok(),
+        Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        Value::Object(map) => ["value", "score", "rating", "percentage", "number"]
+            .iter()
+            .find_map(|key| map.get(*key).and_then(json_number)),
+        Value::Array(items) => {
+            let nums = items.iter().filter_map(json_number).collect::<Vec<_>>();
+            if nums.is_empty() { None } else { Some(nums.iter().sum::<f64>() / nums.len() as f64) }
+        }
+        Value::Null => None,
+    }
+}
+
+fn label_for_json(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Number(n) => n.to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Object(map) => map
+            .get("label")
+            .or_else(|| map.get("title"))
+            .or_else(|| map.get("value"))
+            .and_then(|v| v.as_str().map(str::to_owned).or_else(|| v.as_i64().map(|n| n.to_string())))
+            .unwrap_or_else(|| value.to_string()),
+        Value::Array(_) | Value::Null => value.to_string(),
+    }
 }
 
 async fn analytics_timeseries(

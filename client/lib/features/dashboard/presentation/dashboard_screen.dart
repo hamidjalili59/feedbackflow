@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../presentation/common/friendly_api_error_message.dart';
 import '../../../presentation/theme/app_breakpoints.dart';
 import '../../../presentation/theme/app_spacing.dart';
+import '../../../presentation/theme/app_theme.dart';
 import '../../../presentation/widgets/app_chrome.dart';
 import '../../../presentation/widgets/app_shell.dart';
 
@@ -17,304 +20,106 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    final compact = context.isCompactWidth;
     return AppShell(
       selected: AppDestination.dashboard,
       appBar: AdaptiveAppBar(
-        title: Text(context.l10n.t('dashboard')),
+        title: const Text('داشبورد'),
+        primaryAction: IconButton.filledTonal(
+          tooltip: 'فرم‌ها',
+          onPressed: () => context.go('/forms'),
+          icon: const Icon(Icons.article_outlined),
+        ),
       ),
       body: auth.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error:
-            (error, stackTrace) =>
-                _DashboardError(onLogin: () => context.go('/login')),
+        error: (error, stackTrace) => _DashboardError(onLogin: () => context.go('/login')),
         data: (session) {
-          if (session == null) {
-            return _DashboardError(onLogin: () => context.go('/login'));
-          }
-          return Center(
-            child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  compact ? 96 : AppSpacing.xxl,
-                ),
-                children: [
-                  PageHeaderCard(
-                    icon: Icons.dashboard_customize_outlined,
-                    title: context.l10n.t('dashboard'),
-                    subtitle:
-                        '${session.user.displayName} · ${context.l10n.enumLabel(session.user.primaryRole.toJson())}',
-                    trailing: compact
-                        ? IconButton.filledTonal(
-                            tooltip: context.l10n.t('forms'),
-                            onPressed: () => context.go('/forms'),
-                            icon: const Icon(Icons.article_outlined),
-                          )
-                        : FilledButton.icon(
-                            onPressed: () => context.go('/forms'),
-                            icon: const Icon(Icons.article_outlined),
-                            label: Text(context.l10n.t('forms')),
-                          ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _RoleActions(role: session.user.primaryRole),
-                  const SizedBox(height: AppSpacing.sm),
-                  const _DashboardAnalyticsCard(),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (_creatableRoles(session.user.primaryRole).isNotEmpty)
-                    _CreateUserCard(actorRole: session.user.primaryRole),
-                  if (_isManagementRole(session.user.primaryRole)) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    const _PendingApprovalCard(),
-                    const SizedBox(height: AppSpacing.sm),
-                    _UserManagementCard(actorRole: session.user.primaryRole),
-                    const SizedBox(height: AppSpacing.sm),
-                    const _FormManagementCard(),
-                  ],
-                ],
-              ),
-            ),
-          );
+          if (session == null) return _DashboardError(onLogin: () => context.go('/login'));
+          return _ExperienceDashboard(session: session);
         },
       ),
     );
   }
 }
 
-class _RoleActions extends StatelessWidget {
-  const _RoleActions({required this.role});
+class _ExperienceDashboard extends ConsumerStatefulWidget {
+  const _ExperienceDashboard({required this.session});
 
-  final UserRole role;
+  final AuthSession session;
+
+  @override
+  ConsumerState<_ExperienceDashboard> createState() => _ExperienceDashboardState();
+}
+
+class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
+  String _period = 'this_month';
+
+  DashboardQueryInput get _query => DashboardQueryInput(period: _period, compare: 'previous_period');
 
   @override
   Widget build(BuildContext context) {
-    final actions = switch (role) {
-      UserRole.teacher => [
-        _ActionItem(
-          Icons.edit_note_rounded,
-          context.l10n.t('createForm'),
-          '/forms/new',
-        ),
-        _ActionItem(
-          Icons.analytics_outlined,
-          context.l10n.t('results'),
-          '/forms',
-        ),
-      ],
-      UserRole.manager ||
-      UserRole.admin ||
-      UserRole.ceo ||
-      UserRole.superAdmin => [
-        _ActionItem(
-          Icons.fact_check_outlined,
-          context.l10n.t('manageForms'),
-          '/forms',
-        ),
-        _ActionItem(
-          Icons.person_add_alt_rounded,
-          context.l10n.t('addUser'),
-          null,
-        ),
-      ],
-      UserRole.parent || UserRole.student => [
-        _ActionItem(
-          Icons.assignment_turned_in_outlined,
-          context.l10n.t('answerForms'),
-          '/forms',
-        ),
-      ],
-      _ => [
-        _ActionItem(Icons.login_rounded, context.l10n.t('signIn'), '/login'),
-      ],
-    };
-    return SoftCard(
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (final action in actions)
-            ActionChip(
-              avatar: Icon(action.icon, size: 18),
-              label: Text(action.label),
-              onPressed:
-                  action.route == null ? null : () => context.go(action.route!),
-            ),
-        ],
+    final async = ref.watch(dashboardExperienceProvider(_query));
+    final compact = context.isCompactWidth;
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _DashboardLoadFallback(
+        error: error,
+        onRetry: () => ref.invalidate(dashboardExperienceProvider(_query)),
       ),
-    );
-  }
-}
-
-class _ActionItem {
-  const _ActionItem(this.icon, this.label, this.route);
-
-  final IconData icon;
-  final String label;
-  final String? route;
-}
-
-class _DashboardAnalyticsCard extends ConsumerWidget {
-  const _DashboardAnalyticsCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final analytics = ref.watch(dashboardAnalyticsProvider);
-    return SoftCard(
-      child: analytics.when(
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(18),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-        error: (error, stackTrace) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _CardHeader(
-              icon: Icons.monitor_rounded,
-              title: context.l10n.t('dashboardAnalytics'),
-              action: IconButton(
-                tooltip: context.l10n.t('refresh'),
-                onPressed: () => ref.invalidate(dashboardAnalyticsProvider),
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(FriendlyApiErrorMessage.from(error, context: context)),
-          ],
-        ),
-        data: (value) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _CardHeader(
-              icon: Icons.monitor_rounded,
-              title: context.l10n.t('dashboardAnalytics'),
-              action: IconButton(
-                tooltip: context.l10n.t('refresh'),
-                onPressed: () => ref.invalidate(dashboardAnalyticsProvider),
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _DashboardMetric(context.l10n.t('totalForms'), '${value.totalForms}', Icons.article_outlined),
-                _DashboardMetric(context.l10n.t('publishedForms'), '${value.publishedForms}', Icons.public_rounded),
-                _DashboardMetric(context.l10n.t('totalUsers'), '${value.totalUsers}', Icons.people_alt_outlined),
-                _DashboardMetric(context.l10n.t('totalSubmissions'), '${value.totalSubmissions}', Icons.inbox_rounded),
-                _DashboardMetric(context.l10n.t('participationRate'), '${value.participationRate.toStringAsFixed(1)}%', Icons.how_to_reg_rounded),
-                _DashboardMetric(context.l10n.t('todaySubmissions'), '${value.todaySubmissions}', Icons.today_rounded),
-                _DashboardMetric(context.l10n.t('weekSubmissions'), '${value.weekSubmissions}', Icons.date_range_rounded),
-                _DashboardMetric(context.l10n.t('monthSubmissions'), '${value.monthSubmissions}', Icons.calendar_month_rounded),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _TrendLine(points: value.byDay),
-            const SizedBox(height: 14),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 840;
-                final panels = [
-                  _BreakdownPanel(title: context.l10n.t('genderDistribution'), items: value.genderDistribution),
-                  _BreakdownPanel(title: context.l10n.t('respondentModeDistribution'), items: value.respondentModeDistribution),
-                  _BreakdownPanel(title: context.l10n.t('userRoleDistribution'), items: value.userRoleDistribution),
-                  _BreakdownPanel(title: context.l10n.t('accessCodeDistribution'), items: value.accessCodeDistribution),
-                ];
-                if (!wide) {
-                  return Column(
-                    children: [
-                      for (final panel in panels) ...[
-                        panel,
-                        const SizedBox(height: 10),
-                      ],
-                    ],
-                  );
-                }
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    for (final panel in panels)
-                      SizedBox(width: (constraints.maxWidth - 12) / 2, child: panel),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            _TopFormsPanel(forms: value.topForms),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardMetric extends StatelessWidget {
-  const _DashboardMetric(this.title, this.value, this.icon);
-
-  final String title;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Pick a width that fits 1, 2 or 3 columns depending on parent width.
-        final available = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-        double tileWidth;
-        if (available >= 720) {
-          tileWidth = (available - 24) / 3;
-        } else if (available >= 380) {
-          tileWidth = (available - 12) / 2;
-        } else {
-          tileWidth = available;
-        }
-        return SizedBox(
-          width: tileWidth,
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: scheme.primary),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        value,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+      data: (dashboard) {
+        final management = _isManagementRole(widget.session.user.primaryRole);
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(dashboardExperienceProvider(_query)),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(18, 8, 18, compact ? 104 : 40),
+                children: [
+                  _DashboardTopBar(
+                    dashboard: dashboard,
+                    user: widget.session.user,
+                    period: _period,
+                    onPeriodChanged: (value) => setState(() => _period = value),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  if (dashboard.role == UserRole.parent) ...[
+                    _ParentHero(dashboard: dashboard),
+                    const SizedBox(height: 16),
+                    _ParentSurveyArea(dashboard: dashboard),
+                  ] else ...[
+                    _ManagementHero(dashboard: dashboard),
+                    const SizedBox(height: 16),
+                    _OperationalCards(dashboard: dashboard),
+                  ],
+                  const SizedBox(height: 16),
+                  _ResponsiveTwoColumn(
+                    left: _DynamicMetricsGrid(metrics: dashboard.metrics),
+                    right: _SurveyStatusAndCalendar(dashboard: dashboard),
+                  ),
+                  const SizedBox(height: 16),
+                  _ResponsiveTwoColumn(
+                    left: _LatestSurveysCard(surveys: dashboard.latestSurveys),
+                    right: _ActivitiesCard(items: dashboard.activities),
+                  ),
+                  if (dashboard.rankings.isNotEmpty || dashboard.activities.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _RankingsAndAlerts(dashboard: dashboard),
+                  ],
+                  if (management) ...[
+                    const SizedBox(height: 16),
+                    _ManagementConfigurationRow(role: widget.session.user.primaryRole),
+                    const SizedBox(height: 16),
+                    _CreateUserCard(actorRole: widget.session.user.primaryRole),
+                    const SizedBox(height: 16),
+                    _UserManagementCard(actorRole: widget.session.user.primaryRole),
+                    const SizedBox(height: 16),
+                    const _PendingApprovalCard(),
+                    const SizedBox(height: 16),
+                    const _FormManagementCard(),
+                  ],
+                ],
+              ),
             ),
           ),
         );
@@ -323,122 +128,1187 @@ class _DashboardMetric extends StatelessWidget {
   }
 }
 
-class _TrendLine extends StatelessWidget {
-  const _TrendLine({required this.points});
+class _DashboardTopBar extends StatelessWidget {
+  const _DashboardTopBar({
+    required this.dashboard,
+    required this.user,
+    required this.period,
+    required this.onPeriodChanged,
+  });
 
-  final List<AnalyticsTimeseriesPointDto> points;
+  final DashboardResponseDto2 dashboard;
+  final UserDetailDto user;
+  final String period;
+  final ValueChanged<String> onPeriodChanged;
 
   @override
   Widget build(BuildContext context) {
-    final max = points.fold<int>(0, (value, point) => point.count > value ? point.count : value);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final title = dashboard.role == UserRole.parent
+        ? 'پیشرفت ${dashboard.children.isNotEmpty ? dashboard.children.first.displayName : 'فرزند'}'
+        : 'داشبورد ${_roleLabel(dashboard.role)}';
+    return Row(
       children: [
-        Text(context.l10n.t('submissionTrend'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 96,
-          child: Row(
+        IconButton.filled(
+          onPressed: () {
+            final navigator = Navigator.of(context);
+            if (navigator.canPop()) navigator.maybePop();
+          },
+          style: IconButton.styleFrom(backgroundColor: AppTheme.ink, foregroundColor: Colors.white),
+          icon: Icon(context.l10n.textDirection == TextDirection.rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (final point in points.take(30))
-                Expanded(
-                  child: Tooltip(
-                    message: '${point.date}: ${point.count}',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: FractionallySizedBox(
-                        heightFactor: max == 0 ? 0.02 : (point.count / max).clamp(0.02, 1.0),
-                        alignment: Alignment.bottomCenter,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              Text(title, style: theme.textTheme.headlineSmall?.copyWith(color: const Color(0xFF5F6388), fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text('${user.displayName} · ${_roleLabel(user.primaryRole)}', style: theme.textTheme.bodySmall?.copyWith(color: muted)),
             ],
           ),
         ),
+        const SizedBox(width: 12),
+        _PeriodDropdown(value: period, onChanged: onPeriodChanged),
       ],
     );
   }
 }
 
-class _BreakdownPanel extends StatelessWidget {
-  const _BreakdownPanel({required this.title, required this.items});
+class _PeriodDropdown extends StatelessWidget {
+  const _PeriodDropdown({required this.value, required this.onChanged});
 
-  final String title;
-  final List<AnalyticsBucketDto> items;
+  final String value;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.35)),
       ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          icon: const Icon(Icons.expand_more_rounded, size: 18),
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF747A9A)),
+          items: const [
+            DropdownMenuItem(value: 'this_month', child: Text('ماه جاری')),
+            DropdownMenuItem(value: 'last_month', child: Text('ماه گذشته')),
+            DropdownMenuItem(value: 'last_3_months', child: Text('۳ ماهه')),
+            DropdownMenuItem(value: 'this_year', child: Text('سال جاری')),
+          ],
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ParentHero extends StatelessWidget {
+  const _ParentHero({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = dashboard.children.isNotEmpty ? dashboard.children.first : null;
+    return _SoftPanel(
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          if (items.isEmpty)
-            Text(context.l10n.t('noDataYet'))
-          else
-            for (final item in items.take(5))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(_localizedBucket(context, item.key, item.label))),
-                        Text('${item.count}  ${item.percentage.toStringAsFixed(0)}%'),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(value: (item.percentage / 100).clamp(0, 1)),
-                  ],
-                ),
-              ),
+          if (child != null) _ChildCard(child: child),
+          if (child != null) const SizedBox(height: 18),
+          _SectionTitle(title: 'مشارکت در فعالیت‌ها', trailing: _ChartLegend()),
+          const SizedBox(height: 12),
+          SizedBox(height: 176, child: _DashboardLineChart(chart: dashboard.charts.isNotEmpty ? dashboard.charts.first : null)),
         ],
       ),
     );
   }
 }
 
-class _TopFormsPanel extends StatelessWidget {
-  const _TopFormsPanel({required this.forms});
+class _ManagementHero extends StatelessWidget {
+  const _ManagementHero({required this.dashboard});
 
-  final List<DashboardTopFormDto> forms;
+  final DashboardResponseDto2 dashboard;
 
   @override
   Widget build(BuildContext context) {
-    if (forms.isEmpty) return Text(context.l10n.t('noFormsYet'));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(context.l10n.t('topForms'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 8),
-        for (final form in forms)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.leaderboard_rounded),
-            title: Text(form.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('${context.l10n.t('totalSubmissions')}: ${form.submissions}'),
-            onTap: () => context.go('/forms/${form.formId}/results'),
+    final chart = dashboard.charts.isNotEmpty ? dashboard.charts.first : null;
+    return _SoftPanel(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(
+            title: 'مشارکت در نظرسنجی',
+            trailing: _ChartLegend(),
           ),
+          const SizedBox(height: 14),
+          SizedBox(height: 210, child: _DashboardLineChart(chart: chart, prominent: true)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChildCard extends StatelessWidget {
+  const _ChildCard({required this.child});
+
+  final ChildProfileDto2 child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 27,
+            backgroundColor: const Color(0xFFFFE2C1),
+            backgroundImage: child.avatarUrl == null ? null : NetworkImage(child.avatarUrl!),
+            child: child.avatarUrl == null ? const Text('👧', style: TextStyle(fontSize: 28)) : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(child.displayName, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 2),
+                Text([child.gradeLabel, child.className].whereType<String>().where((e) => e.isNotEmpty).join(' · '), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          TextButton(onPressed: () => context.go('/profile'), child: const Text('نمایش پروفایل')),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentSurveyArea extends StatelessWidget {
+  const _ParentSurveyArea({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ResponsiveTwoColumn(
+      left: _NewSurveyCard(surveys: dashboard.latestSurveys),
+      right: _SurveySummaryCards(summary: dashboard.surveySummary),
+    );
+  }
+}
+
+class _NewSurveyCard extends StatelessWidget {
+  const _NewSurveyCard({required this.surveys});
+
+  final List<SurveyCardDto2> surveys;
+
+  @override
+  Widget build(BuildContext context) {
+    final fresh = surveys.where((s) => s.status == 'new' || s.status == 'pending').take(2).toList();
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SectionTitle(title: 'نظرسنجی جدید'),
+          const SizedBox(height: 12),
+          if (fresh.isEmpty)
+            const _EmptyTiny(message: 'نظرسنجی جدیدی برای شما وجود ندارد')
+          else
+            for (final survey in fresh) ...[
+              _SurveyTile(survey: survey, primary: true),
+              const SizedBox(height: 10),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SurveySummaryCards extends StatelessWidget {
+  const _SurveySummaryCards({required this.summary});
+
+  final SurveyStatusSummaryDto2 summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SectionTitle(title: 'نمای کلی نظرسنجی'),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _StatusMini(label: 'تمام شده', value: summary.completed, color: AppTheme.primary)),
+              const SizedBox(width: 10),
+              Expanded(child: _StatusMini(label: 'در حال انجام', value: summary.inProgress, color: AppTheme.warning)),
+              const SizedBox(width: 10),
+              Expanded(child: _StatusMini(label: 'در انتظار', value: summary.pending + summary.newItems, color: const Color(0xFF8C90A9))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusMini extends StatelessWidget {
+  const _StatusMini({required this.label, required this.value, required this.color});
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('$value', style: theme.textTheme.headlineMedium?.copyWith(color: AppTheme.ink, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class _OperationalCards extends StatelessWidget {
+  const _OperationalCards({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = dashboard.surveySummary;
+    final total = summary.completed + summary.inProgress + summary.pending + summary.newItems;
+    return _ResponsiveTwoColumn(
+      left: _SoftPanel(
+        child: _BigNumberTile(title: 'تعداد مشارکت', value: '$total', subtitle: 'بر اساس نقش و assignmentهای جدید', trend: dashboard.metrics.isNotEmpty ? dashboard.metrics.first.trend : null),
+      ),
+      right: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SectionTitle(title: 'هشدارها و موارد نیازمند توجه'),
+            const SizedBox(height: 10),
+            if (dashboard.activities.isEmpty)
+              const _EmptyTiny(message: 'مورد جدیدی ثبت نشده است')
+            else
+              for (final item in dashboard.activities.take(2))
+                _ActivityRow(item: item),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BigNumberTile extends StatelessWidget {
+  const _BigNumberTile({required this.title, required this.value, required this.subtitle, this.trend});
+
+  final String title;
+  final String value;
+  final String subtitle;
+  final double? trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(color: const Color(0xFFE9F8EF), borderRadius: BorderRadius.circular(16)),
+          child: const Icon(Icons.trending_up_rounded, color: AppTheme.success, size: 30),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900, color: AppTheme.ink)),
+              Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+              Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+        if (trend != null) _TrendBadge(value: trend!),
       ],
     );
   }
 }
+
+class _DynamicMetricsGrid extends StatelessWidget {
+  const _DynamicMetricsGrid({required this.metrics});
+
+  final List<DashboardMetricValueDto2> metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = metrics.isEmpty ? _fallbackMetrics : metrics;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth > 430;
+        return Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: [
+            for (final metric in visible.take(8))
+              SizedBox(
+                width: twoColumns ? (constraints.maxWidth - 14) / 2 : constraints.maxWidth,
+                child: _MetricCard(metric: metric),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({required this.metric});
+
+  final DashboardMetricValueDto2 metric;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final status = metric.status ?? _statusFor(metric.value, metric.scaleMax);
+    final statusColor = _statusColor(status);
+    return _SoftPanel(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            children: [
+              _MetricMenuDot(),
+              const Spacer(),
+              Text(metric.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(metric.displayValue, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: AppTheme.ink)),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+              child: Text(_statusLabel(status), style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SurveyStatusAndCalendar extends ConsumerWidget {
+  const _SurveyStatusAndCalendar({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final calendar = ref.watch(surveyCalendarProvider(dashboard.period));
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const _SectionTitle(title: 'تقویم نظرسنجی‌ها'),
+              const Spacer(),
+              TextButton(onPressed: () {}, child: const Text('دیدن همه')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          calendar.when(
+            loading: () => const SizedBox(height: 74, child: Center(child: CircularProgressIndicator())),
+            error: (_, __) => _CalendarStrip(days: _mockCalendarDays()),
+            data: (value) => _CalendarStrip(days: value.days.isEmpty ? _mockCalendarDays() : value.days.take(14).toList()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarStrip extends StatelessWidget {
+  const _CalendarStrip({required this.days});
+
+  final List<CalendarDayDto2> days;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: Row(
+        children: [
+          for (final day in days)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 8),
+              child: Container(
+                width: 48,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: day.highlight ? AppTheme.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: day.highlight ? AppTheme.primary : const Color(0xFFE4E9F3)),
+                ),
+                child: Column(
+                  children: [
+                    Text(day.weekday ?? '', maxLines: 1, style: theme.textTheme.labelSmall?.copyWith(color: day.highlight ? Colors.white : theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(height: 2),
+                    Text(day.label, style: theme.textTheme.titleMedium?.copyWith(color: day.highlight ? Colors.white : AppTheme.ink, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Container(width: 7, height: 7, decoration: BoxDecoration(color: day.count > 0 ? (day.highlight ? Colors.white : AppTheme.primary) : const Color(0xFFD8DDE8), shape: BoxShape.circle)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LatestSurveysCard extends StatelessWidget {
+  const _LatestSurveysCard({required this.surveys});
+
+  final List<SurveyCardDto2> surveys;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SectionTitle(title: 'آخرین نظرسنجی‌ها'),
+          const SizedBox(height: 12),
+          if (surveys.isEmpty)
+            const _EmptyTiny(message: 'هنوز نظرسنجی در دسترس نیست')
+          else
+            for (final survey in surveys.take(4)) ...[
+              _SurveyTile(survey: survey),
+              const SizedBox(height: 10),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SurveyTile extends StatelessWidget {
+  const _SurveyTile({required this.survey, this.primary = false});
+
+  final SurveyCardDto2 survey;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.go('/forms/${survey.formId}'),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            if (primary)
+              SizedBox(
+                width: 96,
+                child: FilledButton(onPressed: () => context.go('/forms/${survey.formId}'), child: const Text('شروع')),
+              )
+            else
+              Text(survey.dateLabel ?? '${survey.questionCount} پرسش', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(survey.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  if ((survey.dateLabel ?? survey.description ?? '').isNotEmpty)
+                    Text(survey.dateLabel ?? survey.description!, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivitiesCard extends StatelessWidget {
+  const _ActivitiesCard({required this.items});
+
+  final List<ActivityFeedItemDto2> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SectionTitle(title: 'آخرین فعالیت‌ها'),
+          const SizedBox(height: 12),
+          if (items.isEmpty)
+            const _EmptyTiny(message: 'فعلاً فعالیت جدیدی وجود ندارد')
+          else
+            for (final item in items.take(5))
+              _ActivityRow(item: item),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.item});
+
+  final ActivityFeedItemDto2 item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(item.timeAgo ?? '', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(item.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                if ((item.subtitle ?? '').isNotEmpty)
+                  Text(item.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(width: 34, height: 34, decoration: BoxDecoration(color: const Color(0xFFE8EEFF), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.task_alt_rounded, size: 18, color: AppTheme.primary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RankingsAndAlerts extends ConsumerWidget {
+  const _RankingsAndAlerts({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final alerts = ref.watch(rpAlertsProvider(dashboard.period));
+    return _ResponsiveTwoColumn(
+      left: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SectionTitle(title: 'بیشترین رضایت'),
+            const SizedBox(height: 12),
+            if (dashboard.rankings.isEmpty || dashboard.rankings.first.items.isEmpty)
+              const _EmptyTiny(message: 'رتبه‌بندی آماده نیست')
+            else
+              for (final item in dashboard.rankings.first.items.take(5))
+                _RankingRow(item: item),
+          ],
+        ),
+      ),
+      right: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SectionTitle(title: 'بیشترین نارضایتی'),
+            const SizedBox(height: 12),
+            alerts.when(
+              loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+              error: (_, __) => const _EmptyTiny(message: 'هشداری ثبت نشده است'),
+              data: (value) => value.items.isEmpty
+                  ? const _EmptyTiny(message: 'هشداری ثبت نشده است')
+                  : Column(children: [for (final item in value.items.take(5)) _AlertRow(item: item)]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final rpAlertsProvider = FutureProvider.family<AnalyticsAlertsResponseDto2, String>((ref, period) {
+  return ref.watch(analyticsRepositoryProvider).getAnalyticsAlerts(period: period, limit: 10);
+});
+
+class _RankingRow extends StatelessWidget {
+  const _RankingRow({required this.item});
+
+  final RankingItemDto2 item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text('${item.score.toStringAsFixed(0)}٪', style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.primary, fontWeight: FontWeight.w900)),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(item.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+              if ((item.subtitle ?? '').isNotEmpty) Text(item.subtitle!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+          const SizedBox(width: 10),
+          CircleAvatar(radius: 16, backgroundColor: const Color(0xFFE8EEFF), child: Text('${item.rank}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900))),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlertRow extends StatelessWidget {
+  const _AlertRow({required this.item});
+
+  final AnalyticsAlertDto2 item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                if ((item.description ?? '').isNotEmpty) Text(item.description!, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManagementConfigurationRow extends ConsumerWidget {
+  const _ManagementConfigurationRow({required this.role});
+
+  final UserRole role;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final metrics = ref.watch(metricDefinitionsProvider);
+    final segments = ref.watch(audienceSegmentsProvider);
+    return _ResponsiveTwoColumn(
+      left: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [const Icon(Icons.insights_rounded, color: AppTheme.primary), const SizedBox(width: 8), const _SectionTitle(title: 'شاخص‌های داینامیک')]),
+            const SizedBox(height: 10),
+            metrics.when(
+              loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+              error: (error, _) => Text(FriendlyApiErrorMessage.from(error, context: context)),
+              data: (value) => _ManagementList(
+                empty: 'هنوز شاخصی تعریف نشده است',
+                items: [
+                  for (final metric in value.data ?? const <MetricDefinitionDto2>[])
+                    _ManagementListItem(title: metric.title, subtitle: '${metric.key} · ${metric.metricType}', trailing: '${metric.mappingCount} مپ'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text('مدیر و CEO می‌توانند شاخص‌ها را در سرور تعریف/ویرایش/حذف کنند؛ این لیست مستقیم از /metrics خوانده می‌شود.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+      right: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [const Icon(Icons.groups_2_rounded, color: AppTheme.primary), const SizedBox(width: 8), const _SectionTitle(title: 'گروه‌های هدف و Segmentها')]),
+            const SizedBox(height: 10),
+            segments.when(
+              loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+              error: (error, _) => Text(FriendlyApiErrorMessage.from(error, context: context)),
+              data: (value) => _ManagementList(
+                empty: 'هنوز segment تعریف نشده است',
+                items: [
+                  for (final segment in value.data ?? const <AudienceSegmentDto2>[])
+                    _ManagementListItem(title: segment.name, subtitle: '${segment.slug} · ${segment.segmentType}', trailing: '${segment.memberCount} نفر'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text('برای مواردی مثل «شرکت‌کنندگان اردوی ۲۷ام»، فرم‌ها از assignment جدید به این Segmentها متصل می‌شوند.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ManagementList extends StatelessWidget {
+  const _ManagementList({required this.items, required this.empty});
+
+  final List<_ManagementListItem> items;
+  final String empty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return _EmptyTiny(message: empty);
+    return Column(children: items.take(5).toList());
+  }
+}
+
+class _ManagementListItem extends StatelessWidget {
+  const _ManagementListItem({required this.title, required this.subtitle, required this.trailing});
+
+  final String title;
+  final String subtitle;
+  final String trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Text(trailing, style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.primary, fontWeight: FontWeight.w900)),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+              Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResponsiveTwoColumn extends StatelessWidget {
+  const _ResponsiveTwoColumn({required this.left, required this.right});
+
+  final Widget left;
+  final Widget right;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 760) {
+          return Column(children: [left, const SizedBox(height: 16), right]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 16),
+            Expanded(child: right),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, this.trailing});
+
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final titleWidget = Text(
+      title,
+      textAlign: TextAlign.end,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: AppTheme.ink,
+          ),
+    );
+    if (trailing == null) return Align(alignment: AlignmentDirectional.centerEnd, child: titleWidget);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        trailing!,
+        const SizedBox(width: 8),
+        titleWidget,
+      ],
+    );
+  }
+}
+
+class _SoftPanel extends StatelessWidget {
+  const _SoftPanel({required this.child, this.padding = const EdgeInsets.all(16)});
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF161C30) : Colors.white.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.32)),
+        boxShadow: [
+          BoxShadow(blurRadius: 28, offset: const Offset(0, 14), color: Colors.black.withValues(alpha: dark ? 0.18 : 0.045)),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MetricMenuDot extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.more_vert_rounded, size: 22, color: Color(0xFF1B1F3A));
+  }
+}
+
+class _TrendBadge extends StatelessWidget {
+  const _TrendBadge({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = value >= 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(color: (positive ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(positive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14, color: positive ? AppTheme.success : AppTheme.danger),
+          Text(value.abs().toStringAsFixed(0), style: TextStyle(color: positive ? AppTheme.success : AppTheme.danger, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: const [
+        _LegendItem(color: Color(0xFF3ACB82), label: 'نیمه دوم سال'),
+        SizedBox(width: 10),
+        _LegendItem(color: Color(0xFF23A7FF), label: 'نیمه اول سال'),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 12, height: 3, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(99))),
+        const SizedBox(width: 4),
+        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+class _DashboardLineChart extends StatelessWidget {
+  const _DashboardLineChart({this.chart, this.prominent = false});
+
+  final TimeseriesResponseDto2? chart;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final series = chart?.series ?? _fallbackSeries();
+    return CustomPaint(
+      painter: _LineChartPainter(series: series, prominent: prominent, textDirection: Directionality.of(context)),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _LineChartPainter extends CustomPainter {
+  const _LineChartPainter({required this.series, required this.prominent, required this.textDirection});
+
+  final List<TimeseriesSeriesDto2> series;
+  final bool prominent;
+  final TextDirection textDirection;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final axisPaint = Paint()
+      ..color = const Color(0xFFE7ECF4)
+      ..strokeWidth = 1;
+    final labelPainter = TextPainter(textDirection: textDirection, textAlign: TextAlign.center);
+    final topPad = 10.0;
+    final bottomPad = 30.0;
+    final leftPad = 28.0;
+    final rightPad = 6.0;
+    final chartRect = Rect.fromLTWH(leftPad, topPad, size.width - leftPad - rightPad, size.height - topPad - bottomPad);
+    for (var i = 0; i < 5; i++) {
+      final y = chartRect.top + chartRect.height * i / 4;
+      canvas.drawLine(Offset(chartRect.left, y), Offset(chartRect.right, y), axisPaint);
+    }
+    final allPoints = series.expand((s) => s.points).toList();
+    final maxValue = math.max(100.0, allPoints.fold<double>(0, (p, e) => math.max(p, e.value)));
+    final colors = [const Color(0xFF3ACB82), const Color(0xFF23A7FF), AppTheme.warning];
+    for (var si = 0; si < series.length; si++) {
+      final points = series[si].points;
+      if (points.isEmpty) continue;
+      final color = colors[si % colors.length];
+      final path = Path();
+      final area = Path();
+      for (var i = 0; i < points.length; i++) {
+        final dx = points.length == 1 ? chartRect.center.dx : chartRect.left + (chartRect.width * i / (points.length - 1));
+        final dy = chartRect.bottom - (points[i].value / maxValue).clamp(0, 1) * chartRect.height;
+        if (i == 0) {
+          path.moveTo(dx, dy);
+          area.moveTo(dx, chartRect.bottom);
+          area.lineTo(dx, dy);
+        } else {
+          path.lineTo(dx, dy);
+          area.lineTo(dx, dy);
+        }
+      }
+      area.lineTo(chartRect.right, chartRect.bottom);
+      area.close();
+      canvas.drawPath(area, Paint()..color = color.withValues(alpha: prominent ? 0.16 : 0.11)..style = PaintingStyle.fill);
+      canvas.drawPath(path, Paint()..color = color..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round);
+    }
+    final labels = (series.isNotEmpty ? series.first.points : const <TimeseriesPointDto2>[]).take(6).toList();
+    for (var i = 0; i < labels.length; i++) {
+      final x = labels.length == 1 ? chartRect.center.dx : chartRect.left + (chartRect.width * i / (labels.length - 1));
+      labelPainter.text = TextSpan(text: labels[i].label, style: const TextStyle(fontSize: 10, color: Color(0xFF9AA1B6), fontWeight: FontWeight.w700));
+      labelPainter.layout(minWidth: 0, maxWidth: 42);
+      labelPainter.paint(canvas, Offset(x - labelPainter.width / 2, chartRect.bottom + 8));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => oldDelegate.series != series || oldDelegate.prominent != prominent;
+}
+
+class _EmptyTiny extends StatelessWidget {
+  const _EmptyTiny({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: const Color(0xFFF4F7FB), borderRadius: BorderRadius.circular(12)),
+      child: Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+    );
+  }
+}
+
+class _DashboardLoadFallback extends ConsumerWidget {
+  const _DashboardLoadFallback({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final oldAnalytics = ref.watch(dashboardAnalyticsProvider);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
+        child: ListView(
+          padding: const EdgeInsets.all(18),
+          children: [
+            _SoftPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SectionTitle(title: 'داشبورد جدید هنوز از سرور دریافت نشد'),
+                  const SizedBox(height: 10),
+                  Text(FriendlyApiErrorMessage.from(error, context: context)),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('تلاش مجدد')),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            oldAnalytics.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Text(FriendlyApiErrorMessage.from(error, context: context)),
+              data: (value) => _SoftPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _SectionTitle(title: 'آمار فعلی'),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _LegacyStat(label: 'فرم‌ها', value: '${value.totalForms}'),
+                        _LegacyStat(label: 'منتشر شده', value: '${value.publishedForms}'),
+                        _LegacyStat(label: 'کاربران', value: '${value.totalUsers}'),
+                        _LegacyStat(label: 'پاسخ‌ها', value: '${value.totalSubmissions}'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LegacyStat extends StatelessWidget {
+  const _LegacyStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 150,
+      child: _SoftPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+List<CalendarDayDto2> _mockCalendarDays() => const [
+      CalendarDayDto2(date: '', label: '۱۴', weekday: 'شنبه', status: 'pending', count: 1, highlight: true),
+      CalendarDayDto2(date: '', label: '۱۵', weekday: 'یکشنبه', status: 'empty', count: 0, highlight: false),
+      CalendarDayDto2(date: '', label: '۱۶', weekday: 'دوشنبه', status: 'completed', count: 2, highlight: false),
+      CalendarDayDto2(date: '', label: '۱۷', weekday: 'سه‌شنبه', status: 'empty', count: 0, highlight: false),
+      CalendarDayDto2(date: '', label: '۱۸', weekday: 'چهارشنبه', status: 'pending', count: 1, highlight: false),
+      CalendarDayDto2(date: '', label: '۱۹', weekday: 'پنجشنبه', status: 'empty', count: 0, highlight: false),
+    ];
+
+List<TimeseriesSeriesDto2> _fallbackSeries() => const [
+      TimeseriesSeriesDto2(key: 'current', label: 'نیمه دوم سال', points: [
+        TimeseriesPointDto2(label: 'خرداد', date: '', value: 78),
+        TimeseriesPointDto2(label: 'اردیبهشت', date: '', value: 78),
+        TimeseriesPointDto2(label: 'فروردین', date: '', value: 105),
+        TimeseriesPointDto2(label: 'اسفند', date: '', value: 98),
+        TimeseriesPointDto2(label: 'بهمن', date: '', value: 96),
+        TimeseriesPointDto2(label: 'دی', date: '', value: 80),
+      ]),
+      TimeseriesSeriesDto2(key: 'previous', label: 'نیمه اول سال', points: [
+        TimeseriesPointDto2(label: 'خرداد', date: '', value: 45),
+        TimeseriesPointDto2(label: 'اردیبهشت', date: '', value: 72),
+        TimeseriesPointDto2(label: 'فروردین', date: '', value: 72),
+        TimeseriesPointDto2(label: 'اسفند', date: '', value: 56),
+        TimeseriesPointDto2(label: 'بهمن', date: '', value: 56),
+        TimeseriesPointDto2(label: 'دی', date: '', value: 68),
+      ]),
+    ];
+
+final _fallbackMetrics = <DashboardMetricValueDto2>[
+  const DashboardMetricValueDto2(metricId: 'education', key: 'education', title: 'آموزش', value: 78, unit: '%', status: 'good'),
+  const DashboardMetricValueDto2(metricId: 'participation', key: 'participation', title: 'مشارکت', value: 92, unit: '%', status: 'excellent'),
+  const DashboardMetricValueDto2(metricId: 'school_relation', key: 'school_relation', title: 'ارتباط با مدرسه', value: 3.8, unit: '/۵', status: 'normal'),
+  const DashboardMetricValueDto2(metricId: 'science_support', key: 'science_support', title: 'پشتیبانی علمی', value: 4.1, unit: '/۵', status: 'excellent'),
+];
+
+String _roleLabel(UserRole role) => switch (role) {
+      UserRole.parent => 'والد',
+      UserRole.student => 'دانش‌آموز',
+      UserRole.teacher => 'معلم',
+      UserRole.manager => 'مدیر',
+      UserRole.ceo => 'مدیر عامل',
+      UserRole.admin => 'ادمین',
+      UserRole.superAdmin => 'سوپر ادمین',
+      _ => 'کاربر',
+    };
+
+String _statusFor(double? value, double? max) {
+  if (value == null) return 'normal';
+  final ratio = max == null || max == 0 ? (value / 100) : (value / max);
+  if (ratio >= 0.82) return 'excellent';
+  if (ratio >= 0.65) return 'good';
+  return 'normal';
+}
+
+Color _statusColor(String status) => switch (status) {
+      'excellent' || 'great' || 'عالی' => AppTheme.success,
+      'good' || 'خوب' => AppTheme.primary,
+      'warning' || 'normal' || 'معمولی' => AppTheme.warning,
+      'danger' || 'bad' => AppTheme.danger,
+      _ => AppTheme.primary,
+    };
+
+String _statusLabel(String status) => switch (status) {
+      'excellent' || 'great' => 'عالی',
+      'good' => 'خوب',
+      'warning' || 'normal' => 'معمولی',
+      'danger' || 'bad' => 'نیازمند توجه',
+      _ => status,
+    };
 
 class _CreateUserCard extends ConsumerStatefulWidget {
   const _CreateUserCard({required this.actorRole});

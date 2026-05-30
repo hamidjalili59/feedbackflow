@@ -13,6 +13,7 @@ class FieldRenderer extends StatelessWidget {
     required this.values,
     required this.onChanged,
     this.previewOnly = true,
+    this.wrapInCard = true,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class FieldRenderer extends StatelessWidget {
   final Map<String, Object?> values;
   final ValueChanged<Object?> onChanged;
   final bool previewOnly;
+  final bool wrapInCard;
 
   Object? get _value => values[field.id];
 
@@ -28,27 +30,29 @@ class FieldRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!_fieldSubmitsAnswer(field.type)) return _LayoutField(field: field);
 
+    final input = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FieldInput(field: field, value: _value, onChanged: onChanged),
+        if (previewOnly) ...[
+          const SizedBox(height: 10),
+          Text(
+            context.l10n.t('previewOnly'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    if (!wrapInCard) return input;
     return FeedbackFieldCard(
       index: index + 1,
       icon: fieldTypeInfo(field.type).icon,
       title: field.label,
       description: field.description,
       isRequired: field.isRequired,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _FieldInput(field: field, value: _value, onChanged: onChanged),
-          if (previewOnly) ...[
-            const SizedBox(height: 10),
-            Text(
-              context.l10n.t('previewOnly'),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
+      child: input,
     );
   }
 }
@@ -101,8 +105,12 @@ class _FieldInput extends StatelessWidget {
         onChanged: onChanged,
       ),
       FieldType.singleChoice ||
-      FieldType.emojiReaction ||
       FieldType.quizQuestion => _SingleChoiceInput(
+        field: field,
+        value: value,
+        onChanged: onChanged,
+      ),
+      FieldType.emojiReaction => _FaceScaleInput(
         field: field,
         value: value,
         onChanged: onChanged,
@@ -132,7 +140,7 @@ class _FieldInput extends StatelessWidget {
         value: value,
         onChanged: onChanged,
       ),
-      FieldType.likertScale => _LikertInput(
+      FieldType.likertScale => _FaceScaleInput(
         field: field,
         value: value,
         onChanged: onChanged,
@@ -665,8 +673,8 @@ class _SliderInput extends StatelessWidget {
   }
 }
 
-class _LikertInput extends StatelessWidget {
-  const _LikertInput({
+class _FaceScaleInput extends StatelessWidget {
+  const _FaceScaleInput({
     required this.field,
     required this.value,
     required this.onChanged,
@@ -678,21 +686,84 @@ class _LikertInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options =
-        field.config.columns?.isNotEmpty == true
-            ? field.config.columns!
-            : _likertOptions;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final options = field.type == FieldType.likertScale
+        ? (field.config.columns?.isNotEmpty == true ? field.config.columns! : _faceLikertOptions)
+        : (_options(field).isNotEmpty ? _options(field) : _faceLikertOptions);
+    return Column(
       children: [
-        for (final option in options)
-          FeedbackOptionChip(
-            selected: _sameOption(value, option),
-            label: _localizedOptionLabel(context, option),
-            onTap: () => onChanged(_optionValue(option)),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          reverse: Directionality.of(context) == TextDirection.rtl,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < options.length; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _FaceOptionButton(
+                    emoji: _emojiForIndex(i, options.length, options[i]),
+                    label: _localizedOptionLabel(context, options[i]),
+                    selected: _sameOption(value, options[i]),
+                    onTap: () => onChanged(_optionValue(options[i])),
+                  ),
+                ),
+            ],
           ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          value == null ? 'یک گزینه را انتخاب کنید' : _selectedFaceLabel(context, value, options),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+              ),
+        ),
       ],
+    );
+  }
+}
+
+class _FaceOptionButton extends StatelessWidget {
+  const _FaceOptionButton({
+    required this.emoji,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xFF31C779) : Colors.transparent;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: selected ? 58 : 50,
+          height: selected ? 58 : 50,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected ? const Color(0xFFDDF8EA) : Colors.white,
+            border: Border.all(color: selected ? color : const Color(0xFFE4E9F3), width: selected ? 3 : 1),
+            boxShadow: selected
+                ? [BoxShadow(blurRadius: 18, offset: const Offset(0, 8), color: color.withValues(alpha: 0.18))]
+                : null,
+          ),
+          child: Text(emoji, style: TextStyle(fontSize: selected ? 32 : 28)),
+        ),
+      ),
     );
   }
 }
@@ -1108,6 +1179,8 @@ bool _fieldSubmitsAnswer(FieldType type) {
     FieldType.descriptionBlock ||
     FieldType.divider ||
     FieldType.pageBreak ||
+    FieldType.scoreDisplay ||
+    FieldType.calculated ||
     FieldType.hidden ||
     FieldType.conditionalLogic ||
     FieldType.unknown => false,
@@ -1172,6 +1245,35 @@ Object? _optionValue(FieldOptionDto option) => option.value ?? option.id;
 
 bool _sameOption(Object? value, FieldOptionDto option) =>
     value?.toString() == _optionValue(option).toString();
+
+
+const _faceLikertOptions = <FieldOptionDto>[
+  FieldOptionDto(id: 'very_bad', label: 'خیلی ناراضی', value: 'very_bad', orderIndex: 0),
+  FieldOptionDto(id: 'bad', label: 'ناراضی', value: 'bad', orderIndex: 1),
+  FieldOptionDto(id: 'neutral', label: 'معمولی', value: 'neutral', orderIndex: 2),
+  FieldOptionDto(id: 'happy', label: 'خوشحال', value: 'happy', orderIndex: 3),
+  FieldOptionDto(id: 'very_happy', label: 'خیلی خوشحال', value: 'very_happy', orderIndex: 4),
+];
+
+String _emojiForIndex(int index, int total, FieldOptionDto option) {
+  final label = option.label;
+  if (label.contains('😡') || label.contains('😠')) return '😡';
+  if (label.contains('🙁') || label.contains('☹') || label.contains('😞')) return '🙁';
+  if (label.contains('😐') || label.contains('😶')) return '😐';
+  if (label.contains('😊') || label.contains('🙂') || label.contains('😃')) return '😊';
+  if (label.contains('😍') || label.contains('😁')) return '🙂';
+  const faces = ['😡', '🙁', '😐', '😊', '🙂'];
+  if (total <= 1) return faces[2];
+  final mapped = (index * (faces.length - 1) / (total - 1)).round().clamp(0, faces.length - 1);
+  return faces[mapped];
+}
+
+String _selectedFaceLabel(BuildContext context, Object? value, List<FieldOptionDto> options) {
+  for (final option in options) {
+    if (_sameOption(value, option)) return _localizedOptionLabel(context, option);
+  }
+  return value?.toString() ?? '';
+}
 
 const _defaultChoiceOptions = <FieldOptionDto>[
   FieldOptionDto(

@@ -99,6 +99,7 @@ enum FormWorkspaceSection {
   builder,
   preview,
   settings,
+  assignments,
   publish,
   share,
   results,
@@ -109,6 +110,7 @@ extension FormWorkspaceSectionX on FormWorkspaceSection {
     FormWorkspaceSection.builder => 'builder',
     FormWorkspaceSection.preview => 'preview',
     FormWorkspaceSection.settings => 'settings',
+    FormWorkspaceSection.assignments => 'assignments',
     FormWorkspaceSection.publish => 'publish',
     FormWorkspaceSection.share => 'share',
     FormWorkspaceSection.results => 'results',
@@ -118,17 +120,19 @@ extension FormWorkspaceSectionX on FormWorkspaceSection {
     FormWorkspaceSection.builder => 'builder',
     FormWorkspaceSection.preview => 'preview',
     FormWorkspaceSection.settings => 'settings',
+    FormWorkspaceSection.assignments => 'assignments',
     FormWorkspaceSection.publish => 'publish',
     FormWorkspaceSection.share => 'share',
     FormWorkspaceSection.results => 'results',
   };
 
-  String label(BuildContext context) => context.l10n.t(labelKey);
+  String label(BuildContext context) => this == FormWorkspaceSection.assignments ? 'تخصیص' : context.l10n.t(labelKey);
 
   IconData get icon => switch (this) {
     FormWorkspaceSection.builder => Icons.construction_rounded,
     FormWorkspaceSection.preview => Icons.visibility_rounded,
     FormWorkspaceSection.settings => Icons.tune_rounded,
+    FormWorkspaceSection.assignments => Icons.group_add_rounded,
     FormWorkspaceSection.publish => Icons.rocket_launch_rounded,
     FormWorkspaceSection.share => Icons.ios_share_rounded,
     FormWorkspaceSection.results => Icons.analytics_rounded,
@@ -558,6 +562,7 @@ class _SectionBody extends StatelessWidget {
       FormWorkspaceSection.builder => _BuilderSection(form: form),
       FormWorkspaceSection.preview => _PreviewSection(form: form),
       FormWorkspaceSection.settings => _SettingsSection(form: form),
+      FormWorkspaceSection.assignments => _AssignmentsSection(form: form),
       FormWorkspaceSection.publish => _PublishSection(form: form),
       FormWorkspaceSection.share => _ShareSection(form: form),
       FormWorkspaceSection.results => _ResultsSection(form: form),
@@ -1518,6 +1523,241 @@ class _SettingsSectionState extends State<_SettingsSection> {
       anonymousAllowed: _allowAnonymous,
       metadata: current.metadata ?? const <String, Object?>{},
     );
+  }
+}
+
+
+class _AssignmentsSection extends ConsumerWidget {
+  const _AssignmentsSection({required this.form});
+
+  final FormDetailDto form;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assignmentsAsync = ref.watch(formAssignmentsProvider(form.id));
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeader(
+            icon: Icons.group_add_rounded,
+            title: 'تخصیص فرم',
+            message:
+                'لیست مخاطب‌هایی که از سرور برای مشاهده یا پاسخ‌دادن به این فرم تعریف شده‌اند.',
+            trailing: IconButton.filledTonal(
+              tooltip: 'به‌روزرسانی',
+              onPressed: () => ref.invalidate(formAssignmentsProvider(form.id)),
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ),
+          AppSpacing.gapLg,
+          _InlineNotice(
+            icon: Icons.info_outline_rounded,
+            title: 'مدل جدید تخصیص',
+            message:
+                'فرم می‌تواند به کاربر خاص، نقش، گروه، کل سازمان یا سگمنت‌های داینامیک مثل شرکت‌کنندگان اردو تخصیص داده شود.',
+          ),
+          AppSpacing.gapMd,
+          assignmentsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stackTrace) => _InlineNotice(
+              icon: Icons.error_outline_rounded,
+              title: 'خطا در دریافت تخصیص‌ها',
+              message: FriendlyApiErrorMessage.from(error, context: context),
+            ),
+            data: (assignments) {
+              if (assignments.isEmpty) {
+                return _EmptyStateMessage(
+                  icon: Icons.group_off_rounded,
+                  title: 'هنوز تخصیصی ثبت نشده است',
+                  message:
+                      'بعد از ساخت تخصیص در سرور، مخاطب‌های این فرم اینجا نمایش داده می‌شوند.',
+                );
+              }
+              return Column(
+                children: [
+                  for (final assignment in assignments) ...[
+                    _AssignmentTile(assignment: assignment),
+                    if (assignment != assignments.last) AppSpacing.gapSm,
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssignmentTile extends StatelessWidget {
+  const _AssignmentTile({required this.assignment});
+
+  final FormAssignmentDto2 assignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final canAnswer = assignment.canAnswer;
+    final canSee = assignment.canSee;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.56)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(_assignmentIcon(assignment), color: scheme.onPrimaryContainer),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  assignment.label?.trim().isNotEmpty == true
+                      ? assignment.label!.trim()
+                      : _assignmentAudienceTitle(context, assignment),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _assignmentAudienceSubtitle(context, assignment),
+                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Wrap(
+            spacing: 6,
+            children: [
+              _TinyStatusChip(
+                label: 'مشاهده',
+                active: canSee,
+                icon: canSee ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+              ),
+              _TinyStatusChip(
+                label: 'پاسخ',
+                active: canAnswer,
+                icon: canAnswer ? Icons.edit_rounded : Icons.block_rounded,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TinyStatusChip extends StatelessWidget {
+  const _TinyStatusChip({
+    required this.label,
+    required this.active,
+    required this.icon,
+  });
+
+  final String label;
+  final bool active;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = active ? scheme.primary : scheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: active ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+IconData _assignmentIcon(FormAssignmentDto2 assignment) {
+  switch (assignment.audienceType) {
+    case 'user':
+      return Icons.person_rounded;
+    case 'role':
+      return Icons.badge_rounded;
+    case 'group':
+      return Icons.groups_rounded;
+    case 'organization':
+      return Icons.apartment_rounded;
+    case 'segment':
+      return Icons.filter_alt_rounded;
+    default:
+      return Icons.group_add_rounded;
+  }
+}
+
+String _assignmentAudienceTitle(BuildContext context, FormAssignmentDto2 assignment) {
+  switch (assignment.audienceType) {
+    case 'user':
+      return 'کاربر خاص';
+    case 'role':
+      final role = assignment.audienceRole;
+      return role == null ? 'نقش خاص' : 'نقش ${context.l10n.enumLabel(role.toJson())}';
+    case 'group':
+      return 'گروه یا کلاس';
+    case 'organization':
+      return 'کل سازمان';
+    case 'segment':
+      return 'سگمنت داینامیک';
+    default:
+      return assignment.audienceType;
+  }
+}
+
+String _assignmentAudienceSubtitle(BuildContext context, FormAssignmentDto2 assignment) {
+  switch (assignment.audienceType) {
+    case 'user':
+      return assignment.audienceUserId == null
+          ? 'مخاطب کاربری'
+          : 'شناسه کاربر: ${_shortId(assignment.audienceUserId!)}';
+    case 'role':
+      final role = assignment.audienceRole;
+      return role == null ? 'همه کاربران یک نقش' : 'همه کاربران با نقش ${context.l10n.enumLabel(role.toJson())}';
+    case 'group':
+      return assignment.audienceGroupId == null
+          ? 'مخاطبان یک گروه یا کلاس'
+          : 'شناسه گروه: ${_shortId(assignment.audienceGroupId!)}';
+    case 'organization':
+      return 'همه افراد قابل دسترس در سازمان';
+    case 'segment':
+      return assignment.audienceSegmentId == null
+          ? 'مخاطبان یک سگمنت پویا'
+          : 'شناسه سگمنت: ${_shortId(assignment.audienceSegmentId!)}';
+    default:
+      return 'نوع مخاطب: ${assignment.audienceType}';
   }
 }
 

@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.1.0+1
 
 environment:
-  sdk: '>=3.7.0 <4.0.0'
+  sdk: ^3.8.0
 
 dependencies:
   flutter:
@@ -49,17 +49,23 @@ flutter_native_splash:
 flutter:
   uses-material-design: true
   fonts:
-    - family: Vazirmatn
+    - family: AbarFaNum
       fonts:
-        - asset: assets/fonts/Vazirmatn-Regular.ttf
+        - asset: assets/fonts/AbarFaNum-VF.ttf
+          weight: 100
+        - asset: assets/fonts/AbarFaNum-VF.ttf
           weight: 400
-        - asset: assets/fonts/Vazirmatn-Medium.ttf
+        - asset: assets/fonts/AbarFaNum-VF.ttf
           weight: 500
-        - asset: assets/fonts/Vazirmatn-SemiBold.ttf
+        - asset: assets/fonts/AbarFaNum-VF.ttf
           weight: 600
-        - asset: assets/fonts/Vazirmatn-Bold.ttf
+        - asset: assets/fonts/AbarFaNum-VF.ttf
           weight: 700
-        - asset: assets/fonts/Vazirmatn-ExtraBold.ttf
-          weight: 800
-        - asset: assets/fonts/Vazirmatn-Black.ttf
+        - asset: assets/fonts/AbarFaNum-VF.ttf
           weight: 900
+    - family: Abar
+      fonts:
+        - asset: assets/fonts/Abar-VF.ttf
+    - family: AbarNoEn
+      fonts:
+        - asset: assets/fonts/AbarNoEn-VF.ttf

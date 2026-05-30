@@ -35,15 +35,25 @@ pub async fn create_submission(
     let form = form_service::load_form_detail(state, form_id).await?;
     let user = auth;
     let has_public_access_context = public_context.is_some();
-    if !has_public_access_context
-        && !visibility::can_answer_form(
-            form.status,
-            form.creator_id,
-            form.organization_id,
-            &form.visibility,
-            user,
+    let can_answer_by_visibility = visibility::can_answer_form(
+        form.status,
+        form.creator_id,
+        form.organization_id,
+        &form.visibility,
+        user,
+    );
+    let can_answer_by_assignment = match user {
+        Some(auth_user) => crate::audience::service::user_matches_form_assignment(
+            state,
+            form_id,
+            auth_user,
+            true,
         )
-    {
+        .await
+        .unwrap_or(false),
+        None => false,
+    };
+    if !has_public_access_context && !can_answer_by_visibility && !can_answer_by_assignment {
         return Err(AppError::with_details(
             StatusCode::FORBIDDEN,
             if form.status != FormStatus::Published {

@@ -83,6 +83,7 @@ pub fn default_actions_for_role(role: UserRole) -> Vec<PermissionAction> {
             Answer,
             ViewResults,
             Export,
+            ManageScoring,
             ManagePublicProtection,
         ],
         UserRole::Admin => vec![
@@ -132,6 +133,8 @@ pub fn default_resources_for_role(role: UserRole) -> Vec<ResourceType> {
             User,
             Organization,
             ScoreTemplate,
+            Metric,
+            AudienceSegment,
         ],
         UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin => vec![
             Form,
@@ -142,6 +145,8 @@ pub fn default_resources_for_role(role: UserRole) -> Vec<ResourceType> {
             Organization,
             Permission,
             ScoreTemplate,
+            Metric,
+            AudienceSegment,
             AuditLog,
         ],
     }

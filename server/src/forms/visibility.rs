@@ -13,7 +13,10 @@ fn audience_matches(rule: &AudienceRuleDto, user: Option<&AuthUser>, org_id: Opt
         FormAudienceType::Organization => rule.id.is_none() || rule.id == org_id,
         FormAudienceType::User => user.map(|u| rule.id == Some(u.user_id)).unwrap_or(false),
         FormAudienceType::Role => user.map(|u| rule.role == Some(u.role)).unwrap_or(false),
-        FormAudienceType::Group | FormAudienceType::Class | FormAudienceType::Department => false,
+        FormAudienceType::Group
+        | FormAudienceType::Class
+        | FormAudienceType::Department
+        | FormAudienceType::Segment => false,
     }
 }
 

@@ -457,6 +457,218 @@ class FeedbackFlowApiClient {
     );
   }
 
+  /// GET /api/v1/dashboards/me
+  /// Requires Bearer JWT.
+  Future<ApiResponse<DashboardResponseDto2>> getDashboardExperience({
+    DashboardQueryInput query = const DashboardQueryInput(),
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/dashboards/me',
+      queryParameters: _clean(query.toQuery()),
+    );
+    return _parseApiResponse<DashboardResponseDto2>(
+      response.data,
+      (json) => DashboardResponseDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/users/me/children
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<ChildProfileDto2>>> getMyChildren() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/users/me/children',
+    );
+    return _parseApiResponse<List<ChildProfileDto2>>(
+      response.data,
+      (json) => _parseDtoList<ChildProfileDto2>(json, ChildProfileDto2.fromJson),
+    );
+  }
+
+  /// GET /api/v1/surveys/me
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<SurveyCardDto2>>> getMySurveys({
+    String? status,
+    String? period,
+    String? childId,
+    int limit = 20,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/surveys/me',
+      queryParameters: _clean(<String, dynamic>{
+        'status': status,
+        'period': period,
+        'child_id': childId,
+        'limit': limit,
+      }),
+    );
+    return _parseApiResponse<List<SurveyCardDto2>>(
+      response.data,
+      (json) => _parseDtoList<SurveyCardDto2>(json, SurveyCardDto2.fromJson),
+    );
+  }
+
+  /// GET /api/v1/surveys/calendar
+  /// Requires Bearer JWT.
+  Future<ApiResponse<CalendarResponseDto2>> getSurveyCalendar({
+    String? period,
+    String? startDate,
+    String? endDate,
+    String? scope,
+    String? scopeId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/surveys/calendar',
+      queryParameters: _clean(<String, dynamic>{
+        'period': period,
+        'start_date': startDate,
+        'end_date': endDate,
+        'scope': scope,
+        'scope_id': scopeId,
+      }),
+    );
+    return _parseApiResponse<CalendarResponseDto2>(
+      response.data,
+      (json) => CalendarResponseDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/analytics/timeseries
+  /// Requires Bearer JWT.
+  Future<ApiResponse<TimeseriesResponseDto2>> getAnalyticsTimeseries({
+    String? metric,
+    String? period,
+    String? compare,
+    String? granularity,
+    String? scope,
+    String? scopeId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/analytics/timeseries',
+      queryParameters: _clean(<String, dynamic>{
+        'metric': metric,
+        'period': period,
+        'compare': compare,
+        'granularity': granularity,
+        'scope': scope,
+        'scope_id': scopeId,
+      }),
+    );
+    return _parseApiResponse<TimeseriesResponseDto2>(
+      response.data,
+      (json) => TimeseriesResponseDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/analytics/rankings
+  /// Requires Bearer JWT.
+  Future<ApiResponse<RankingResponseDto2>> getAnalyticsRankings({
+    String? metric,
+    String? dimension,
+    String? period,
+    String? order,
+    int limit = 20,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/analytics/rankings',
+      queryParameters: _clean(<String, dynamic>{
+        'metric': metric,
+        'dimension': dimension,
+        'period': period,
+        'order': order,
+        'limit': limit,
+      }),
+    );
+    return _parseApiResponse<RankingResponseDto2>(
+      response.data,
+      (json) => RankingResponseDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/analytics/alerts
+  /// Requires Bearer JWT.
+  Future<ApiResponse<AnalyticsAlertsResponseDto2>> getAnalyticsAlerts({
+    String? metric,
+    String? scope,
+    String? period,
+    int limit = 20,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/analytics/alerts',
+      queryParameters: _clean(<String, dynamic>{
+        'metric': metric,
+        'scope': scope,
+        'period': period,
+        'limit': limit,
+      }),
+    );
+    return _parseApiResponse<AnalyticsAlertsResponseDto2>(
+      response.data,
+      (json) => AnalyticsAlertsResponseDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/metrics
+  /// Requires Bearer JWT.
+  Future<ListResponse<MetricDefinitionDto2>> listMetrics({
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    bool? enabled,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/metrics',
+      queryParameters: _clean(<String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        'search': search,
+        'enabled': enabled,
+      }),
+    );
+    return _parseListResponse<MetricDefinitionDto2>(
+      response.data,
+      (json) => MetricDefinitionDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/audience-segments
+  /// Requires Bearer JWT.
+  Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    String? segmentType,
+    bool? enabled,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/audience-segments',
+      queryParameters: _clean(<String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        'search': search,
+        'segment_type': segmentType,
+        'enabled': enabled,
+      }),
+    );
+    return _parseListResponse<AudienceSegmentDto2>(
+      response.data,
+      (json) => AudienceSegmentDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/forms/{id}/assignments
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<FormAssignmentDto2>>> listFormAssignments({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/assignments', <String, String>{'id': id.toString()}),
+    );
+    return _parseApiResponse<List<FormAssignmentDto2>>(
+      response.data,
+      (json) => _parseDtoList<FormAssignmentDto2>(json, FormAssignmentDto2.fromJson),
+    );
+  }
+
   /// operationId: approveForm
   /// POST /api/v1/forms/{id}/approve
   /// Requires Bearer JWT.

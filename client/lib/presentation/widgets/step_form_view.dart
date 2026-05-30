@@ -2,16 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/dto/dto.dart';
-import '../../l10n/app_localizations.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
 import 'field_renderer.dart';
 
-/// A step-by-step form experience where each field occupies the full screen.
-///
-/// After answering, the user taps "Next" and slides to the next field with a
-/// smooth animation. A progress bar at the top shows how far along they are.
-/// The last step shows the submit button.
 class StepFormView extends StatefulWidget {
   const StepFormView({
     super.key,
@@ -34,20 +29,15 @@ class StepFormView extends StatefulWidget {
   State<StepFormView> createState() => _StepFormViewState();
 }
 
-class _StepFormViewState extends State<StepFormView>
-    with TickerProviderStateMixin {
+class _StepFormViewState extends State<StepFormView> {
   late final PageController _pageController;
-  int _currentPage = 0;
-
-  /// Only answerable fields (not layout-only like dividers/section titles).
   late List<FormFieldDto> _answerableFields;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _answerableFields = widget.fields
-        .where((f) => _fieldSubmitsAnswer(f.type))
-        .toList(growable: false);
+    _answerableFields = widget.fields.where((f) => _fieldSubmitsAnswer(f.type)).toList(growable: false);
     _pageController = PageController();
   }
 
@@ -55,9 +45,8 @@ class _StepFormViewState extends State<StepFormView>
   void didUpdateWidget(covariant StepFormView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.fields != widget.fields) {
-      _answerableFields = widget.fields
-          .where((f) => _fieldSubmitsAnswer(f.type))
-          .toList(growable: false);
+      _answerableFields = widget.fields.where((f) => _fieldSubmitsAnswer(f.type)).toList(growable: false);
+      if (_currentPage >= _answerableFields.length) _currentPage = 0;
     }
   }
 
@@ -68,74 +57,59 @@ class _StepFormViewState extends State<StepFormView>
   }
 
   bool get _isLastPage => _currentPage >= _answerableFields.length - 1;
-  double get _progress =>
-      _answerableFields.isEmpty
-          ? 1.0
-          : (_currentPage + 1) / _answerableFields.length;
+  double get _progress => _answerableFields.isEmpty ? 1 : (_currentPage + 1) / _answerableFields.length;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final l10n = context.l10n;
-
-    if (_answerableFields.isEmpty) {
-      return Center(
-        child: Text(l10n.t('noFieldsYet')),
-      );
-    }
-
+    if (_answerableFields.isEmpty) return const Center(child: Text('هنوز پرسشی تعریف نشده است.'));
     return Column(
       children: [
-        // --- Progress bar ---
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.sm,
-            AppSpacing.lg,
-            AppSpacing.xs,
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text(
-                    '${_currentPage + 1} / ${_answerableFields.length}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: scheme.primary,
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(32, 16, 32, 6),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.close_rounded, color: AppTheme.ink),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    widget.formTitle,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        'پرسش ${_currentPage + 1} از ${_answerableFields.length}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: const Color(0xFF737B9A),
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: _progress),
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, _) => LinearProgressIndicator(
-                    value: value,
-                    minHeight: 6,
-                    backgroundColor:
-                        scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    color: scheme.primary,
+                    const SizedBox(width: 48),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: _progress),
+                    duration: const Duration(milliseconds: 360),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => SizedBox(
+                      height: 8,
+                      child: LinearProgressIndicator(
+                        value: value,
+                        backgroundColor: Colors.white,
+                        color: AppTheme.primary,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-
-        // --- Page view ---
         Expanded(
           child: PageView.builder(
             controller: _pageController,
@@ -145,92 +119,38 @@ class _StepFormViewState extends State<StepFormView>
             onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
               final field = _answerableFields[index];
-              return _FieldPage(
+              return _QuestionPage(
                 field: field,
                 index: index,
-                total: _answerableFields.length,
                 value: widget.answers[field.id],
-                onChanged: (value) =>
-                    widget.onAnswerChanged(field.id, value),
+                onChanged: (value) => widget.onAnswerChanged(field.id, value),
               );
             },
           ),
         ),
-
-        // --- Navigation buttons ---
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.sm,
-              AppSpacing.lg,
-              AppSpacing.md,
-            ),
+            padding: const EdgeInsets.fromLTRB(32, 12, 32, 26),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppBreakpoints.narrowContentMax,
-              ),
-              child: Row(
+              constraints: const BoxConstraints(maxWidth: AppBreakpoints.narrowContentMax),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Next / Submit button (leading = start side)
-                  Expanded(
-                    flex: 2,
-                    child: SizedBox(
-                      height: 52,
-                      child: _isLastPage
-                          ? FilledButton.icon(
-                              onPressed:
-                                  widget.submitting ? null : widget.onSubmit,
-                              icon: widget.submitting
-                                  ? const SizedBox.square(
-                                      dimension: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send_rounded),
-                              label: Text(
-                                widget.submitting
-                                    ? l10n.t('submitting')
-                                    : l10n.t('submitResponse'),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            )
-                          : FilledButton.icon(
-                              onPressed: _goNext,
-                              icon: Icon(
-                                l10n.textDirection == TextDirection.rtl
-                                    ? Icons.arrow_back_rounded
-                                    : Icons.arrow_forward_rounded,
-                              ),
-                              label: Text(
-                                l10n.t('next'),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: widget.submitting ? null : (_isLastPage ? widget.onSubmit : _goNext),
+                      child: widget.submitting
+                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                          : Text(_isLastPage ? 'ثبت پاسخ' : 'بعدی'),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  // Back button (trailing = end side)
-                  if (_currentPage > 0)
-                    Expanded(
-                      child: SizedBox(
-                        height: 52,
-                        child: OutlinedButton.icon(
-                          onPressed: _goBack,
-                          icon: Icon(
-                            l10n.textDirection == TextDirection.rtl
-                                ? Icons.arrow_forward_rounded
-                                : Icons.arrow_back_rounded,
-                          ),
-                          label: Text(l10n.t('back')),
-                        ),
-                      ),
-                    )
-                  else
-                    const Spacer(),
+                  const SizedBox(height: 18),
+                  TextButton(
+                    onPressed: _currentPage > 0 ? _goBack : null,
+                    child: Text('قبلی', style: TextStyle(color: _currentPage > 0 ? const Color(0xFF9AA1B8) : const Color(0xFFC4CAD8), fontWeight: FontWeight.w900)),
+                  ),
                 ],
               ),
             ),
@@ -243,123 +163,58 @@ class _StepFormViewState extends State<StepFormView>
   void _goNext() {
     if (_isLastPage) return;
     HapticFeedback.selectionClick();
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutCubic,
-    );
+    _pageController.nextPage(duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
   }
 
   void _goBack() {
     if (_currentPage <= 0) return;
     HapticFeedback.selectionClick();
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutCubic,
-    );
+    _pageController.previousPage(duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
   }
 }
 
-/// A single field page with centered content.
-class _FieldPage extends StatelessWidget {
-  const _FieldPage({
-    required this.field,
-    required this.index,
-    required this.total,
-    required this.value,
-    required this.onChanged,
-  });
+class _QuestionPage extends StatelessWidget {
+  const _QuestionPage({required this.field, required this.index, required this.value, required this.onChanged});
 
   final FormFieldDto field;
   final int index;
-  final int total;
   final Object? value;
   final ValueChanged<Object?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppBreakpoints.narrowContentMax,
-          ),
+          constraints: const BoxConstraints(maxWidth: AppBreakpoints.narrowContentMax),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Field label
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: scheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          field.label,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        if (field.description != null &&
-                            field.description!.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            field.description!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        if (field.isRequired) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Text(
-                            context.l10n.t('required'),
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: scheme.error,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+              Text(
+                field.label,
+                textAlign: TextAlign.right,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                  height: 1.55,
+                  letterSpacing: -0.45,
+                ),
               ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Field input
+              if ((field.description ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(field.description!, textAlign: TextAlign.right, style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF858BA6))),
+              ],
+              const SizedBox(height: 26),
               FieldRenderer(
                 index: index,
                 field: field,
                 values: <String, Object?>{field.id: value},
                 onChanged: onChanged,
                 previewOnly: false,
+                wrapInCard: false,
               ),
             ],
           ),
@@ -370,8 +225,16 @@ class _FieldPage extends StatelessWidget {
 }
 
 bool _fieldSubmitsAnswer(FieldType type) {
-  return type != FieldType.sectionTitle &&
-      type != FieldType.descriptionBlock &&
-      type != FieldType.divider &&
-      type != FieldType.termsAcceptance;
+  return switch (type) {
+    FieldType.sectionTitle ||
+    FieldType.descriptionBlock ||
+    FieldType.divider ||
+    FieldType.pageBreak ||
+    FieldType.scoreDisplay ||
+    FieldType.calculated ||
+    FieldType.hidden ||
+    FieldType.conditionalLogic ||
+    FieldType.unknown => false,
+    _ => true,
+  };
 }

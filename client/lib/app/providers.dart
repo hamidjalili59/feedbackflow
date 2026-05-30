@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as rp;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../core/security/token_store.dart';
@@ -224,6 +225,31 @@ Future<FormDetailDto> formDetail(Ref ref, String formId) {
 Future<PublicFormDto> publicForm(Ref ref, String publicToken) {
   return ref.watch(publicFormsRepositoryProvider).getPublicForm(publicToken: publicToken);
 }
+
+
+final dashboardExperienceProvider = rp.FutureProvider.family<DashboardResponseDto2, DashboardQueryInput>((ref, query) {
+  return ref.watch(analyticsRepositoryProvider).getDashboardExperience(query: query);
+});
+
+final surveyCalendarProvider = rp.FutureProvider.family<CalendarResponseDto2, String>((ref, period) {
+  return ref.watch(analyticsRepositoryProvider).getSurveyCalendar(period: period);
+});
+
+final mySurveysProvider = rp.FutureProvider.family<List<SurveyCardDto2>, String?>((ref, status) {
+  return ref.watch(analyticsRepositoryProvider).getMySurveys(status: status, limit: 30);
+});
+
+final metricDefinitionsProvider = rp.FutureProvider<ListResponse<MetricDefinitionDto2>>((ref) {
+  return ref.watch(analyticsRepositoryProvider).listMetrics(page: 1, pageSize: 50);
+});
+
+final audienceSegmentsProvider = rp.FutureProvider<ListResponse<AudienceSegmentDto2>>((ref) {
+  return ref.watch(analyticsRepositoryProvider).listAudienceSegments(page: 1, pageSize: 50);
+});
+
+final formAssignmentsProvider = rp.FutureProvider.family<List<FormAssignmentDto2>, String>((ref, formId) {
+  return ref.watch(analyticsRepositoryProvider).listFormAssignments(id: formId);
+});
 
 @Riverpod(keepAlive: true)
 Future<DashboardAnalyticsDto> dashboardAnalytics(Ref ref) {

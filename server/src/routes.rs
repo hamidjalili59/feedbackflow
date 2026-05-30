@@ -29,6 +29,9 @@ pub fn build_router(state: AppState) -> Router {
 
     let api = Router::new()
         .merge(crate::auth::routes::routes())
+        .merge(crate::audience::routes::routes())
+        .merge(crate::metrics::routes::routes())
+        .merge(crate::dashboard::routes::routes())
         .merge(crate::users::routes::routes())
         .merge(crate::organizations::routes::routes())
         .merge(crate::permissions::routes::routes())

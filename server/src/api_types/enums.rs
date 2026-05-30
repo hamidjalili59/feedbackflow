@@ -54,6 +54,8 @@ pub enum ResourceType {
     Organization,
     Permission,
     ScoreTemplate,
+    Metric,
+    AudienceSegment,
     AuditLog,
 }
 
@@ -170,6 +172,7 @@ pub enum FormAudienceType {
     Class,
     Department,
     Organization,
+    Segment,
     Public,
 }
 
