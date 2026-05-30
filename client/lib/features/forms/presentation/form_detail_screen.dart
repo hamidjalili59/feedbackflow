@@ -230,7 +230,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
 
     final accessAsync = ref.watch(formAnswerAccessProvider(form.id));
     return accessAsync.when(
-      loading: () => LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
+      loading: () => const LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
       error: (error, stackTrace) => ErrorPanel(
         error: error,
         onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),

@@ -263,6 +263,15 @@ final mySurveysProvider = rp.FutureProvider.family<List<SurveyCardDto2>, String?
   return ref.watch(analyticsRepositoryProvider).getMySurveys(status: status, limit: 30);
 });
 
+final metricTimeseriesProvider = rp.FutureProvider.family<TimeseriesResponseDto2, String>((ref, metricKey) {
+  return ref.watch(analyticsRepositoryProvider).getAnalyticsTimeseries(
+        metric: metricKey,
+        period: 'this_month',
+        compare: 'previous_period',
+        granularity: 'month',
+      );
+});
+
 final metricDefinitionsProvider = rp.FutureProvider<ListResponse<MetricDefinitionDto2>>((ref) {
   return ref.watch(analyticsRepositoryProvider).listMetrics(page: 1, pageSize: 50);
 });

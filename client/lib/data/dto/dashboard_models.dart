@@ -312,8 +312,40 @@ class TimeseriesResponseDto2 {
   }
 }
 
+class CalendarSurveyDto2 {
+  const CalendarSurveyDto2({
+    required this.formId,
+    required this.title,
+    required this.status,
+    this.dateLabel,
+  });
+
+  final String formId;
+  final String title;
+  final String status;
+  final String? dateLabel;
+
+  factory CalendarSurveyDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return CalendarSurveyDto2(
+      formId: _string(map['form_id']) ?? '',
+      title: _string(map['title']) ?? '',
+      status: _string(map['status']) ?? 'pending',
+      dateLabel: _string(map['date_label']),
+    );
+  }
+}
+
 class CalendarDayDto2 {
-  const CalendarDayDto2({required this.date, required this.label, this.weekday, required this.status, required this.count, required this.highlight});
+  const CalendarDayDto2({
+    required this.date,
+    required this.label,
+    this.weekday,
+    required this.status,
+    required this.count,
+    required this.highlight,
+    this.surveys = const <CalendarSurveyDto2>[],
+  });
 
   final String date;
   final String label;
@@ -321,6 +353,7 @@ class CalendarDayDto2 {
   final String status;
   final int count;
   final bool highlight;
+  final List<CalendarSurveyDto2> surveys;
 
   factory CalendarDayDto2.fromJson(Object? json) {
     final map = _map(json);
@@ -331,6 +364,7 @@ class CalendarDayDto2 {
       status: _string(map['status']) ?? 'empty',
       count: _int(map['count']),
       highlight: _bool(map['highlight']),
+      surveys: _list<CalendarSurveyDto2>(map['surveys'], CalendarSurveyDto2.fromJson),
     );
   }
 }

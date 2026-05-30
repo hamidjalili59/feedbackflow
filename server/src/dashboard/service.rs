@@ -16,7 +16,7 @@ use crate::{
     forms::visibility,
     metrics::service as metric_service,
 };
-use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::collections::BTreeMap;
@@ -169,6 +169,7 @@ pub async fn my_surveys(
         .organization_id
         .ok_or_else(|| AppError::forbidden("Surveys require an organization"))?;
     let limit = q.limit.clamp(1, 200);
+    let period_bounds = q.period.as_deref().map(period_range);
     let rows = sqlx::query(
         "select f.id, f.creator_id, f.organization_id, f.title, f.description, f.category, f.tags, f.status, f.visibility, \
                 f.scheduled_at, f.published_at, f.closed_at, f.settings, \
@@ -205,6 +206,18 @@ pub async fn my_surveys(
         let scheduled_at: Option<DateTime<Utc>> = row.try_get("scheduled_at")?;
         let published_at: Option<DateTime<Utc>> = row.try_get("published_at")?;
         let closed_at: Option<DateTime<Utc>> = row.try_get("closed_at")?;
+        if let Some((start, end)) = &period_bounds {
+            let Some(dt) = published_at
+                .as_ref()
+                .or(scheduled_at.as_ref())
+                .or(closed_at.as_ref())
+            else {
+                continue;
+            };
+            if dt < start || dt >= end {
+                continue;
+            }
+        }
         let survey_status = survey_status(status, my_submission_id, scheduled_at.clone());
         if let Some(filter) = q.status.as_deref() {
             if filter != survey_status {
@@ -266,6 +279,19 @@ pub async fn survey_calendar(
     q: CalendarQuery,
 ) -> Result<CalendarResponseDto, AppError> {
     let period = q.period.unwrap_or_else(|| "this_month".to_owned());
+    let (default_start, default_end) = period_range(&period);
+    let start_date = q
+        .start_date
+        .as_deref()
+        .and_then(|value| NaiveDate::parse_from_str(value, "%Y-%m-%d").ok())
+        .unwrap_or_else(|| default_start.date_naive());
+    let end_date_exclusive = q
+        .end_date
+        .as_deref()
+        .and_then(|value| NaiveDate::parse_from_str(value, "%Y-%m-%d").ok())
+        .map(|date| date + Duration::days(1))
+        .unwrap_or_else(|| default_end.date_naive());
+
     let surveys = my_surveys(
         state,
         auth,
@@ -273,34 +299,76 @@ pub async fn survey_calendar(
             status: None,
             period: Some(period.clone()),
             child_id: None,
-            limit: 200,
+            limit: 500,
         },
     )
     .await?;
-    let mut by_date: BTreeMap<String, (i64, bool)> = BTreeMap::new();
+
+    let mut by_date: BTreeMap<String, Vec<SurveyCardDto>> = BTreeMap::new();
     for survey in surveys {
-        let date = survey
+        let Some(dt) = survey
             .scheduled_at
-            .or(survey.published_at)
-            .or(survey.closed_at)
-            .unwrap_or_else(Utc::now)
-            .format("%Y-%m-%d")
-            .to_string();
-        let entry = by_date.entry(date).or_insert((0, false));
-        entry.0 += 1;
-        entry.1 |= survey.status == "completed";
+            .as_ref()
+            .or(survey.published_at.as_ref())
+            .or(survey.closed_at.as_ref())
+        else {
+            continue;
+        };
+        let day = dt.date_naive();
+        if day < start_date || day >= end_date_exclusive {
+            continue;
+        }
+        by_date
+            .entry(day.format("%Y-%m-%d").to_string())
+            .or_default()
+            .push(survey);
     }
-    let days = by_date
-        .into_iter()
-        .map(|(date, (count, completed))| CalendarDayDto {
-            label: date.rsplit('-').next().unwrap_or(&date).to_owned(),
-            weekday: None,
-            status: if completed { "completed" } else { "pending" }.to_owned(),
+
+    let mut days = Vec::new();
+    let today = Utc::now().date_naive();
+    let max_days = 370_i64;
+    let mut cursor = start_date;
+    let mut emitted = 0_i64;
+    while cursor < end_date_exclusive && emitted < max_days {
+        let date = cursor.format("%Y-%m-%d").to_string();
+        let surveys_for_day = by_date.remove(&date).unwrap_or_default();
+        let count = surveys_for_day.len() as i64;
+        let completed = surveys_for_day
+            .iter()
+            .any(|survey| survey.status == "completed");
+        let pending = surveys_for_day.iter().any(|survey| {
+            survey.status == "new" || survey.status == "pending" || survey.status == "in_progress"
+        });
+        let status = if count == 0 {
+            "empty"
+        } else if completed && !pending {
+            "completed"
+        } else if pending {
+            "pending"
+        } else {
+            "closed"
+        };
+        days.push(CalendarDayDto {
+            label: cursor.day().to_string(),
+            weekday: Some(persian_weekday(cursor.weekday().number_from_monday())),
+            status: status.to_owned(),
             count,
-            highlight: count > 0,
+            highlight: cursor == today || count > 0,
             date,
-        })
-        .collect();
+            surveys: surveys_for_day
+                .into_iter()
+                .map(|survey| CalendarSurveyDto {
+                    form_id: survey.form_id,
+                    title: survey.title,
+                    status: survey.status,
+                    date_label: survey.date_label,
+                })
+                .collect(),
+        });
+        cursor = cursor + Duration::days(1);
+        emitted += 1;
+    }
+
     Ok(CalendarResponseDto { period, days })
 }
 
@@ -880,14 +948,58 @@ fn metric_label_status(
     (None, Some(status.to_owned()))
 }
 
+fn persian_weekday(number_from_monday: u32) -> String {
+    match number_from_monday {
+        1 => "دوشنبه",
+        2 => "سه‌شنبه",
+        3 => "چهارشنبه",
+        4 => "پنجشنبه",
+        5 => "جمعه",
+        6 => "شنبه",
+        7 => "یکشنبه",
+        _ => "",
+    }
+    .to_owned()
+}
+
 fn period_range(period: &str) -> (DateTime<Utc>, DateTime<Utc>) {
     let now = Utc::now();
+    let this_month_start = Utc
+        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+        .unwrap();
+    let this_month_end = if now.month() == 12 {
+        Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap()
+    } else {
+        Utc.with_ymd_and_hms(now.year(), now.month() + 1, 1, 0, 0, 0)
+            .unwrap()
+    };
     match period {
         "today" => {
             let start = Utc
                 .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
                 .unwrap();
             (start, start + Duration::days(1))
+        }
+        "last_month" => {
+            let (year, month) = if now.month() == 1 {
+                (now.year() - 1, 12)
+            } else {
+                (now.year(), now.month() - 1)
+            };
+            let start = Utc.with_ymd_and_hms(year, month, 1, 0, 0, 0).unwrap();
+            (start, this_month_start)
+        }
+        "last_3_months" => {
+            let mut year = now.year();
+            let mut month = now.month() as i32 - 2;
+            while month <= 0 {
+                year -= 1;
+                month += 12;
+            }
+            let start = Utc
+                .with_ymd_and_hms(year, month as u32, 1, 0, 0, 0)
+                .unwrap();
+            (start, this_month_end)
         }
         "this_year" => {
             let start = Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).unwrap();
@@ -897,18 +1009,7 @@ fn period_range(period: &str) -> (DateTime<Utc>, DateTime<Utc>) {
             )
         }
         "last_30_days" => (now - Duration::days(30), now + Duration::seconds(1)),
-        _ => {
-            let start = Utc
-                .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
-                .unwrap();
-            let end = if now.month() == 12 {
-                Utc.with_ymd_and_hms(now.year() + 1, 1, 1, 0, 0, 0).unwrap()
-            } else {
-                Utc.with_ymd_and_hms(now.year(), now.month() + 1, 1, 0, 0, 0)
-                    .unwrap()
-            };
-            (start, end)
-        }
+        _ => (this_month_start, this_month_end),
     }
 }
 

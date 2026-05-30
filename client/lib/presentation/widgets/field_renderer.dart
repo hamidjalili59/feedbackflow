@@ -659,11 +659,12 @@ class _ChoiceCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       label,
+                      textAlign: TextAlign.right,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall?.copyWith(
@@ -679,6 +680,7 @@ class _ChoiceCard extends StatelessWidget {
                           : selected
                               ? 'انتخاب شده'
                               : 'برای انتخاب لمس کنید',
+                      textAlign: TextAlign.right,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -980,7 +982,7 @@ class _FaceScaleInput extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _FaceOptionButton(
-                    emoji: _emojiForIndex(i, options.length, options[i]),
+                    moodIndex: _moodIndexForOption(i, options.length, options[i]),
                     label: _localizedOptionLabel(context, options[i]),
                     selected: _sameOption(value, options[i]),
                     onTap: () => onChanged(_optionValue(options[i])),
@@ -1005,20 +1007,20 @@ class _FaceScaleInput extends StatelessWidget {
 
 class _FaceOptionButton extends StatelessWidget {
   const _FaceOptionButton({
-    required this.emoji,
+    required this.moodIndex,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final String emoji;
+  final int moodIndex;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFF31C779) : Colors.transparent;
+    final color = _moodColor(moodIndex);
     return Semantics(
       button: true,
       selected: selected,
@@ -1029,23 +1031,88 @@ class _FaceOptionButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          width: selected ? 58 : 50,
-          height: selected ? 58 : 50,
+          width: selected ? 64 : 54,
+          height: selected ? 64 : 54,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: selected ? const Color(0xFFDDF8EA) : Colors.white,
-            border: Border.all(color: selected ? color : const Color(0xFFE4E9F3), width: selected ? 3 : 1),
+            color: selected ? const Color(0xFFE2F8EC) : Colors.white,
+            border: Border.all(color: selected ? const Color(0xFF35C981) : const Color(0xFFE4E9F3), width: selected ? 4 : 1),
             boxShadow: selected
-                ? [BoxShadow(blurRadius: 18, offset: const Offset(0, 8), color: color.withValues(alpha: 0.18))]
+                ? [BoxShadow(blurRadius: 20, offset: const Offset(0, 9), color: const Color(0xFF35C981).withValues(alpha: 0.20))]
                 : null,
           ),
-          child: Text(emoji, style: TextStyle(fontSize: selected ? 32 : 28)),
+          child: CustomPaint(
+            size: Size.square(selected ? 44 : 38),
+            painter: _MoodFacePainter(moodIndex: moodIndex, color: color),
+          ),
         ),
       ),
     );
   }
 }
+
+class _MoodFacePainter extends CustomPainter {
+  const _MoodFacePainter({required this.moodIndex, required this.color});
+
+  final int moodIndex;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2;
+    final facePaint = Paint()..color = color;
+    canvas.drawCircle(center, radius, facePaint);
+
+    final eyePaint = Paint()..color = const Color(0xFF17203B);
+    final eyeY = center.dy - radius * 0.22;
+    canvas.drawCircle(Offset(center.dx - radius * 0.32, eyeY), radius * 0.09, eyePaint);
+    canvas.drawCircle(Offset(center.dx + radius * 0.32, eyeY), radius * 0.09, eyePaint);
+
+    final mouthPaint = Paint()
+      ..color = const Color(0xFF17203B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = radius * 0.10
+      ..strokeCap = StrokeCap.round;
+    final path = Path();
+    if (moodIndex <= 1) {
+      final depth = moodIndex == 0 ? radius * 0.34 : radius * 0.22;
+      path.moveTo(center.dx - radius * 0.34, center.dy + radius * 0.34);
+      path.quadraticBezierTo(center.dx, center.dy + radius * 0.10 - depth, center.dx + radius * 0.34, center.dy + radius * 0.34);
+    } else if (moodIndex == 2) {
+      path.moveTo(center.dx - radius * 0.32, center.dy + radius * 0.26);
+      path.lineTo(center.dx + radius * 0.32, center.dy + radius * 0.26);
+    } else {
+      final lift = moodIndex == 4 ? radius * 0.42 : radius * 0.30;
+      path.moveTo(center.dx - radius * 0.36, center.dy + radius * 0.12);
+      path.quadraticBezierTo(center.dx, center.dy + lift, center.dx + radius * 0.36, center.dy + radius * 0.12);
+    }
+    canvas.drawPath(path, mouthPaint);
+
+    if (moodIndex == 0) {
+      final browPaint = Paint()
+        ..color = const Color(0xFF17203B)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = radius * 0.08
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(center.dx - radius * 0.48, eyeY - radius * 0.22), Offset(center.dx - radius * 0.20, eyeY - radius * 0.10), browPaint);
+      canvas.drawLine(Offset(center.dx + radius * 0.48, eyeY - radius * 0.22), Offset(center.dx + radius * 0.20, eyeY - radius * 0.10), browPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MoodFacePainter oldDelegate) => oldDelegate.moodIndex != moodIndex || oldDelegate.color != color;
+}
+
+Color _moodColor(int moodIndex) => switch (moodIndex < 0 ? 0 : moodIndex > 4 ? 4 : moodIndex) {
+      0 => const Color(0xFFFF5B4D),
+      1 => const Color(0xFFFF9D41),
+      2 => const Color(0xFFFFD950),
+      3 => const Color(0xFF28D58A),
+      _ => const Color(0xFF66C985),
+    };
+
 
 class _MatrixSingleChoiceInput extends StatelessWidget {
   const _MatrixSingleChoiceInput({
@@ -1545,18 +1612,20 @@ const _faceLikertOptions = <FieldOptionDto>[
   FieldOptionDto(id: 'very_happy', label: 'خیلی خوشحال', value: 'very_happy', orderIndex: 4),
 ];
 
-String _emojiForIndex(int index, int total, FieldOptionDto option) {
-  final label = option.label;
-  if (label.contains('😡') || label.contains('😠')) return '😡';
-  if (label.contains('🙁') || label.contains('☹') || label.contains('😞')) return '🙁';
-  if (label.contains('😐') || label.contains('😶')) return '😐';
-  if (label.contains('😊') || label.contains('🙂') || label.contains('😃')) return '😊';
-  if (label.contains('😍') || label.contains('😁')) return '🙂';
-  const faces = ['😡', '🙁', '😐', '😊', '🙂'];
-  if (total <= 1) return faces[2];
-  final mapped = (index * (faces.length - 1) / (total - 1)).round().clamp(0, faces.length - 1);
-  return faces[mapped];
+int _moodIndexForOption(int index, int total, FieldOptionDto option) {
+  final label = option.label.toLowerCase();
+  final value = option.value.toString().toLowerCase();
+  final text = '$label $value';
+  if (text.contains('😡') || text.contains('angry') || text.contains('very_bad') || text.contains('خیلی ناراضی')) return 0;
+  if (text.contains('🙁') || text.contains('sad') || text.contains('bad') || text.contains('ناراضی')) return 1;
+  if (text.contains('😐') || text.contains('neutral') || text.contains('معمولی') || text.contains('متوسط')) return 2;
+  if (text.contains('🙂') || text.contains('excellent') || text.contains('very_happy') || text.contains('عالی') || text.contains('خیلی خوشحال')) return 4;
+  if (text.contains('😊') || text.contains('happy') || text.contains('good') || text.contains('خوب') || text.contains('خوشحال')) return 3;
+  if (total <= 1) return 2;
+  final mapped = (index * 4 / (total - 1)).round();
+  return mapped < 0 ? 0 : mapped > 4 ? 4 : mapped;
 }
+
 
 String _selectedFaceLabel(BuildContext context, Object? value, List<FieldOptionDto> options) {
   for (final option in options) {

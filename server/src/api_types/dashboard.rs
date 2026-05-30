@@ -144,6 +144,14 @@ pub struct TimeseriesResponseDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CalendarSurveyDto {
+    pub form_id: Uuid,
+    pub title: String,
+    pub status: String,
+    pub date_label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CalendarDayDto {
     pub date: String,
     pub label: String,
@@ -151,6 +159,8 @@ pub struct CalendarDayDto {
     pub status: String,
     pub count: i64,
     pub highlight: bool,
+    #[serde(default)]
+    pub surveys: Vec<CalendarSurveyDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
