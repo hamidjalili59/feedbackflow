@@ -50,30 +50,29 @@ class ThemeModeButton extends ConsumerWidget {
       initialValue: mode,
       onSelected: controller.setThemeMode,
       icon: Icon(_iconFor(mode)),
-      itemBuilder:
-          (context) => [
-            PopupMenuItem(
-              value: ThemeMode.system,
-              child: ListTile(
-                leading: const Icon(Icons.brightness_auto_rounded),
-                title: Text(l10n.t('systemTheme')),
-              ),
-            ),
-            PopupMenuItem(
-              value: ThemeMode.light,
-              child: ListTile(
-                leading: const Icon(Icons.light_mode_rounded),
-                title: Text(l10n.t('light')),
-              ),
-            ),
-            PopupMenuItem(
-              value: ThemeMode.dark,
-              child: ListTile(
-                leading: const Icon(Icons.dark_mode_rounded),
-                title: Text(l10n.t('dark')),
-              ),
-            ),
-          ],
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: ThemeMode.system,
+          child: ListTile(
+            leading: const Icon(Icons.brightness_auto_rounded),
+            title: Text(l10n.t('systemTheme')),
+          ),
+        ),
+        PopupMenuItem(
+          value: ThemeMode.light,
+          child: ListTile(
+            leading: const Icon(Icons.light_mode_rounded),
+            title: Text(l10n.t('light')),
+          ),
+        ),
+        PopupMenuItem(
+          value: ThemeMode.dark,
+          child: ListTile(
+            leading: const Icon(Icons.dark_mode_rounded),
+            title: Text(l10n.t('dark')),
+          ),
+        ),
+      ],
     );
   }
 
@@ -98,39 +97,38 @@ class LanguageButton extends ConsumerWidget {
       initialValue: locale,
       onSelected: ref.read(localeControllerProvider.notifier).setLocale,
       icon: const Icon(Icons.language_rounded),
-      itemBuilder:
-          (context) => [
-            PopupMenuItem(
-              value: const Locale('fa'),
-              child: ListTile(
-                leading: const Text(
-                  'فا',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                title: Text(l10n.t('persian')),
-              ),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: const Locale('fa'),
+          child: ListTile(
+            leading: const Text(
+              'فا',
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
-            PopupMenuItem(
-              value: const Locale('en'),
-              child: ListTile(
-                leading: const Text(
-                  'EN',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                title: Text(l10n.t('english')),
-              ),
+            title: Text(l10n.t('persian')),
+          ),
+        ),
+        PopupMenuItem(
+          value: const Locale('en'),
+          child: ListTile(
+            leading: const Text(
+              'EN',
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
-            PopupMenuItem(
-              value: const Locale('zh'),
-              child: ListTile(
-                leading: const Text(
-                  '中',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                title: Text(l10n.t('chinese')),
-              ),
+            title: Text(l10n.t('english')),
+          ),
+        ),
+        PopupMenuItem(
+          value: const Locale('zh'),
+          child: ListTile(
+            leading: const Text(
+              '中',
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
-          ],
+            title: Text(l10n.t('chinese')),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -286,14 +284,13 @@ class SoftCard extends StatelessWidget {
       child: child,
     );
     return Card(
-      child:
-          onTap == null
-              ? content
-              : InkWell(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                onTap: onTap,
-                child: content,
-              ),
+      child: onTap == null
+          ? content
+          : InkWell(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
+              onTap: onTap,
+              child: content,
+            ),
     );
   }
 }

@@ -53,13 +53,17 @@ class ErrorPanel extends StatelessWidget {
                 Text(
                   titleOverride ?? friendly.title,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   friendly.message,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Wrap(
@@ -109,7 +113,10 @@ class LoadingPanel extends StatelessWidget {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 14),
-          Text(message ?? context.l10n.t('loading'), style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            message ?? context.l10n.t('loading'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
     );

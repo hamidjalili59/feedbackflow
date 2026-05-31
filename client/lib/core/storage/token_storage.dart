@@ -16,7 +16,7 @@ class TokenPair {
 
 class TokenStorage {
   TokenStorage({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
   static const _accessTokenKey = 'feedbackflow.access_token';
   static const _refreshTokenKey = 'feedbackflow.refresh_token';
@@ -29,7 +29,10 @@ class TokenStorage {
     await _secureStorage.write(key: _accessTokenKey, value: pair.accessToken);
     await _secureStorage.write(key: _refreshTokenKey, value: pair.refreshToken);
     await _secureStorage.write(key: _tokenTypeKey, value: pair.tokenType);
-    await _secureStorage.write(key: _expiresInKey, value: pair.expiresIn.toString());
+    await _secureStorage.write(
+      key: _expiresInKey,
+      value: pair.expiresIn.toString(),
+    );
   }
 
   Future<TokenPair?> read() async {
@@ -46,8 +49,10 @@ class TokenStorage {
     );
   }
 
-  Future<String?> readAccessToken() async => _secureStorage.read(key: _accessTokenKey);
-  Future<String?> readRefreshToken() async => _secureStorage.read(key: _refreshTokenKey);
+  Future<String?> readAccessToken() async =>
+      _secureStorage.read(key: _accessTokenKey);
+  Future<String?> readRefreshToken() async =>
+      _secureStorage.read(key: _refreshTokenKey);
 
   Future<void> clear() async {
     await _secureStorage.delete(key: _accessTokenKey);

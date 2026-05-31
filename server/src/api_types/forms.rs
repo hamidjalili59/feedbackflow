@@ -218,7 +218,6 @@ pub struct FormSummaryDto {
     pub updated_at: DateTime<Utc>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct FormAnswerAccessDto {
     pub allowed: bool,

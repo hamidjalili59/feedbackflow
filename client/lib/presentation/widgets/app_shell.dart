@@ -15,28 +15,28 @@ enum AppDestination { dashboard, forms, profile }
 
 extension AppDestinationX on AppDestination {
   String labelKey(BuildContext context) => switch (this) {
-        AppDestination.dashboard => 'dashboard',
-        AppDestination.forms => 'forms',
-        AppDestination.profile => 'profile',
-      };
+    AppDestination.dashboard => 'dashboard',
+    AppDestination.forms => 'forms',
+    AppDestination.profile => 'profile',
+  };
 
   IconData get outlinedIcon => switch (this) {
-        AppDestination.dashboard => Icons.dashboard_outlined,
-        AppDestination.forms => Icons.article_outlined,
-        AppDestination.profile => Icons.person_outline_rounded,
-      };
+    AppDestination.dashboard => Icons.dashboard_outlined,
+    AppDestination.forms => Icons.article_outlined,
+    AppDestination.profile => Icons.person_outline_rounded,
+  };
 
   IconData get filledIcon => switch (this) {
-        AppDestination.dashboard => Icons.dashboard_rounded,
-        AppDestination.forms => Icons.article_rounded,
-        AppDestination.profile => Icons.person_rounded,
-      };
+    AppDestination.dashboard => Icons.dashboard_rounded,
+    AppDestination.forms => Icons.article_rounded,
+    AppDestination.profile => Icons.person_rounded,
+  };
 
   String get path => switch (this) {
-        AppDestination.dashboard => '/dashboard',
-        AppDestination.forms => '/forms',
-        AppDestination.profile => '/profile',
-      };
+    AppDestination.dashboard => '/dashboard',
+    AppDestination.forms => '/forms',
+    AppDestination.profile => '/profile',
+  };
 }
 
 /// Single source of truth for the responsive app chrome.
@@ -128,9 +128,7 @@ class _AppBottomNav extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-          ),
+          top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
         ),
       ),
       child: NavigationBar(
@@ -310,10 +308,9 @@ Future<void> _showAppOptionsSheet(BuildContext context, WidgetRef ref) {
             children: [
               Text(
                 l10n.t('language'),
-                style: Theme.of(sheetContext)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: AppSpacing.xs),
               _LanguageOptions(
@@ -324,15 +321,12 @@ Future<void> _showAppOptionsSheet(BuildContext context, WidgetRef ref) {
               const SizedBox(height: AppSpacing.md),
               Text(
                 l10n.t('theme'),
-                style: Theme.of(sheetContext)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: AppSpacing.xs),
-              _ThemeOptions(
-                onPicked: () => Navigator.of(sheetContext).pop(),
-              ),
+              _ThemeOptions(onPicked: () => Navigator.of(sheetContext).pop()),
             ],
           ),
         ),
@@ -354,10 +348,8 @@ class _LanguageOptions extends ConsumerWidget {
       final selected = current.languageCode == locale.languageCode;
       return ListTile(
         leading: CircleAvatar(
-          backgroundColor:
-              Theme.of(context).colorScheme.primaryContainer,
-          foregroundColor:
-              Theme.of(context).colorScheme.onPrimaryContainer,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
           child: Text(
             short,
             style: const TextStyle(fontWeight: FontWeight.w900),
@@ -365,8 +357,10 @@ class _LanguageOptions extends ConsumerWidget {
         ),
         title: Text(label),
         trailing: selected
-            ? Icon(Icons.check_rounded,
-                color: Theme.of(context).colorScheme.primary)
+            ? Icon(
+                Icons.check_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              )
             : null,
         onTap: () {
           controller.setLocale(locale);
@@ -400,8 +394,10 @@ class _ThemeOptions extends ConsumerWidget {
         leading: Icon(icon),
         title: Text(label),
         trailing: selected
-            ? Icon(Icons.check_rounded,
-                color: Theme.of(context).colorScheme.primary)
+            ? Icon(
+                Icons.check_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              )
             : null,
         onTap: () {
           controller.setThemeMode(mode);
@@ -412,10 +408,16 @@ class _ThemeOptions extends ConsumerWidget {
 
     return Column(
       children: [
-        tile(ThemeMode.system, Icons.brightness_auto_rounded,
-            context.l10n.t('systemTheme')),
-        tile(ThemeMode.light, Icons.light_mode_rounded,
-            context.l10n.t('light')),
+        tile(
+          ThemeMode.system,
+          Icons.brightness_auto_rounded,
+          context.l10n.t('systemTheme'),
+        ),
+        tile(
+          ThemeMode.light,
+          Icons.light_mode_rounded,
+          context.l10n.t('light'),
+        ),
         tile(ThemeMode.dark, Icons.dark_mode_rounded, context.l10n.t('dark')),
       ],
     );

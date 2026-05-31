@@ -60,7 +60,15 @@ class LocalPermissions extends Table {
   Set<Column> get primaryKey => {userId};
 }
 
-@DriftDatabase(tables: [LocalForms, LocalFormFields, LocalSubmissions, LocalActivities, LocalPermissions])
+@DriftDatabase(
+  tables: [
+    LocalForms,
+    LocalFormFields,
+    LocalSubmissions,
+    LocalActivities,
+    LocalPermissions,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 

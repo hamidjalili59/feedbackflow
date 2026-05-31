@@ -5,7 +5,7 @@ import 'token_store.dart';
 /// Native (Android/iOS/desktop) implementation using FlutterSecureStorage.
 class NativeAuthTokenStore implements AuthTokenStore {
   NativeAuthTokenStore([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   static const _accessKey = 'feedbackflow.access_token';
   static const _refreshKey = 'feedbackflow.refresh_token';

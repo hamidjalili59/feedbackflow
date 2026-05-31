@@ -26,55 +26,69 @@ part 'providers.g.dart';
 
 @Riverpod(keepAlive: true)
 AppDependencies appDependencies(Ref ref) {
-  throw UnimplementedError('AppDependencies must be overridden in ProviderScope.');
+  throw UnimplementedError(
+    'AppDependencies must be overridden in ProviderScope.',
+  );
 }
 
 @Riverpod(keepAlive: true)
-AuthTokenStore tokenStore(Ref ref) => ref.watch(appDependenciesProvider).tokenStore;
+AuthTokenStore tokenStore(Ref ref) =>
+    ref.watch(appDependenciesProvider).tokenStore;
 
 @Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) => ref.watch(appDependenciesProvider).database;
 
 @Riverpod(keepAlive: true)
-FeedbackFlowApiClient apiClient(Ref ref) => ref.watch(appDependenciesProvider).apiClient;
+FeedbackFlowApiClient apiClient(Ref ref) =>
+    ref.watch(appDependenciesProvider).apiClient;
 
 @Riverpod(keepAlive: true)
-AuthRepository authRepository(Ref ref) => ref.watch(appDependenciesProvider).authRepository;
+AuthRepository authRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).authRepository;
 
 @Riverpod(keepAlive: true)
-FormsRepository formsRepository(Ref ref) => ref.watch(appDependenciesProvider).formsRepository;
+FormsRepository formsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).formsRepository;
 
 @Riverpod(keepAlive: true)
-FieldsRepository fieldsRepository(Ref ref) => ref.watch(appDependenciesProvider).fieldsRepository;
+FieldsRepository fieldsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).fieldsRepository;
 
 @Riverpod(keepAlive: true)
-PublicFormsRepository publicFormsRepository(Ref ref) => ref.watch(appDependenciesProvider).publicFormsRepository;
+PublicFormsRepository publicFormsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).publicFormsRepository;
 
 @Riverpod(keepAlive: true)
-ActivitiesRepository activitiesRepository(Ref ref) => ref.watch(appDependenciesProvider).activitiesRepository;
+ActivitiesRepository activitiesRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).activitiesRepository;
 
 @Riverpod(keepAlive: true)
-AnalyticsRepository analyticsRepository(Ref ref) => ref.watch(appDependenciesProvider).analyticsRepository;
+AnalyticsRepository analyticsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).analyticsRepository;
 
 @Riverpod(keepAlive: true)
-AuditRepository auditRepository(Ref ref) => ref.watch(appDependenciesProvider).auditRepository;
+AuditRepository auditRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).auditRepository;
 
 @Riverpod(keepAlive: true)
-OrganizationsRepository organizationsRepository(Ref ref) => ref.watch(appDependenciesProvider).organizationsRepository;
+OrganizationsRepository organizationsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).organizationsRepository;
 
 @Riverpod(keepAlive: true)
-PermissionsRepository permissionsRepository(Ref ref) => ref.watch(appDependenciesProvider).permissionsRepository;
+PermissionsRepository permissionsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).permissionsRepository;
 
 @Riverpod(keepAlive: true)
-ScoringRepository scoringRepository(Ref ref) => ref.watch(appDependenciesProvider).scoringRepository;
+ScoringRepository scoringRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).scoringRepository;
 
 @Riverpod(keepAlive: true)
-SubmissionsRepository submissionsRepository(Ref ref) => ref.watch(appDependenciesProvider).submissionsRepository;
+SubmissionsRepository submissionsRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).submissionsRepository;
 
 @Riverpod(keepAlive: true)
-UsersRepository usersRepository(Ref ref) => ref.watch(appDependenciesProvider).usersRepository;
-
-
+UsersRepository usersRepository(Ref ref) =>
+    ref.watch(appDependenciesProvider).usersRepository;
 
 @Riverpod(keepAlive: true)
 class LocaleController extends _$LocaleController {
@@ -130,10 +144,14 @@ class AuthController extends _$AuthController {
   Future<void> login({required String phone, required String password}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard<AuthSession?>(() async {
-      final response = await ref.read(authRepositoryProvider).login(
+      final response = await ref
+          .read(authRepositoryProvider)
+          .login(
             request: LoginRequest(phone: phone, password: password),
           );
-      await ref.read(tokenStoreProvider).saveTokens(
+      await ref
+          .read(tokenStoreProvider)
+          .saveTokens(
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           );
@@ -149,7 +167,9 @@ class AuthController extends _$AuthController {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard<AuthSession?>(() async {
-      final response = await ref.read(authRepositoryProvider).guestLogin(
+      final response = await ref
+          .read(authRepositoryProvider)
+          .guestLogin(
             request: GuestLoginRequest(
               organizationId: organizationId,
               organizationSlug: organizationSlug,
@@ -157,7 +177,9 @@ class AuthController extends _$AuthController {
               displayName: displayName,
             ),
           );
-      await ref.read(tokenStoreProvider).saveTokens(
+      await ref
+          .read(tokenStoreProvider)
+          .saveTokens(
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           );
@@ -170,9 +192,9 @@ class AuthController extends _$AuthController {
     final refreshToken = await tokenStore.readRefreshToken();
     if (refreshToken != null && refreshToken.isNotEmpty) {
       try {
-        await ref.read(authRepositoryProvider).logout(
-              request: LogoutRequest(refreshToken: refreshToken),
-            );
+        await ref
+            .read(authRepositoryProvider)
+            .logout(request: LogoutRequest(refreshToken: refreshToken));
       } catch (_) {
         // Local logout must still succeed when the server rejects an expired token.
       }
@@ -197,7 +219,9 @@ class FormsController extends _$FormsController {
 
   Future<ListResponse<FormSummaryDto>> _load() async {
     try {
-      return await ref.read(formsRepositoryProvider).listForms(
+      return await ref
+          .read(formsRepositoryProvider)
+          .listForms(
             page: _page,
             pageSize: _pageSize,
             search: _search.trim().isEmpty ? null : _search.trim(),
@@ -247,46 +271,72 @@ Future<FormDetailDto> formDetail(Ref ref, String formId) {
 
 @Riverpod(keepAlive: true)
 Future<PublicFormDto> publicForm(Ref ref, String publicToken) {
-  return ref.watch(publicFormsRepositoryProvider).getPublicForm(publicToken: publicToken);
+  return ref
+      .watch(publicFormsRepositoryProvider)
+      .getPublicForm(publicToken: publicToken);
 }
 
+final dashboardExperienceProvider =
+    rp.FutureProvider.family<DashboardResponseDto2, DashboardQueryInput>((
+      ref,
+      query,
+    ) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .getDashboardExperience(query: query);
+    });
 
-final dashboardExperienceProvider = rp.FutureProvider.family<DashboardResponseDto2, DashboardQueryInput>((ref, query) {
-  return ref.watch(analyticsRepositoryProvider).getDashboardExperience(query: query);
-});
+final surveyCalendarProvider =
+    rp.FutureProvider.family<CalendarResponseDto2, String>((ref, period) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .getSurveyCalendar(period: period);
+    });
 
-final surveyCalendarProvider = rp.FutureProvider.family<CalendarResponseDto2, String>((ref, period) {
-  return ref.watch(analyticsRepositoryProvider).getSurveyCalendar(period: period);
-});
+final mySurveysProvider =
+    rp.FutureProvider.family<List<SurveyCardDto2>, String?>((ref, status) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .getMySurveys(status: status, limit: 30);
+    });
 
-final mySurveysProvider = rp.FutureProvider.family<List<SurveyCardDto2>, String?>((ref, status) {
-  return ref.watch(analyticsRepositoryProvider).getMySurveys(status: status, limit: 30);
-});
+final metricTimeseriesProvider =
+    rp.FutureProvider.family<TimeseriesResponseDto2, String>((ref, metricKey) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .getAnalyticsTimeseries(
+            metric: metricKey,
+            period: 'this_month',
+            compare: 'previous_period',
+            granularity: 'month',
+          );
+    });
 
-final metricTimeseriesProvider = rp.FutureProvider.family<TimeseriesResponseDto2, String>((ref, metricKey) {
-  return ref.watch(analyticsRepositoryProvider).getAnalyticsTimeseries(
-        metric: metricKey,
-        period: 'this_month',
-        compare: 'previous_period',
-        granularity: 'month',
-      );
-});
+final metricDefinitionsProvider =
+    rp.FutureProvider<ListResponse<MetricDefinitionDto2>>((ref) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .listMetrics(page: 1, pageSize: 50);
+    });
 
-final metricDefinitionsProvider = rp.FutureProvider<ListResponse<MetricDefinitionDto2>>((ref) {
-  return ref.watch(analyticsRepositoryProvider).listMetrics(page: 1, pageSize: 50);
-});
+final audienceSegmentsProvider =
+    rp.FutureProvider<ListResponse<AudienceSegmentDto2>>((ref) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .listAudienceSegments(page: 1, pageSize: 50);
+    });
 
-final audienceSegmentsProvider = rp.FutureProvider<ListResponse<AudienceSegmentDto2>>((ref) {
-  return ref.watch(analyticsRepositoryProvider).listAudienceSegments(page: 1, pageSize: 50);
-});
+final formAssignmentsProvider =
+    rp.FutureProvider.family<List<FormAssignmentDto2>, String>((ref, formId) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .listFormAssignments(id: formId);
+    });
 
-final formAssignmentsProvider = rp.FutureProvider.family<List<FormAssignmentDto2>, String>((ref, formId) {
-  return ref.watch(analyticsRepositoryProvider).listFormAssignments(id: formId);
-});
-
-final formAnswerAccessProvider = rp.FutureProvider.family<FormAnswerAccessDto2, String>((ref, formId) {
-  return ref.watch(formsRepositoryProvider).getFormAnswerAccess(id: formId);
-});
+final formAnswerAccessProvider =
+    rp.FutureProvider.family<FormAnswerAccessDto2, String>((ref, formId) {
+      return ref.watch(formsRepositoryProvider).getFormAnswerAccess(id: formId);
+    });
 
 @Riverpod(keepAlive: true)
 Future<DashboardAnalyticsDto> dashboardAnalytics(Ref ref) {
@@ -295,12 +345,16 @@ Future<DashboardAnalyticsDto> dashboardAnalytics(Ref ref) {
 
 @Riverpod(keepAlive: true)
 Future<ListResponse<ActivitySummaryDto>> activities(Ref ref) {
-  return ref.watch(activitiesRepositoryProvider).listActivities(page: 1, pageSize: 30);
+  return ref
+      .watch(activitiesRepositoryProvider)
+      .listActivities(page: 1, pageSize: 30);
 }
 
 @Riverpod(keepAlive: true)
 Future<ListResponse<AuditLogDto>> auditLogs(Ref ref) {
-  return ref.watch(auditRepositoryProvider).listAuditLogs(page: 1, pageSize: 30);
+  return ref
+      .watch(auditRepositoryProvider)
+      .listAuditLogs(page: 1, pageSize: 30);
 }
 
 @Riverpod(keepAlive: true)
@@ -310,7 +364,9 @@ Future<EffectivePermissionsDto> effectivePermissions(Ref ref) {
 
 @Riverpod(keepAlive: true)
 Future<ListResponse<ScoreTemplateDto>> scoreTemplates(Ref ref) {
-  return ref.watch(scoringRepositoryProvider).listScoreTemplates(page: 1, pageSize: 30);
+  return ref
+      .watch(scoringRepositoryProvider)
+      .listScoreTemplates(page: 1, pageSize: 30);
 }
 
 @Riverpod(keepAlive: true)
@@ -320,12 +376,16 @@ Future<FormAnalyticsDto> formAnalytics(Ref ref, String formId) {
 
 @Riverpod(keepAlive: true)
 Future<ListResponse<SubmissionSummaryDto>> submissions(Ref ref, String formId) {
-  return ref.watch(submissionsRepositoryProvider).listSubmissions(id: formId, page: 1, pageSize: 30);
+  return ref
+      .watch(submissionsRepositoryProvider)
+      .listSubmissions(id: formId, page: 1, pageSize: 30);
 }
 
 @Riverpod(keepAlive: true)
 Future<SubmissionDetailDto> submissionDetail(Ref ref, String submissionId) {
-  return ref.watch(submissionsRepositoryProvider).getSubmission(id: submissionId);
+  return ref
+      .watch(submissionsRepositoryProvider)
+      .getSubmission(id: submissionId);
 }
 
 @Riverpod(keepAlive: true)
@@ -394,7 +454,8 @@ class CreateFormController extends _$CreateFormController {
       scoringMode: scoringMode,
       fields: scoringMode == ScoringMode.none
           ? [
-              for (final field in state.fields) field.copyWith(scoringEnabled: false),
+              for (final field in state.fields)
+                field.copyWith(scoringEnabled: false),
             ]
           : state.fields,
       errorMessage: null,
@@ -435,7 +496,8 @@ class CreateFormController extends _$CreateFormController {
   void changeField(DraftFormField field) {
     state = state.copyWith(
       fields: [
-        for (final item in state.fields) item.draftId == field.draftId ? field : item,
+        for (final item in state.fields)
+          item.draftId == field.draftId ? field : item,
       ],
       errorMessage: null,
       errorCode: null,
@@ -446,7 +508,9 @@ class CreateFormController extends _$CreateFormController {
 
   void removeField(String draftId) {
     state = state.copyWith(
-      fields: state.fields.where((field) => field.draftId != draftId).toList(growable: false),
+      fields: state.fields
+          .where((field) => field.draftId != draftId)
+          .toList(growable: false),
       errorMessage: null,
       errorCode: null,
       createdForm: null,
@@ -490,18 +554,22 @@ class CreateFormController extends _$CreateFormController {
 
     FormDetailDto? createdForm;
     try {
-      createdForm = await ref.read(formsRepositoryProvider).createForm(
-            request: state.toCreateFormRequest(),
-          );
+      createdForm = await ref
+          .read(formsRepositoryProvider)
+          .createForm(request: state.toCreateFormRequest());
 
       for (var index = 0; index < state.fields.length; index++) {
-        await ref.read(fieldsRepositoryProvider).createFormField(
+        await ref
+            .read(fieldsRepositoryProvider)
+            .createFormField(
               id: createdForm.id,
               request: state.fields[index].toCreateRequest(orderIndex: index),
             );
       }
 
-      final hydratedForm = await ref.read(formsRepositoryProvider).getForm(id: createdForm.id);
+      final hydratedForm = await ref
+          .read(formsRepositoryProvider)
+          .getForm(id: createdForm.id);
       state = state.copyWith(
         isSubmitting: false,
         createdForm: hydratedForm,
@@ -549,7 +617,9 @@ class CreateFormState {
   });
 
   factory CreateFormState.initial() {
-    final template = FormTemplateCatalog.byType(FormTemplateType.feedbackSurvey);
+    final template = FormTemplateCatalog.byType(
+      FormTemplateType.feedbackSurvey,
+    );
     return CreateFormState.fromTemplate(template);
   }
 
@@ -618,15 +688,23 @@ class CreateFormState {
       tags: tags ?? this.tags,
       scoringMode: scoringMode ?? this.scoringMode,
       visibilityMode: visibilityMode ?? this.visibilityMode,
-      allowAnonymousAnswers: allowAnonymousAnswers ?? this.allowAnonymousAnswers,
+      allowAnonymousAnswers:
+          allowAnonymousAnswers ?? this.allowAnonymousAnswers,
       oneSubmissionPerUser: oneSubmissionPerUser ?? this.oneSubmissionPerUser,
-      answersEditableAfterSubmission: answersEditableAfterSubmission ?? this.answersEditableAfterSubmission,
+      answersEditableAfterSubmission:
+          answersEditableAfterSubmission ?? this.answersEditableAfterSubmission,
       guestsCanAnswer: guestsCanAnswer ?? this.guestsCanAnswer,
       fields: fields ?? this.fields,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage: identical(errorMessage, _sentinel) ? this.errorMessage : errorMessage as String?,
-      errorCode: identical(errorCode, _sentinel) ? this.errorCode : errorCode as ErrorCode?,
-      createdForm: identical(createdForm, _sentinel) ? this.createdForm : createdForm as FormDetailDto?,
+      errorMessage: identical(errorMessage, _sentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
+      errorCode: identical(errorCode, _sentinel)
+          ? this.errorCode
+          : errorCode as ErrorCode?,
+      createdForm: identical(createdForm, _sentinel)
+          ? this.createdForm
+          : createdForm as FormDetailDto?,
       partialCreate: partialCreate ?? this.partialCreate,
     );
   }
@@ -644,11 +722,13 @@ class CreateFormState {
         submissionMode: allowAnonymousAnswers
             ? SubmissionMode.anonymousSubmission
             : answersEditableAfterSubmission
-                ? SubmissionMode.editableSubmission
-                : oneSubmissionPerUser
-                    ? SubmissionMode.singleSubmission
-                    : SubmissionMode.multipleSubmissions,
-        answerVisibility: allowAnonymousAnswers ? AnswerVisibility.anonymous : AnswerVisibility.visibleToCreator,
+            ? SubmissionMode.editableSubmission
+            : oneSubmissionPerUser
+            ? SubmissionMode.singleSubmission
+            : SubmissionMode.multipleSubmissions,
+        answerVisibility: allowAnonymousAnswers
+            ? AnswerVisibility.anonymous
+            : AnswerVisibility.visibleToCreator,
         guestsCanAnswer: guestsCanAnswer,
         metadata: const <String, Object?>{},
       ),
@@ -670,4 +750,5 @@ class CreateFormState {
 
 const Object _sentinel = Object();
 
-ErrorCode? _errorCodeFrom(Object error) => FriendlyApiErrorMessage.errorCodeOf(error);
+ErrorCode? _errorCodeFrom(Object error) =>
+    FriendlyApiErrorMessage.errorCodeOf(error);

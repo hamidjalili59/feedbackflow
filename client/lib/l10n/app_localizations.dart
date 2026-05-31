@@ -98,10 +98,10 @@ class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   Future<AppLocalizations> load(Locale locale) {
     final languageCode =
         AppLocalizations.supportedLocales.any(
-              (supported) => supported.languageCode == locale.languageCode,
-            )
-            ? locale.languageCode
-            : 'fa';
+          (supported) => supported.languageCode == locale.languageCode,
+        )
+        ? locale.languageCode
+        : 'fa';
     return SynchronousFuture<AppLocalizations>(
       AppLocalizations(Locale(languageCode)),
     );
@@ -164,9 +164,11 @@ const Map<String, Map<String, String>> _localizedValues = {
     'createFirstFormSubtitle':
         'از نظرسنجی بازخورد، آزمون، ثبت‌نام، رضایت‌نامه، ارزیابی ریسک یا فرم خالی شروع کنید.',
     'templatesUiOnly': 'از قالب‌های آماده شروع کنید',
-    'apiContractNote': 'با انتخاب یک قالب، فرم شما با تنظیمات پیش‌فرض ساخته می‌شود.',
+    'apiContractNote':
+        'با انتخاب یک قالب، فرم شما با تنظیمات پیش‌فرض ساخته می‌شود.',
     'getStartedTitle': 'شروع سریع',
-    'getStartedSubtitle': 'یک قالب انتخاب کنید یا فرم خالی بسازید. فیلدها، تنظیمات و ظاهر فرم بعداً قابل ویرایش هستند.',
+    'getStartedSubtitle':
+        'یک قالب انتخاب کنید یا فرم خالی بسازید. فیلدها، تنظیمات و ظاهر فرم بعداً قابل ویرایش هستند.',
     'welcomeBack': 'خوش برگشتید',
     'loginSubtitle':
         'با شماره موبایل وارد شوید و فرم‌ها، پاسخ‌ها و لینک‌های عمومی را مدیریت کنید.',
@@ -262,11 +264,13 @@ const Map<String, Map<String, String>> _localizedValues = {
     'serverErrorMessage': 'سرور نتوانست درخواست را تکمیل کند.',
     'validationErrorMessage': 'برخی فیلدها نیاز به بررسی دارند.',
     'connectionProblem': 'مشکل اتصال',
-    'connectionProblemMessage': 'ارتباط با سرور برقرار نشد. اتصال اینترنت خود را بررسی کنید.',
+    'connectionProblemMessage':
+        'ارتباط با سرور برقرار نشد. اتصال اینترنت خود را بررسی کنید.',
     'requestTimedOut': 'زمان درخواست تمام شد',
     'requestTimedOutMessage': 'سرور دیر پاسخ داد. لطفاً دوباره تلاش کنید.',
     'serviceUnavailable': 'سرویس در دسترس نیست',
-    'serviceUnavailableMessage': 'سرور موقتاً در دسترس نیست. لطفاً کمی بعد دوباره امتحان کنید.',
+    'serviceUnavailableMessage':
+        'سرور موقتاً در دسترس نیست. لطفاً کمی بعد دوباره امتحان کنید.',
     'field.short_text': 'متن کوتاه',
     'field.long_text': 'متن بلند',
     'field.email': 'ایمیل',
@@ -349,8 +353,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'formTypeSubtitle':
         'یک قالب آماده انتخاب کنید تا فرم با تنظیمات مناسب ساخته شود.',
     'basics': 'اطلاعات پایه',
-    'basicsSubtitle':
-        'عنوان و توضیحات فرم خود را وارد کنید.',
+    'basicsSubtitle': 'عنوان و توضیحات فرم خود را وارد کنید.',
     'settingsSubtitle':
         'دسترسی، حالت نمایش و نحوه امتیازدهی فرم را تنظیم کنید.',
     'fields': 'فیلدها',
@@ -717,7 +720,8 @@ const Map<String, Map<String, String>> _localizedValues = {
     'apiContractNote':
         'Pick a template and your form will be created with sensible defaults.',
     'getStartedTitle': 'Get started',
-    'getStartedSubtitle': 'Choose a template or start from scratch. Fields, settings, and appearance can all be changed later.',
+    'getStartedSubtitle':
+        'Choose a template or start from scratch. Fields, settings, and appearance can all be changed later.',
     'welcomeBack': 'Welcome back',
     'loginSubtitle':
         'Sign in with your mobile number to manage forms, submissions, scoring, and public links.',
@@ -813,11 +817,14 @@ const Map<String, Map<String, String>> _localizedValues = {
     'serverErrorMessage': 'The server could not complete the request.',
     'validationErrorMessage': 'Some fields need your attention.',
     'connectionProblem': 'Connection problem',
-    'connectionProblemMessage': 'Could not reach the server. Check your connection and try again.',
+    'connectionProblemMessage':
+        'Could not reach the server. Check your connection and try again.',
     'requestTimedOut': 'Request timed out',
-    'requestTimedOutMessage': 'The server took too long to respond. Please try again.',
+    'requestTimedOutMessage':
+        'The server took too long to respond. Please try again.',
     'serviceUnavailable': 'Service unavailable',
-    'serviceUnavailableMessage': 'The server is temporarily unavailable. Please try again later.',
+    'serviceUnavailableMessage':
+        'The server is temporarily unavailable. Please try again later.',
     'field.short_text': 'Short text',
     'field.long_text': 'Long text',
     'field.email': 'Email',
@@ -897,12 +904,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'modernFormBuilderSubtitle':
         'Build your form, add fields, and customize settings.',
     'formType': 'Form type',
-    'formTypeSubtitle':
-        'Pick a template to start with sensible defaults.',
+    'formTypeSubtitle': 'Pick a template to start with sensible defaults.',
     'basics': 'Basics',
     'basicsSubtitle': 'Enter the title and description for your form.',
-    'settingsSubtitle':
-        'Configure access, visibility, and scoring mode.',
+    'settingsSubtitle': 'Configure access, visibility, and scoring mode.',
     'fields': 'Fields',
     'fieldsWillCreate': 'These fields will be added to your form.',
     'add': 'Add',

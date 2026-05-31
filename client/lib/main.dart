@@ -26,7 +26,8 @@ Future<void> main() async {
     final origin = Uri.base.origin;
     final devPorts = {'3000', '5000', '8000'};
     final port = Uri.base.port.toString();
-    if (devPorts.contains(port) || Uri.base.host == 'localhost' && port != '8080') {
+    if (devPorts.contains(port) ||
+        Uri.base.host == 'localhost' && port != '8080') {
       baseUrl = 'http://localhost:8080';
     } else {
       baseUrl = origin;

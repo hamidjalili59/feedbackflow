@@ -5,12 +5,13 @@ class SubmissionDtoMapper {
   const SubmissionDtoMapper._();
 
   static AnswerEntity answerToEntity(AnswerDto dto) => AnswerEntity(
-        fieldId: dto.fieldId,
-        value: dto.value,
-        metadata: dto.metadata,
-      );
+    fieldId: dto.fieldId,
+    value: dto.value,
+    metadata: dto.metadata,
+  );
 
-  static SubmissionEntity detailToEntity(SubmissionDetailDto dto) => SubmissionEntity(
+  static SubmissionEntity detailToEntity(SubmissionDetailDto dto) =>
+      SubmissionEntity(
         id: dto.id,
         formId: dto.formId,
         respondentUserId: dto.respondentUserId,
@@ -22,9 +23,11 @@ class SubmissionDtoMapper {
         updatedAt: dto.updatedAt,
       );
 
-  static SubmissionEntity detailToDomain(SubmissionDetailDto dto) => detailToEntity(dto);
+  static SubmissionEntity detailToDomain(SubmissionDetailDto dto) =>
+      detailToEntity(dto);
 
-  static SubmissionEntity summaryToEntity(SubmissionSummaryDto dto) => SubmissionEntity(
+  static SubmissionEntity summaryToEntity(SubmissionSummaryDto dto) =>
+      SubmissionEntity(
         id: dto.id,
         formId: dto.formId,
         respondentUserId: dto.respondentUserId,
@@ -36,5 +39,6 @@ class SubmissionDtoMapper {
         updatedAt: dto.submittedAt,
       );
 
-  static SubmissionEntity summaryToDomain(SubmissionSummaryDto dto) => summaryToEntity(dto);
+  static SubmissionEntity summaryToDomain(SubmissionSummaryDto dto) =>
+      summaryToEntity(dto);
 }

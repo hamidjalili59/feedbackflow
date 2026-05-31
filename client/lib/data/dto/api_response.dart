@@ -15,7 +15,8 @@ abstract class ApiError with _$ApiError {
     @JsonKey(name: 'details') Object? details,
   }) = _ApiError;
 
-  factory ApiError.fromJson(Map<String, dynamic> json) => _$ApiErrorFromJson(json);
+  factory ApiError.fromJson(Map<String, dynamic> json) =>
+      _$ApiErrorFromJson(json);
 }
 
 typedef ApiErrorDto = ApiError;
@@ -26,7 +27,9 @@ abstract class ApiResponse<T> with _$ApiResponse<T> {
     @JsonKey(name: 'success') required bool success,
     @JsonKey(name: 'data') T? data,
     @JsonKey(name: 'error') ApiError? error,
-    @Default(<String, Object?>{}) @JsonKey(name: 'meta') Map<String, Object?> meta,
+    @Default(<String, Object?>{})
+    @JsonKey(name: 'meta')
+    Map<String, Object?> meta,
   }) = _ApiResponse<T>;
 
   factory ApiResponse.fromJson(
@@ -49,9 +52,13 @@ abstract class ListResponse<T> with _$ListResponse<T> {
     T Function(Object?) fromJsonT,
   ) {
     final dataRaw = json['data'];
-    final data = dataRaw is Iterable ? dataRaw.map(fromJsonT).toList(growable: false) : null;
+    final data = dataRaw is Iterable
+        ? dataRaw.map(fromJsonT).toList(growable: false)
+        : null;
     final errorRaw = json['error'];
-    final error = errorRaw is Map ? ApiError.fromJson(Map<String, dynamic>.from(errorRaw)) : null;
+    final error = errorRaw is Map
+        ? ApiError.fromJson(Map<String, dynamic>.from(errorRaw))
+        : null;
     final metaRaw = json['meta'];
     ListMetaDto? meta;
     if (metaRaw is Map && metaRaw['pagination'] != null) {
@@ -74,8 +81,11 @@ abstract class ApiErrorResponse with _$ApiErrorResponse {
     @JsonKey(name: 'success') required bool success,
     @JsonKey(name: 'data') Object? data,
     @JsonKey(name: 'error') required ApiError error,
-    @Default(<String, Object?>{}) @JsonKey(name: 'meta') Map<String, Object?> meta,
+    @Default(<String, Object?>{})
+    @JsonKey(name: 'meta')
+    Map<String, Object?> meta,
   }) = _ApiErrorResponse;
 
-  factory ApiErrorResponse.fromJson(Map<String, dynamic> json) => _$ApiErrorResponseFromJson(json);
+  factory ApiErrorResponse.fromJson(Map<String, dynamic> json) =>
+      _$ApiErrorResponseFromJson(json);
 }

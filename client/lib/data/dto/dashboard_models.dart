@@ -32,7 +32,8 @@ bool _bool(Object? value, [bool fallback = false]) {
   return fallback;
 }
 
-Map<String, Object?> _json(Object? value) => Map<String, Object?>.from(_map(value));
+Map<String, Object?> _json(Object? value) =>
+    Map<String, Object?>.from(_map(value));
 
 class DashboardQueryInput {
   const DashboardQueryInput({
@@ -54,14 +55,14 @@ class DashboardQueryInput {
   final String? scopeId;
 
   Map<String, dynamic> toQuery() => <String, dynamic>{
-        'period': period,
-        if (compare != null) 'compare': compare,
-        if (childId != null) 'child_id': childId,
-        if (classId != null) 'class_id': classId,
-        if (branchId != null) 'branch_id': branchId,
-        if (scope != null) 'scope': scope,
-        if (scopeId != null) 'scope_id': scopeId,
-      };
+    'period': period,
+    if (compare != null) 'compare': compare,
+    if (childId != null) 'child_id': childId,
+    if (classId != null) 'class_id': classId,
+    if (branchId != null) 'branch_id': branchId,
+    if (scope != null) 'scope': scope,
+    if (scopeId != null) 'scope_id': scopeId,
+  };
 
   @override
   bool operator ==(Object other) {
@@ -76,7 +77,8 @@ class DashboardQueryInput {
   }
 
   @override
-  int get hashCode => Object.hash(period, compare, childId, classId, branchId, scope, scopeId);
+  int get hashCode =>
+      Object.hash(period, compare, childId, classId, branchId, scope, scopeId);
 }
 
 class ChildProfileDto2 {
@@ -169,7 +171,9 @@ class SurveyCardDto2 {
       mySubmissionId: _string(map['my_submission_id']),
       progress: _double(map['progress']) ?? 0,
       questionCount: _int(map['question_count']),
-      estimatedMinutes: map['estimated_minutes'] == null ? null : _int(map['estimated_minutes']),
+      estimatedMinutes: map['estimated_minutes'] == null
+          ? null
+          : _int(map['estimated_minutes']),
       cta: _string(map['cta']) ?? 'start',
       dateLabel: _string(map['date_label']),
       scheduledAt: _string(map['scheduled_at']),
@@ -204,7 +208,12 @@ class SurveyStatusSummaryDto2 {
     );
   }
 
-  static const empty = SurveyStatusSummaryDto2(completed: 0, inProgress: 0, pending: 0, newItems: 0);
+  static const empty = SurveyStatusSummaryDto2(
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    newItems: 0,
+  );
 }
 
 class DashboardMetricValueDto2 {
@@ -237,7 +246,9 @@ class DashboardMetricValueDto2 {
   String get displayValue {
     if (label != null && label!.trim().isNotEmpty) return label!;
     if (value == null) return '-';
-    final normalized = value! % 1 == 0 ? value!.toStringAsFixed(0) : value!.toStringAsFixed(1);
+    final normalized = value! % 1 == 0
+        ? value!.toStringAsFixed(0)
+        : value!.toStringAsFixed(1);
     return unit == null || unit!.isEmpty ? normalized : '$normalized$unit';
   }
 
@@ -260,7 +271,11 @@ class DashboardMetricValueDto2 {
 }
 
 class TimeseriesPointDto2 {
-  const TimeseriesPointDto2({required this.label, required this.date, required this.value});
+  const TimeseriesPointDto2({
+    required this.label,
+    required this.date,
+    required this.value,
+  });
 
   final String label;
   final String date;
@@ -277,7 +292,11 @@ class TimeseriesPointDto2 {
 }
 
 class TimeseriesSeriesDto2 {
-  const TimeseriesSeriesDto2({required this.key, required this.label, required this.points});
+  const TimeseriesSeriesDto2({
+    required this.key,
+    required this.label,
+    required this.points,
+  });
 
   final String key;
   final String label;
@@ -288,13 +307,21 @@ class TimeseriesSeriesDto2 {
     return TimeseriesSeriesDto2(
       key: _string(map['key']) ?? '',
       label: _string(map['label']) ?? '',
-      points: _list<TimeseriesPointDto2>(map['points'], TimeseriesPointDto2.fromJson),
+      points: _list<TimeseriesPointDto2>(
+        map['points'],
+        TimeseriesPointDto2.fromJson,
+      ),
     );
   }
 }
 
 class TimeseriesResponseDto2 {
-  const TimeseriesResponseDto2({required this.metric, required this.period, required this.granularity, required this.series});
+  const TimeseriesResponseDto2({
+    required this.metric,
+    required this.period,
+    required this.granularity,
+    required this.series,
+  });
 
   final String metric;
   final String period;
@@ -307,7 +334,10 @@ class TimeseriesResponseDto2 {
       metric: _string(map['metric']) ?? '',
       period: _string(map['period']) ?? '',
       granularity: _string(map['granularity']) ?? '',
-      series: _list<TimeseriesSeriesDto2>(map['series'], TimeseriesSeriesDto2.fromJson),
+      series: _list<TimeseriesSeriesDto2>(
+        map['series'],
+        TimeseriesSeriesDto2.fromJson,
+      ),
     );
   }
 }
@@ -364,7 +394,10 @@ class CalendarDayDto2 {
       status: _string(map['status']) ?? 'empty',
       count: _int(map['count']),
       highlight: _bool(map['highlight']),
-      surveys: _list<CalendarSurveyDto2>(map['surveys'], CalendarSurveyDto2.fromJson),
+      surveys: _list<CalendarSurveyDto2>(
+        map['surveys'],
+        CalendarSurveyDto2.fromJson,
+      ),
     );
   }
 }
@@ -466,7 +499,12 @@ class RankingItemDto2 {
 }
 
 class RankingResponseDto2 {
-  const RankingResponseDto2({required this.metric, required this.dimension, required this.period, required this.items});
+  const RankingResponseDto2({
+    required this.metric,
+    required this.dimension,
+    required this.period,
+    required this.items,
+  });
 
   final String metric;
   final String dimension;
@@ -527,7 +565,10 @@ class AnalyticsAlertDto2 {
 }
 
 class AnalyticsAlertsResponseDto2 {
-  const AnalyticsAlertsResponseDto2({required this.period, required this.items});
+  const AnalyticsAlertsResponseDto2({
+    required this.period,
+    required this.items,
+  });
 
   final String period;
   final List<AnalyticsAlertDto2> items;
@@ -536,7 +577,10 @@ class AnalyticsAlertsResponseDto2 {
     final map = _map(json);
     return AnalyticsAlertsResponseDto2(
       period: _string(map['period']) ?? '',
-      items: _list<AnalyticsAlertDto2>(map['items'], AnalyticsAlertDto2.fromJson),
+      items: _list<AnalyticsAlertDto2>(
+        map['items'],
+        AnalyticsAlertDto2.fromJson,
+      ),
     );
   }
 }
@@ -575,15 +619,36 @@ class DashboardResponseDto2 {
     return DashboardResponseDto2(
       role: UserRole.fromJson(map['role']),
       period: _string(map['period']) ?? 'this_month',
-      children: _list<ChildProfileDto2>(map['children'], ChildProfileDto2.fromJson),
+      children: _list<ChildProfileDto2>(
+        map['children'],
+        ChildProfileDto2.fromJson,
+      ),
       selectedChildId: _string(map['selected_child_id']),
       surveySummary: SurveyStatusSummaryDto2.fromJson(map['survey_summary']),
-      latestSurveys: _list<SurveyCardDto2>(map['latest_surveys'], SurveyCardDto2.fromJson),
-      metrics: _list<DashboardMetricValueDto2>(map['metrics'], DashboardMetricValueDto2.fromJson),
-      charts: _list<TimeseriesResponseDto2>(map['charts'], TimeseriesResponseDto2.fromJson),
-      activities: _list<ActivityFeedItemDto2>(map['activities'], ActivityFeedItemDto2.fromJson),
-      rankings: _list<RankingResponseDto2>(map['rankings'], RankingResponseDto2.fromJson),
-      distributions: _list<Object>(map['distributions'], (value) => value ?? const <String, Object?>{}),
+      latestSurveys: _list<SurveyCardDto2>(
+        map['latest_surveys'],
+        SurveyCardDto2.fromJson,
+      ),
+      metrics: _list<DashboardMetricValueDto2>(
+        map['metrics'],
+        DashboardMetricValueDto2.fromJson,
+      ),
+      charts: _list<TimeseriesResponseDto2>(
+        map['charts'],
+        TimeseriesResponseDto2.fromJson,
+      ),
+      activities: _list<ActivityFeedItemDto2>(
+        map['activities'],
+        ActivityFeedItemDto2.fromJson,
+      ),
+      rankings: _list<RankingResponseDto2>(
+        map['rankings'],
+        RankingResponseDto2.fromJson,
+      ),
+      distributions: _list<Object>(
+        map['distributions'],
+        (value) => value ?? const <String, Object?>{},
+      ),
       metadata: _json(map['metadata']),
     );
   }
@@ -706,6 +771,7 @@ class FormAssignmentDto2 {
     );
   }
 }
+
 class GuestLoginRequest {
   const GuestLoginRequest({
     this.organizationId,
@@ -720,15 +786,15 @@ class GuestLoginRequest {
   final String? displayName;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        if (organizationId != null && organizationId!.trim().isNotEmpty)
-          'organization_id': organizationId,
-        if (organizationSlug != null && organizationSlug!.trim().isNotEmpty)
-          'organization_slug': organizationSlug,
-        if (publicToken != null && publicToken!.trim().isNotEmpty)
-          'public_token': publicToken,
-        if (displayName != null && displayName!.trim().isNotEmpty)
-          'display_name': displayName,
-      };
+    if (organizationId != null && organizationId!.trim().isNotEmpty)
+      'organization_id': organizationId,
+    if (organizationSlug != null && organizationSlug!.trim().isNotEmpty)
+      'organization_slug': organizationSlug,
+    if (publicToken != null && publicToken!.trim().isNotEmpty)
+      'public_token': publicToken,
+    if (displayName != null && displayName!.trim().isNotEmpty)
+      'display_name': displayName,
+  };
 }
 
 class FormAnswerAccessDto2 {
@@ -760,4 +826,3 @@ class FormAnswerAccessDto2 {
     );
   }
 }
-

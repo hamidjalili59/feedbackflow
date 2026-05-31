@@ -143,7 +143,9 @@ pub async fn register(
 
 pub async fn login(state: &AppState, request: LoginRequest) -> Result<LoginResponse, AppError> {
     let phone = normalize_phone(&request.phone)?;
-    let row = sqlx::query("select id, organization_id, phone, email, password_hash, display_name, gender, primary_role, profile, status, created_at, updated_at from users where phone=$1 and deleted_at is null")
+    let candidates = phone_lookup_candidates(&phone);
+    let row = sqlx::query("select id, organization_id, phone, email, password_hash, display_name, gender, primary_role, profile, status, created_at, updated_at from users where phone = any($1) and deleted_at is null order by phone=$2 desc limit 1")
+        .bind(&candidates)
         .bind(&phone)
         .fetch_optional(&state.db).await?
         .ok_or_else(|| AppError::unauthorized("Invalid phone or password"))?;
@@ -172,7 +174,6 @@ pub async fn login(state: &AppState, request: LoginRequest) -> Result<LoginRespo
         user,
     })
 }
-
 
 pub async fn guest_login(
     state: &AppState,
@@ -246,9 +247,12 @@ async fn resolve_guest_organization(
         .bind(public_token)
         .fetch_optional(&state.db)
         .await?;
-        return org_id
-            .map(Some)
-            .ok_or_else(|| AppError::validation("Public form token was not found", json!({"public_token":"invalid"})));
+        return org_id.map(Some).ok_or_else(|| {
+            AppError::validation(
+                "Public form token was not found",
+                json!({"public_token":"invalid"}),
+            )
+        });
     }
 
     if let Some(org_id) = request.organization_id {
@@ -261,7 +265,10 @@ async fn resolve_guest_organization(
         return if exists {
             Ok(Some(org_id))
         } else {
-            Err(AppError::validation("Organization does not exist", json!({"organization_id":"invalid"})))
+            Err(AppError::validation(
+                "Organization does not exist",
+                json!({"organization_id":"invalid"}),
+            ))
         };
     }
 
@@ -271,15 +278,17 @@ async fn resolve_guest_organization(
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let org_id: Option<Uuid> = sqlx::query_scalar(
-            "select id from organizations where slug=$1 and deleted_at is null",
-        )
-        .bind(slug)
-        .fetch_optional(&state.db)
-        .await?;
-        return org_id
-            .map(Some)
-            .ok_or_else(|| AppError::validation("Organization does not exist", json!({"organization_slug":"invalid"})));
+        let org_id: Option<Uuid> =
+            sqlx::query_scalar("select id from organizations where slug=$1 and deleted_at is null")
+                .bind(slug)
+                .fetch_optional(&state.db)
+                .await?;
+        return org_id.map(Some).ok_or_else(|| {
+            AppError::validation(
+                "Organization does not exist",
+                json!({"organization_slug":"invalid"}),
+            )
+        });
     }
 
     Err(AppError::validation(
@@ -464,14 +473,40 @@ pub fn normalize_optional_gender(input: Option<&str>) -> Result<Option<String>, 
 }
 
 pub fn normalize_phone(input: &str) -> Result<String, AppError> {
-    let trimmed = input.trim();
-    let mut phone = trimmed
+    let mut phone = to_english_digits(input).trim().to_owned();
+    phone = phone
         .chars()
         .filter(|c| !matches!(c, ' ' | '-' | '(' | ')'))
         .collect::<String>();
 
     if phone.starts_with("00") {
         phone = format!("+{}", &phone[2..]);
+    }
+
+    if phone.starts_with('+') {
+        let digits = phone[1..]
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>();
+        phone = if digits.is_empty() {
+            String::new()
+        } else {
+            format!("+{}", digits)
+        };
+    } else {
+        let digits = phone
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>();
+        if digits.starts_with("98") {
+            phone = format!("+{}", digits);
+        } else if digits.starts_with('0') && digits.len() >= 10 {
+            phone = format!("+98{}", &digits[1..]);
+        } else if digits.len() == 10 && digits.starts_with('9') {
+            phone = format!("+98{}", digits);
+        } else {
+            phone = digits;
+        }
     }
 
     let digit_count = phone.chars().filter(|c| c.is_ascii_digit()).count();
@@ -486,12 +521,44 @@ pub fn normalize_phone(input: &str) -> Result<String, AppError> {
         return Err(AppError::validation(
             "Invalid phone number",
             json!({
-                "phone": "Use digits with an optional leading +. Spaces, hyphens, and parentheses are accepted and normalized."
+                "phone": "Use digits with an optional leading +. Iranian local mobile numbers such as 09123456789 are accepted and normalized to +98."
             }),
         ));
     }
 
     Ok(phone)
+}
+
+pub fn phone_lookup_candidates(normalized_phone: &str) -> Vec<String> {
+    let mut candidates = vec![normalized_phone.to_owned()];
+    if let Some(rest) = normalized_phone.strip_prefix("+98") {
+        if rest.len() == 10 && rest.starts_with('9') {
+            candidates.push(format!("0{}", rest));
+            candidates.push(format!("98{}", rest));
+        }
+    }
+    candidates.sort();
+    candidates.dedup();
+    candidates
+}
+
+fn to_english_digits(input: &str) -> String {
+    input
+        .chars()
+        .map(|c| match c {
+            '۰' | '٠' => '0',
+            '۱' | '١' => '1',
+            '۲' | '٢' => '2',
+            '۳' | '٣' => '3',
+            '۴' | '٤' => '4',
+            '۵' | '٥' => '5',
+            '۶' | '٦' => '6',
+            '۷' | '٧' => '7',
+            '۸' | '٨' => '8',
+            '۹' | '٩' => '9',
+            _ => c,
+        })
+        .collect()
 }
 
 fn slugify(input: &str) -> String {

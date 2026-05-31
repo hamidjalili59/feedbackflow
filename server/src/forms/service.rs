@@ -138,25 +138,27 @@ pub async fn get_form(
     id: Uuid,
 ) -> Result<FormDetailDto, AppError> {
     let detail = load_form_detail(state, id).await?;
-    let assignment_can_see = crate::audience::service::user_matches_form_assignment(state, id, auth, false)
-        .await
-        .unwrap_or(false);
-    let assignment_can_answer = crate::audience::service::user_matches_form_assignment(state, id, auth, true)
-        .await
-        .unwrap_or(false);
+    let assignment_can_see =
+        crate::audience::service::user_matches_form_assignment(state, id, auth, false)
+            .await
+            .unwrap_or(false);
+    let assignment_can_answer =
+        crate::audience::service::user_matches_form_assignment(state, id, auth, true)
+            .await
+            .unwrap_or(false);
     let can_see = visibility::can_see_form(
         detail.status,
         detail.creator_id,
         detail.organization_id,
         &detail.visibility,
         Some(auth),
-    ) || assignment_can_see || assignment_can_answer;
+    ) || assignment_can_see
+        || assignment_can_answer;
     if !can_see {
         return Err(AppError::forbidden("You cannot view this form"));
     }
     Ok(detail)
 }
-
 
 pub async fn answer_access(
     state: &AppState,
@@ -165,21 +167,25 @@ pub async fn answer_access(
 ) -> Result<FormAnswerAccessDto, AppError> {
     let detail = load_form_detail(state, id).await?;
     let attrs = attrs_for_form(state, id).await?;
-    let can_edit_workspace = engine::can_rbac(auth.role, PermissionAction::Update, ResourceType::Form)
-        && engine::can_abac(auth, PermissionAction::Update, ResourceType::Form, &attrs);
-    let assignment_can_see = crate::audience::service::user_matches_form_assignment(state, id, auth, false)
-        .await
-        .unwrap_or(false);
-    let assignment_can_answer = crate::audience::service::user_matches_form_assignment(state, id, auth, true)
-        .await
-        .unwrap_or(false);
+    let can_edit_workspace =
+        engine::can_rbac(auth.role, PermissionAction::Update, ResourceType::Form)
+            && engine::can_abac(auth, PermissionAction::Update, ResourceType::Form, &attrs);
+    let assignment_can_see =
+        crate::audience::service::user_matches_form_assignment(state, id, auth, false)
+            .await
+            .unwrap_or(false);
+    let assignment_can_answer =
+        crate::audience::service::user_matches_form_assignment(state, id, auth, true)
+            .await
+            .unwrap_or(false);
     let can_view = visibility::can_see_form(
         detail.status,
         detail.creator_id,
         detail.organization_id,
         &detail.visibility,
         Some(auth),
-    ) || assignment_can_see || assignment_can_answer;
+    ) || assignment_can_see
+        || assignment_can_answer;
     if !can_view {
         return Ok(FormAnswerAccessDto {
             allowed: false,
@@ -261,7 +267,11 @@ pub async fn answer_access(
         } else {
             Some("این فرم برای پاسخ‌دهی به حساب شما تخصیص داده نشده است.".to_owned())
         },
-        reason_code: if allowed { None } else { Some("cannot_answer".to_owned()) },
+        reason_code: if allowed {
+            None
+        } else {
+            Some("cannot_answer".to_owned())
+        },
     })
 }
 
@@ -273,36 +283,24 @@ async fn row_visible_to_user(
     let form_id: Uuid = row.try_get("id")?;
     let creator_id: Uuid = row.try_get("creator_id")?;
     let form_org_id: Uuid = row.try_get("organization_id")?;
-    let status: FormStatus = enum_from_str(&row.try_get::<String, _>("status")?)
-        .unwrap_or(FormStatus::Draft);
+    let status: FormStatus =
+        enum_from_str(&row.try_get::<String, _>("status")?).unwrap_or(FormStatus::Draft);
     let visibility_value: Value = row.try_get("visibility").unwrap_or_else(|_| json!({}));
-    let visibility_dto: FormVisibilityDto = serde_json::from_value(visibility_value).unwrap_or_default();
-    let visible_by_json = visibility::can_see_form(
-        status,
-        creator_id,
-        form_org_id,
-        &visibility_dto,
-        Some(auth),
-    );
+    let visibility_dto: FormVisibilityDto =
+        serde_json::from_value(visibility_value).unwrap_or_default();
+    let visible_by_json =
+        visibility::can_see_form(status, creator_id, form_org_id, &visibility_dto, Some(auth));
     if visible_by_json {
         return Ok(true);
     }
-    let visible_by_assignment = crate::audience::service::user_matches_form_assignment(
-        state,
-        form_id,
-        auth,
-        false,
-    )
-    .await
-    .unwrap_or(false);
-    let answer_by_assignment = crate::audience::service::user_matches_form_assignment(
-        state,
-        form_id,
-        auth,
-        true,
-    )
-    .await
-    .unwrap_or(false);
+    let visible_by_assignment =
+        crate::audience::service::user_matches_form_assignment(state, form_id, auth, false)
+            .await
+            .unwrap_or(false);
+    let answer_by_assignment =
+        crate::audience::service::user_matches_form_assignment(state, form_id, auth, true)
+            .await
+            .unwrap_or(false);
     Ok(visible_by_assignment || answer_by_assignment)
 }
 
@@ -1009,8 +1007,10 @@ pub async fn dashboard_analytics(
     })
 }
 
-
-async fn field_analytics(state: &AppState, form_id: Uuid) -> Result<Vec<FieldAnalyticsDto>, AppError> {
+async fn field_analytics(
+    state: &AppState,
+    form_id: Uuid,
+) -> Result<Vec<FieldAnalyticsDto>, AppError> {
     let fields = sqlx::query(
         "select id, label, field_type from form_fields where form_id=$1 and deleted_at is null order by order_index asc",
     )
@@ -1048,9 +1048,8 @@ fn summarize_field_values(field_type: &str, values: &[Value]) -> Value {
         "number" | "decimal" | "rating_stars" | "numeric_rating" | "slider" | "nps" => {
             numeric_summary(values)
         }
-        "single_choice" | "dropdown" | "yes_no" | "boolean_switch" | "likert_scale" | "emoji_reaction" => {
-            categorical_summary(values, false)
-        }
+        "single_choice" | "dropdown" | "yes_no" | "boolean_switch" | "likert_scale"
+        | "emoji_reaction" => categorical_summary(values, false),
         "multiple_choice" | "ranking" | "matrix_single_choice" | "matrix_multiple_choice" => {
             categorical_summary(values, true)
         }
@@ -1106,12 +1105,14 @@ fn categorical_summary(values: &[Value], explode_arrays: bool) -> Value {
     let total: i64 = counts.values().sum();
     let buckets = counts
         .into_iter()
-        .map(|(key, count)| json!({
-            "key": key,
-            "label": key,
-            "count": count,
-            "percentage": if total > 0 { (count as f64 / total as f64) * 100.0 } else { 0.0 }
-        }))
+        .map(|(key, count)| {
+            json!({
+                "key": key,
+                "label": key,
+                "count": count,
+                "percentage": if total > 0 { (count as f64 / total as f64) * 100.0 } else { 0.0 }
+            })
+        })
         .collect::<Vec<_>>();
     json!({"type":"categorical","total":total,"buckets":buckets})
 }
@@ -1119,7 +1120,14 @@ fn categorical_summary(values: &[Value], explode_arrays: bool) -> Value {
 fn text_summary(values: &[Value]) -> Value {
     let texts = values
         .iter()
-        .filter_map(|value| value.as_str().map(str::to_owned).or_else(|| value.get("text").and_then(|v| v.as_str()).map(str::to_owned)))
+        .filter_map(|value| {
+            value.as_str().map(str::to_owned).or_else(|| {
+                value
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_owned)
+            })
+        })
         .collect::<Vec<_>>();
     let total_chars: usize = texts.iter().map(|s| s.chars().count()).sum();
     json!({
@@ -1168,7 +1176,11 @@ fn json_number(value: &Value) -> Option<f64> {
             .find_map(|key| map.get(*key).and_then(json_number)),
         Value::Array(items) => {
             let nums = items.iter().filter_map(json_number).collect::<Vec<_>>();
-            if nums.is_empty() { None } else { Some(nums.iter().sum::<f64>() / nums.len() as f64) }
+            if nums.is_empty() {
+                None
+            } else {
+                Some(nums.iter().sum::<f64>() / nums.len() as f64)
+            }
         }
         Value::Null => None,
     }
@@ -1183,7 +1195,11 @@ fn label_for_json(value: &Value) -> String {
             .get("label")
             .or_else(|| map.get("title"))
             .or_else(|| map.get("value"))
-            .and_then(|v| v.as_str().map(str::to_owned).or_else(|| v.as_i64().map(|n| n.to_string())))
+            .and_then(|v| {
+                v.as_str()
+                    .map(str::to_owned)
+                    .or_else(|| v.as_i64().map(|n| n.to_string()))
+            })
             .unwrap_or_else(|| value.to_string()),
         Value::Array(_) | Value::Null => value.to_string(),
     }

@@ -11,7 +11,10 @@ class PhoneNumberNormalizer {
   /// - 989315245654 -> +989315245654
   /// - 09315245654 -> +989315245654 (default Iran)
   /// - 9315245654 -> +989315245654 (default Iran mobile)
-  static String normalize(String input, {String defaultDialCode = defaultCountryDialCode}) {
+  static String normalize(
+    String input, {
+    String defaultDialCode = defaultCountryDialCode,
+  }) {
     var value = _toEnglishDigits(input).trim();
     if (value.isEmpty) return value;
 

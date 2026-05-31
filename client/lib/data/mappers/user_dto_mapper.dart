@@ -5,22 +5,22 @@ class UserDtoMapper {
   const UserDtoMapper._();
 
   static UserEntity detailToDomain(UserDetailDto dto) => UserEntity(
-        id: dto.id,
-        organizationId: dto.organizationId,
-        phone: dto.phone,
-        email: dto.email,
-        displayName: dto.displayName,
-        role: dto.primaryRole.toJson(),
-        status: dto.status,
-      );
+    id: dto.id,
+    organizationId: dto.organizationId,
+    phone: dto.phone,
+    email: dto.email,
+    displayName: dto.displayName,
+    role: dto.primaryRole.toJson(),
+    status: dto.status,
+  );
 
   static UserEntity summaryToDomain(UserSummaryDto dto) => UserEntity(
-        id: dto.id,
-        organizationId: dto.organizationId,
-        phone: dto.phone,
-        email: dto.email,
-        displayName: dto.displayName,
-        role: dto.primaryRole.toJson(),
-        status: dto.status,
-      );
+    id: dto.id,
+    organizationId: dto.organizationId,
+    phone: dto.phone,
+    email: dto.email,
+    displayName: dto.displayName,
+    role: dto.primaryRole.toJson(),
+    status: dto.status,
+  );
 }

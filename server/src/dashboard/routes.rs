@@ -1,10 +1,6 @@
 use crate::{
-    api_types::dashboard::*,
-    app_state::AppState,
-    auth::AuthUser,
-    dashboard::service,
-    error::AppError,
-    response,
+    api_types::dashboard::*, app_state::AppState, auth::AuthUser, dashboard::service,
+    error::AppError, response,
 };
 use axum::{
     extract::{Query, State},
@@ -36,7 +32,9 @@ async fn get_children(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::children_for_parent(&state, &auth).await?))
+    Ok(response::ok(
+        service::children_for_parent(&state, &auth).await?,
+    ))
 }
 
 async fn get_my_surveys(
@@ -52,7 +50,9 @@ async fn get_survey_calendar(
     auth: AuthUser,
     Query(q): Query<CalendarQuery>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::survey_calendar(&state, &auth, q).await?))
+    Ok(response::ok(
+        service::survey_calendar(&state, &auth, q).await?,
+    ))
 }
 
 async fn get_timeseries(

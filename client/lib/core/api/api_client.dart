@@ -14,7 +14,10 @@ class AuthHeaderInterceptor extends QueuedInterceptor {
   final TokenStorage _tokenStorage;
 
   @override
-  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     if (options.extra['skipAuth'] == true) {
       handler.next(options);
       return;

@@ -45,16 +45,16 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
         title: Text(context.l10n.t('forms')),
         primaryAction: canCreate
             ? compact
-                ? IconButton.filledTonal(
-                    tooltip: context.l10n.t('newForm'),
-                    onPressed: () => context.push('/forms/new'),
-                    icon: const Icon(Icons.add_rounded),
-                  )
-                : FilledButton.icon(
-                    onPressed: () => context.push('/forms/new'),
-                    icon: const Icon(Icons.add_rounded),
-                    label: Text(context.l10n.t('newForm')),
-                  )
+                  ? IconButton.filledTonal(
+                      tooltip: context.l10n.t('newForm'),
+                      onPressed: () => context.push('/forms/new'),
+                      icon: const Icon(Icons.add_rounded),
+                    )
+                  : FilledButton.icon(
+                      onPressed: () => context.push('/forms/new'),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(context.l10n.t('newForm')),
+                    )
             : null,
       ),
       floatingActionButton: compact && canCreate
@@ -66,24 +66,23 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
           : null,
       body: formsAsync.when(
         loading: () => const _FormsListSkeleton(),
-        error:
-            (error, stackTrace) => ErrorPanel(
-              error: error,
-              titleOverride: context.l10n.t('couldNotLoadForms'),
-              onRetry:
-                  () => ref.read(formsControllerProvider.notifier).refresh(),
-              onSignIn: () => context.go('/login'),
-            ),
+        error: (error, stackTrace) => ErrorPanel(
+          error: error,
+          titleOverride: context.l10n.t('couldNotLoadForms'),
+          onRetry: () => ref.read(formsControllerProvider.notifier).refresh(),
+          onSignIn: () => context.go('/login'),
+        ),
         data: (response) {
           final forms = response.data ?? const <FormSummaryDto>[];
           final pagination = response.meta?.pagination;
           return RefreshIndicator(
-            onRefresh:
-                () => ref.read(formsControllerProvider.notifier).refresh(),
+            onRefresh: () =>
+                ref.read(formsControllerProvider.notifier).refresh(),
             child: Center(
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
+                constraints: const BoxConstraints(
+                  maxWidth: AppBreakpoints.contentMax,
+                ),
                 child: ListView(
                   padding: EdgeInsets.fromLTRB(
                     AppSpacing.md,
@@ -118,8 +117,7 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
                     else
                       for (final form in forms)
                         Padding(
-                          padding:
-                              const EdgeInsets.only(bottom: AppSpacing.sm),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: _FormCard(
                             form: form,
                             onTap: () => context.push('/forms/${form.id}'),
@@ -207,12 +205,9 @@ class _FormsFilterBarState extends State<_FormsFilterBar> {
                           ? context.l10n.t('hideFilters')
                           : context.l10n.t('showFilters'),
                       icon: Icon(
-                        _expanded
-                            ? Icons.tune_rounded
-                            : Icons.tune_outlined,
+                        _expanded ? Icons.tune_rounded : Icons.tune_outlined,
                       ),
-                      onPressed: () =>
-                          setState(() => _expanded = !_expanded),
+                      onPressed: () => setState(() => _expanded = !_expanded),
                     )
                   : null,
             ),
@@ -304,9 +299,7 @@ class _WideFilters extends StatelessWidget {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: sortBy,
-                decoration: InputDecoration(
-                  labelText: context.l10n.t('sort'),
-                ),
+                decoration: InputDecoration(labelText: context.l10n.t('sort')),
                 items: _sortItems(context),
                 onChanged: (value) {
                   if (value != null) onSortByChanged(value);
@@ -328,8 +321,7 @@ class _WideFilters extends StatelessWidget {
                 ),
               ],
               selected: {sortOrder},
-              onSelectionChanged: (values) =>
-                  onSortOrderChanged(values.first),
+              onSelectionChanged: (values) => onSortOrderChanged(values.first),
             ),
             const SizedBox(width: AppSpacing.sm),
             FilledButton.icon(
@@ -379,15 +371,11 @@ class _CompactFilters extends StatelessWidget {
           onSubmitted: (_) => onApply(),
         ),
         const SizedBox(height: AppSpacing.sm),
-        _TagSuggestionFilter(
-          selectedTag: selectedTag,
-          onChanged: onTagChanged,
-        ),
+        _TagSuggestionFilter(selectedTag: selectedTag, onChanged: onTagChanged),
         const SizedBox(height: AppSpacing.sm),
         DropdownButtonFormField<String>(
           initialValue: sortBy,
-          decoration:
-              InputDecoration(labelText: context.l10n.t('sort')),
+          decoration: InputDecoration(labelText: context.l10n.t('sort')),
           items: _sortItems(context),
           onChanged: (value) {
             if (value != null) onSortByChanged(value);
@@ -431,10 +419,7 @@ List<DropdownMenuItem<String>> _sortItems(BuildContext context) {
       value: 'created_at',
       child: Text(context.l10n.t('created')),
     ),
-    DropdownMenuItem(
-      value: 'title',
-      child: Text(context.l10n.t('title')),
-    ),
+    DropdownMenuItem(value: 'title', child: Text(context.l10n.t('title'))),
     DropdownMenuItem(
       value: 'category',
       child: Text(context.l10n.t('category')),
@@ -490,10 +475,9 @@ class _PaginationBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            onPressed:
-                pagination.hasPrevious
-                    ? () => onPage(pagination.page - 1)
-                    : null,
+            onPressed: pagination.hasPrevious
+                ? () => onPage(pagination.page - 1)
+                : null,
             icon: const Icon(Icons.chevron_right_rounded),
           ),
           Padding(
@@ -503,8 +487,9 @@ class _PaginationBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed:
-                pagination.hasNext ? () => onPage(pagination.page + 1) : null,
+            onPressed: pagination.hasNext
+                ? () => onPage(pagination.page + 1)
+                : null,
             icon: const Icon(Icons.chevron_left_rounded),
           ),
         ],
@@ -737,8 +722,7 @@ class _FormsListSkeleton extends StatelessWidget {
     final compact = context.isCompactWidth;
     return Center(
       child: ConstrainedBox(
-        constraints:
-            const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
+        constraints: const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             AppSpacing.md,
@@ -769,4 +753,3 @@ bool _canCreateForms(AuthSession? session) {
       role == UserRole.ceo ||
       role == UserRole.superAdmin;
 }
-

@@ -23,21 +23,27 @@ class CreateFormScreen extends ConsumerWidget {
     ref.listen<CreateFormState>(createFormControllerProvider, (previous, next) {
       final previousCreatedId = previous?.createdForm?.id;
       final nextCreated = next.createdForm;
-      if (nextCreated != null && !next.partialCreate && previousCreatedId != nextCreated.id) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.t('formCreated'))),
-        );
+      if (nextCreated != null &&
+          !next.partialCreate &&
+          previousCreatedId != nextCreated.id) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.t('formCreated'))));
         context.go('/forms/${nextCreated.id}/builder');
       }
-      if (next.errorMessage != null && previous?.errorMessage != next.errorMessage) {
+      if (next.errorMessage != null &&
+          previous?.errorMessage != next.errorMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_localizedCreateFormError(context, next.errorMessage!)),
+            content: Text(
+              _localizedCreateFormError(context, next.errorMessage!),
+            ),
             action: next.createdForm == null
                 ? null
                 : SnackBarAction(
                     label: context.l10n.t('openDraft'),
-                    onPressed: () => context.go('/forms/${next.createdForm!.id}/builder'),
+                    onPressed: () =>
+                        context.go('/forms/${next.createdForm!.id}/builder'),
                   ),
           ),
         );
@@ -53,7 +59,11 @@ class CreateFormScreen extends ConsumerWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.check_rounded),
-        label: Text(state.isSubmitting ? context.l10n.t('creating') : context.l10n.t('createForm')),
+        label: Text(
+          state.isSubmitting
+              ? context.l10n.t('creating')
+              : context.l10n.t('createForm'),
+        ),
       ),
       body: CustomScrollView(
         slivers: [
@@ -92,7 +102,8 @@ class CreateFormScreen extends ConsumerWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                    maxWidth: AppBreakpoints.contentMax),
+                  maxWidth: AppBreakpoints.contentMax,
+                ),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     compact ? AppSpacing.md : AppSpacing.lg,
@@ -103,8 +114,14 @@ class CreateFormScreen extends ConsumerWidget {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final wide = constraints.maxWidth >= 960;
-                      final basics = _BasicsPanel(state: state, enabled: !state.isSubmitting);
-                      final fields = _FieldsPanel(state: state, enabled: !state.isSubmitting);
+                      final basics = _BasicsPanel(
+                        state: state,
+                        enabled: !state.isSubmitting,
+                      );
+                      final fields = _FieldsPanel(
+                        state: state,
+                        enabled: !state.isSubmitting,
+                      );
                       return wide
                           ? Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +149,10 @@ class CreateFormScreen extends ConsumerWidget {
     );
   }
 
-  static Future<void> _showFieldPicker(BuildContext context, WidgetRef ref) async {
+  static Future<void> _showFieldPicker(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final selected = await showModalBottomSheet<FieldType>(
       context: context,
       showDragHandle: true,
@@ -249,25 +269,39 @@ class _BasicsPanel extends ConsumerWidget {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: state.allowAnonymousAnswers,
-                onChanged: enabled ? (value) => controller.changeSettings(allowAnonymousAnswers: value) : null,
+                onChanged: enabled
+                    ? (value) => controller.changeSettings(
+                        allowAnonymousAnswers: value,
+                      )
+                    : null,
                 title: Text(context.l10n.t('allowAnonymousAnswers')),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: state.guestsCanAnswer,
-                onChanged: enabled ? (value) => controller.changeSettings(guestsCanAnswer: value) : null,
+                onChanged: enabled
+                    ? (value) =>
+                          controller.changeSettings(guestsCanAnswer: value)
+                    : null,
                 title: Text(context.l10n.t('guestsCanAnswer')),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: state.oneSubmissionPerUser,
-                onChanged: enabled ? (value) => controller.changeSettings(oneSubmissionPerUser: value) : null,
+                onChanged: enabled
+                    ? (value) =>
+                          controller.changeSettings(oneSubmissionPerUser: value)
+                    : null,
                 title: Text(context.l10n.t('oneSubmissionPerUser')),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: state.answersEditableAfterSubmission,
-                onChanged: enabled ? (value) => controller.changeSettings(answersEditableAfterSubmission: value) : null,
+                onChanged: enabled
+                    ? (value) => controller.changeSettings(
+                        answersEditableAfterSubmission: value,
+                      )
+                    : null,
                 title: Text(context.l10n.t('answersEditableAfterSubmission')),
               ),
             ],
@@ -321,8 +355,7 @@ class _FieldsPanel extends ConsumerWidget {
                   field: field,
                   enabled: enabled,
                   isLast: isLast,
-                  formScoringEnabled:
-                      state.scoringMode != ScoringMode.none,
+                  formScoringEnabled: state.scoringMode != ScoringMode.none,
                   onChanged: controller.changeField,
                   onRemove: () => controller.removeField(field.draftId),
                 );
@@ -406,14 +439,12 @@ class _FieldDivider extends StatelessWidget {
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Container(
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest
-                    .withValues(alpha: 0.6),
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
                 border: Border.all(color: lineColor),
               ),
@@ -555,39 +586,40 @@ class _DraftFieldCard extends StatelessWidget {
                       .map((item) => item.type)
                       .toList(growable: false),
                   labelFor: (value) => context.l10n.fieldType(value.toJson()),
-                  onChanged:
-                      enabled ? (value) => onChanged(field.changeType(value)) : null,
+                  onChanged: enabled
+                      ? (value) => onChanged(field.changeType(value))
+                      : null,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
                   key: ValueKey('label-${field.draftId}-${field.type}'),
                   initialValue: field.label,
                   enabled: enabled,
-                  decoration:
-                      InputDecoration(labelText: context.l10n.t('label')),
-                  onChanged: (value) =>
-                      onChanged(field.copyWith(label: value)),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('label'),
+                  ),
+                  onChanged: (value) => onChanged(field.copyWith(label: value)),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
-                  key: ValueKey(
-                      'description-${field.draftId}-${field.type}'),
+                  key: ValueKey('description-${field.draftId}-${field.type}'),
                   initialValue: field.description,
                   enabled: enabled,
                   decoration: InputDecoration(
-                      labelText: context.l10n.t('descriptionStaticText')),
+                    labelText: context.l10n.t('descriptionStaticText'),
+                  ),
                   onChanged: (value) =>
                       onChanged(field.copyWith(description: value)),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
-                  key: ValueKey(
-                      'placeholder-${field.draftId}-${field.type}'),
+                  key: ValueKey('placeholder-${field.draftId}-${field.type}'),
                   initialValue: field.placeholder,
-                  enabled: enabled &&
-                      !field_ui.fieldTypeIsInformational(field.type),
+                  enabled:
+                      enabled && !field_ui.fieldTypeIsInformational(field.type),
                   decoration: InputDecoration(
-                      labelText: context.l10n.t('placeholder')),
+                    labelText: context.l10n.t('placeholder'),
+                  ),
                   onChanged: (value) =>
                       onChanged(field.copyWith(placeholder: value)),
                 ),
@@ -595,10 +627,9 @@ class _DraftFieldCard extends StatelessWidget {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: field.isRequired,
-                  onChanged: enabled &&
-                          !field_ui.fieldTypeIsInformational(field.type)
-                      ? (value) =>
-                          onChanged(field.copyWith(isRequired: value))
+                  onChanged:
+                      enabled && !field_ui.fieldTypeIsInformational(field.type)
+                      ? (value) => onChanged(field.copyWith(isRequired: value))
                       : null,
                   title: Text(context.l10n.t('required')),
                 ),
@@ -669,7 +700,7 @@ class _DraftFieldCard extends StatelessWidget {
                     value: field.scoringEnabled && formScoringEnabled,
                     onChanged: enabled && formScoringEnabled
                         ? (value) =>
-                            onChanged(field.copyWith(scoringEnabled: value))
+                              onChanged(field.copyWith(scoringEnabled: value))
                         : null,
                     title: Text(context.l10n.t('enableFieldScoring')),
                     subtitle: formScoringEnabled
@@ -684,8 +715,8 @@ class _DraftFieldCard extends StatelessWidget {
                             label: context.l10n.t('maxScore'),
                             value: field.maxScore,
                             enabled: enabled,
-                            onChanged: (value) => onChanged(
-                                field.copyWith(maxScore: value ?? 1)),
+                            onChanged: (value) =>
+                                onChanged(field.copyWith(maxScore: value ?? 1)),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -694,8 +725,8 @@ class _DraftFieldCard extends StatelessWidget {
                             label: context.l10n.t('weight'),
                             value: field.weight,
                             enabled: enabled,
-                            onChanged: (value) => onChanged(
-                                field.copyWith(weight: value ?? 1)),
+                            onChanged: (value) =>
+                                onChanged(field.copyWith(weight: value ?? 1)),
                           ),
                         ),
                       ],
@@ -711,7 +742,11 @@ class _DraftFieldCard extends StatelessWidget {
 }
 
 class _TagInput extends StatefulWidget {
-  const _TagInput({required this.enabled, required this.tags, required this.onChanged});
+  const _TagInput({
+    required this.enabled,
+    required this.tags,
+    required this.onChanged,
+  });
 
   final bool enabled;
   final List<String> tags;
@@ -735,7 +770,9 @@ class _TagInputState extends State<_TagInput> {
   Widget build(BuildContext context) {
     return Consumer(
       builder: (context, ref, child) {
-        final future = ref.watch(formsRepositoryProvider).listFormTags(search: _query.trim().isEmpty ? null : _query.trim());
+        final future = ref
+            .watch(formsRepositoryProvider)
+            .listFormTags(search: _query.trim().isEmpty ? null : _query.trim());
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -813,7 +850,9 @@ class _TagInputState extends State<_TagInput> {
   }
 
   void _remove(String value) {
-    widget.onChanged(widget.tags.where((tag) => tag != value).toList(growable: false));
+    widget.onChanged(
+      widget.tags.where((tag) => tag != value).toList(growable: false),
+    );
   }
 }
 
@@ -830,8 +869,10 @@ class _HeroCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.auto_awesome_rounded,
-                color: theme.colorScheme.onPrimaryContainer),
+            Icon(
+              Icons.auto_awesome_rounded,
+              color: theme.colorScheme.onPrimaryContainer,
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(
               context.l10n.t('modernFormBuilder'),
@@ -855,7 +896,12 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.child, this.trailing});
+  const _SectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.trailing,
+  });
 
   final String title;
   final String subtitle;
@@ -880,8 +926,9 @@ class _SectionCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w900),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
@@ -906,7 +953,12 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _TemplateTile extends StatelessWidget {
-  const _TemplateTile({required this.template, required this.selected, required this.enabled, required this.onTap});
+  const _TemplateTile({
+    required this.template,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
 
   final FormTemplatePreset template;
   final bool selected;
@@ -931,8 +983,9 @@ class _TemplateTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? theme.colorScheme.secondaryContainer
-                : theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.45),
+                : theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.45,
+                  ),
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(
               color: selected
@@ -951,8 +1004,9 @@ class _TemplateTile extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 _templateName(context, template.type),
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
@@ -983,13 +1037,17 @@ class _EmptyFields extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(Icons.add_task_rounded,
-              size: 48, color: theme.colorScheme.primary),
+          Icon(
+            Icons.add_task_rounded,
+            size: 48,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             context.l10n.t('noFieldsYet'),
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: AppSpacing.xxs),
           Text(
@@ -1020,18 +1078,28 @@ class _FieldPickerSheet extends StatelessWidget {
           controller: controller,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text(context.l10n.t('chooseField'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+            Text(
+              context.l10n.t('chooseField'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 16),
             for (final category in field_ui.FieldTypeCategory.values) ...[
               ListTile(
                 leading: Icon(_categoryIcon(category)),
-                title: Text(category.localizedLabel(context), style: const TextStyle(fontWeight: FontWeight.w800)),
+                title: Text(
+                  category.localizedLabel(context),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  for (final info in field_ui.fieldTypeCatalog.where((item) => item.category == category))
+                  for (final info in field_ui.fieldTypeCatalog.where(
+                    (item) => item.category == category,
+                  ))
                     ActionChip(
                       avatar: Icon(info.icon, size: 18),
                       label: Text(info.localizedLabel(context)),
@@ -1049,7 +1117,13 @@ class _FieldPickerSheet extends StatelessWidget {
 }
 
 class _EnumDropdown<T> extends StatelessWidget {
-  const _EnumDropdown({required this.label, required this.value, required this.values, required this.labelFor, required this.onChanged});
+  const _EnumDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.labelFor,
+    required this.onChanged,
+  });
 
   final String label;
   final T value;
@@ -1063,17 +1137,25 @@ class _EnumDropdown<T> extends StatelessWidget {
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: [
-        for (final item in values) DropdownMenuItem<T>(value: item, child: Text(labelFor(item))),
+        for (final item in values)
+          DropdownMenuItem<T>(value: item, child: Text(labelFor(item))),
       ],
-      onChanged: onChanged == null ? null : (value) {
-        if (value != null) onChanged!(value);
-      },
+      onChanged: onChanged == null
+          ? null
+          : (value) {
+              if (value != null) onChanged!(value);
+            },
     );
   }
 }
 
 class _NumberField extends StatelessWidget {
-  const _NumberField({required this.label, required this.value, required this.enabled, required this.onChanged});
+  const _NumberField({
+    required this.label,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   final String label;
   final double? value;
@@ -1087,28 +1169,38 @@ class _NumberField extends StatelessWidget {
       enabled: enabled,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(labelText: label),
-      onChanged: (value) => onChanged(value.trim().isEmpty ? null : double.tryParse(value)),
+      onChanged: (value) =>
+          onChanged(value.trim().isEmpty ? null : double.tryParse(value)),
     );
   }
 }
 
+String _templateName(
+  BuildContext context,
+  FormTemplateType type,
+) => switch (type) {
+  FormTemplateType.blank => context.l10n.t('template.blank'),
+  FormTemplateType.feedbackSurvey => context.l10n.t('template.feedbackSurvey'),
+  FormTemplateType.quiz => context.l10n.t('template.quiz'),
+  FormTemplateType.registration => context.l10n.t('template.registration'),
+  FormTemplateType.consent => context.l10n.t('template.consent'),
+  FormTemplateType.riskAssessment => context.l10n.t('template.riskAssessment'),
+};
 
-String _templateName(BuildContext context, FormTemplateType type) => switch (type) {
-      FormTemplateType.blank => context.l10n.t('template.blank'),
-      FormTemplateType.feedbackSurvey => context.l10n.t('template.feedbackSurvey'),
-      FormTemplateType.quiz => context.l10n.t('template.quiz'),
-      FormTemplateType.registration => context.l10n.t('template.registration'),
-      FormTemplateType.consent => context.l10n.t('template.consent'),
-      FormTemplateType.riskAssessment => context.l10n.t('template.riskAssessment'),
-    };
-
-String _templateSubtitle(BuildContext context, FormTemplateType type) => switch (type) {
+String _templateSubtitle(BuildContext context, FormTemplateType type) =>
+    switch (type) {
       FormTemplateType.blank => context.l10n.t('template.blank.subtitle'),
-      FormTemplateType.feedbackSurvey => context.l10n.t('template.feedbackSurvey.subtitle'),
+      FormTemplateType.feedbackSurvey => context.l10n.t(
+        'template.feedbackSurvey.subtitle',
+      ),
       FormTemplateType.quiz => context.l10n.t('template.quiz.subtitle'),
-      FormTemplateType.registration => context.l10n.t('template.registration.subtitle'),
+      FormTemplateType.registration => context.l10n.t(
+        'template.registration.subtitle',
+      ),
       FormTemplateType.consent => context.l10n.t('template.consent.subtitle'),
-      FormTemplateType.riskAssessment => context.l10n.t('template.riskAssessment.subtitle'),
+      FormTemplateType.riskAssessment => context.l10n.t(
+        'template.riskAssessment.subtitle',
+      ),
     };
 
 IconData _categoryIcon(field_ui.FieldTypeCategory category) {
@@ -1124,13 +1216,19 @@ IconData _categoryIcon(field_ui.FieldTypeCategory category) {
 String _localizedCreateFormError(BuildContext context, String message) {
   final trimmed = message.trim();
   final lower = trimmed.toLowerCase();
-  if (lower.contains('permission') || lower.contains('forbidden') || lower.contains('access')) {
+  if (lower.contains('permission') ||
+      lower.contains('forbidden') ||
+      lower.contains('access')) {
     return context.l10n.t('permissionMessage');
   }
-  if (lower.contains('validation') || lower.contains('invalid') || lower.contains('required')) {
+  if (lower.contains('validation') ||
+      lower.contains('invalid') ||
+      lower.contains('required')) {
     return context.l10n.t('fieldRequired');
   }
-  if (lower.contains('token') || lower.contains('unauthorized') || lower.contains('expired')) {
+  if (lower.contains('token') ||
+      lower.contains('unauthorized') ||
+      lower.contains('expired')) {
     return context.l10n.t('sessionExpiredMessage');
   }
   if (lower.contains('rate')) {

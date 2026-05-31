@@ -44,18 +44,18 @@ class FormDetailScreen extends ConsumerWidget {
         ],
       ),
       body: detailAsync.when(
-        loading:
-            () => LoadingPanel(message: context.l10n.t('loadingFormWorkspace')),
-        error:
-            (error, stackTrace) => ErrorPanel(
-              error: error,
-              onRetry: () => ref.invalidate(formDetailProvider(formId)),
-              onBack: () => context.go('/forms'),
-              onSignIn: () => context.go('/login'),
-            ),
+        loading: () =>
+            LoadingPanel(message: context.l10n.t('loadingFormWorkspace')),
+        error: (error, stackTrace) => ErrorPanel(
+          error: error,
+          onRetry: () => ref.invalidate(formDetailProvider(formId)),
+          onBack: () => context.go('/forms'),
+          onSignIn: () => context.go('/login'),
+        ),
         data: (form) {
           final session = authAsync.asData?.value;
-          final isCreator = session != null && form.creatorId == session.user.id;
+          final isCreator =
+              session != null && form.creatorId == session.user.id;
 
           // Creator always sees workspace from the forms list.
           if (isCreator) {
@@ -66,7 +66,8 @@ class FormDetailScreen extends ConsumerWidget {
           // explicitly navigated to a workspace section (e.g. /forms/:id/builder).
           // From the plain /forms/:id route (initialSection == builder by default),
           // they see the respondent answer flow for published forms.
-          final isManager = session != null &&
+          final isManager =
+              session != null &&
               (session.user.primaryRole == UserRole.superAdmin ||
                   session.user.primaryRole == UserRole.ceo ||
                   session.user.primaryRole == UserRole.admin ||
@@ -126,7 +127,9 @@ extension FormWorkspaceSectionX on FormWorkspaceSection {
     FormWorkspaceSection.results => 'results',
   };
 
-  String label(BuildContext context) => this == FormWorkspaceSection.assignments ? 'تخصیص' : context.l10n.t(labelKey);
+  String label(BuildContext context) => this == FormWorkspaceSection.assignments
+      ? 'تخصیص'
+      : context.l10n.t(labelKey);
 
   IconData get icon => switch (this) {
     FormWorkspaceSection.builder => Icons.construction_rounded,
@@ -180,15 +183,17 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 context.l10n.t('formUnavailable'),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 context.l10n.t('formUnavailableMessage'),
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
@@ -213,8 +218,9 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 context.l10n.t('responseSubmitted'),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(
@@ -230,7 +236,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
 
     final accessAsync = ref.watch(formAnswerAccessProvider(form.id));
     return accessAsync.when(
-      loading: () => const LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
+      loading: () => LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
       error: (error, stackTrace) => ErrorPanel(
         error: error,
         onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),
@@ -260,14 +266,20 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
     final missing = _firstMissingRequiredField(widget.form.fields);
     if (missing != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.l10n.t('answerRequiredField')} ${missing.label}')),
+        SnackBar(
+          content: Text(
+            '${context.l10n.t('answerRequiredField')} ${missing.label}',
+          ),
+        ),
       );
       return;
     }
     setState(() => _submitting = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(submissionsRepositoryProvider).createSubmission(
+      await ref
+          .read(submissionsRepositoryProvider)
+          .createSubmission(
             id: widget.form.id,
             request: CreateSubmissionRequest(
               answers: _answers.entries
@@ -310,7 +322,6 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
   }
 }
 
-
 class _AnswerAccessBlockedView extends StatelessWidget {
   const _AnswerAccessBlockedView({required this.form, required this.access});
 
@@ -336,11 +347,14 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                 Text(
                   'دسترسی پاسخ‌دهی ندارید',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  access.reason ?? 'این فرم برای پاسخ‌دهی به حساب شما تخصیص داده نشده است.',
+                  access.reason ??
+                      'این فرم برای پاسخ‌دهی به حساب شما تخصیص داده نشده است.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
@@ -366,7 +380,8 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                       ),
                     if (access.canEditWorkspace)
                       FilledButton.tonalIcon(
-                        onPressed: () => context.go('/forms/${form.id}/settings'),
+                        onPressed: () =>
+                            context.go('/forms/${form.id}/settings'),
                         icon: const Icon(Icons.tune_rounded),
                         label: const Text('مدیریت فرم'),
                       ),
@@ -493,8 +508,8 @@ class _WorkspaceNav extends StatelessWidget {
                   selected: selected == section,
                   avatar: Icon(section.icon, size: 18),
                   label: Text(section.label(context)),
-                  onSelected:
-                      (_) => context.go('/forms/$formId/${section.wire}'),
+                  onSelected: (_) =>
+                      context.go('/forms/$formId/${section.wire}'),
                 ),
               ),
           ],
@@ -517,10 +532,9 @@ class _ProgressChecklist extends StatelessWidget {
         label: context.l10n.t('addFields'),
         done: form.fields.isNotEmpty,
         target: FormWorkspaceSection.builder,
-        message:
-            form.fields.isEmpty
-                ? context.l10n.t('addFieldsBeforePublish')
-                : '${context.l10n.countFields(form.fields.length)} ${context.l10n.t('fieldsReady')}',
+        message: form.fields.isEmpty
+            ? context.l10n.t('addFieldsBeforePublish')
+            : '${context.l10n.countFields(form.fields.length)} ${context.l10n.t('fieldsReady')}',
       ),
       _ChecklistItem(
         label: context.l10n.t('preview'),
@@ -536,10 +550,9 @@ class _ProgressChecklist extends StatelessWidget {
         message: context.l10n.enumLabel(form.visibilityMode.toJson()),
       ),
       _ChecklistItem(
-        label:
-            _isPublished(form)
-                ? context.l10n.t('enum.published')
-                : context.l10n.t('publishOrSubmit'),
+        label: _isPublished(form)
+            ? context.l10n.t('enum.published')
+            : context.l10n.t('publishOrSubmit'),
         done: _isPublished(form),
         target: FormWorkspaceSection.publish,
         message: _publishMessage(context, form),
@@ -610,15 +623,13 @@ class _ChecklistChip extends StatelessWidget {
         width: 250,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color:
-              selected
-                  ? scheme.primaryContainer
-                  : scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+          color: selected
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerHighest.withValues(alpha: 0.36),
           border: Border.all(
-            color:
-                item.done
-                    ? scheme.primary.withValues(alpha: 0.48)
-                    : scheme.outlineVariant,
+            color: item.done
+                ? scheme.primary.withValues(alpha: 0.48)
+                : scheme.outlineVariant,
           ),
           borderRadius: BorderRadius.circular(22),
         ),
@@ -713,9 +724,8 @@ class _BuilderSection extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: form.fields.length,
-              onReorder:
-                  (oldIndex, newIndex) =>
-                      _reorderField(context, ref, oldIndex, newIndex),
+              onReorder: (oldIndex, newIndex) =>
+                  _reorderField(context, ref, oldIndex, newIndex),
               itemBuilder: (context, index) {
                 final field = form.fields[index];
                 return _EditableFieldTile(
@@ -893,11 +903,10 @@ class _EditableFieldTile extends ConsumerWidget {
   Future<void> _editField(BuildContext context, WidgetRef ref) async {
     final request = await showDialog<UpdateFormFieldRequest>(
       context: context,
-      builder:
-          (context) => _FieldEditDialog(
-            field: field,
-            formScoringEnabled: formScoringEnabled,
-          ),
+      builder: (context) => _FieldEditDialog(
+        field: field,
+        formScoringEnabled: formScoringEnabled,
+      ),
     );
     if (request == null) return;
     if (!context.mounted) return;
@@ -928,23 +937,22 @@ class _EditableFieldTile extends ConsumerWidget {
   Future<void> _deleteField(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(context.l10n.t('deleteField')),
-            content: Text(
-              '${context.l10n.t('deleteFieldQuestion')} ${field.label}',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(context.l10n.t('cancel')),
-              ),
-              FilledButton.tonal(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(context.l10n.t('delete')),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.t('deleteField')),
+        content: Text(
+          '${context.l10n.t('deleteFieldQuestion')} ${field.label}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.t('cancel')),
           ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.t('delete')),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
     if (!context.mounted) return;
@@ -1200,31 +1208,25 @@ class _FieldEditDialogState extends State<_FieldEditDialog> {
               context,
               UpdateFormFieldRequest(
                 label: label,
-                description:
-                    _descriptionController.text.trim().isEmpty
-                        ? null
-                        : _descriptionController.text.trim(),
-                placeholder:
-                    _placeholderController.text.trim().isEmpty
-                        ? null
-                        : _placeholderController.text.trim(),
+                description: _descriptionController.text.trim().isEmpty
+                    ? null
+                    : _descriptionController.text.trim(),
+                placeholder: _placeholderController.text.trim().isEmpty
+                    ? null
+                    : _placeholderController.text.trim(),
                 isRequired: _required,
                 config: _buildConfig(),
-                scoringConfig:
-                    _scoringEnabled && widget.formScoringEnabled
-                        ? FieldScoringConfigDto(
-                          enabled: true,
-                          maxScore:
-                              double.tryParse(
-                                _maxScoreController.text.trim(),
-                              ) ??
-                              1,
-                          weight:
-                              double.tryParse(_weightController.text.trim()) ??
-                              1,
-                          optionScores: widget.field.scoringConfig.optionScores,
-                        )
-                        : null,
+                scoringConfig: _scoringEnabled && widget.formScoringEnabled
+                    ? FieldScoringConfigDto(
+                        enabled: true,
+                        maxScore:
+                            double.tryParse(_maxScoreController.text.trim()) ??
+                            1,
+                        weight:
+                            double.tryParse(_weightController.text.trim()) ?? 1,
+                        optionScores: widget.field.scoringConfig.optionScores,
+                      )
+                    : null,
               ),
             );
           },
@@ -1341,9 +1343,8 @@ class _PreviewSectionState extends State<_PreviewSection> {
                     index: index,
                     field: fields[index],
                     values: _values,
-                    onChanged:
-                        (value) =>
-                            setState(() => _values[fields[index].id] = value),
+                    onChanged: (value) =>
+                        setState(() => _values[fields[index].id] = value),
                   ),
                   if (index != fields.length - 1) AppSpacing.gapMd,
                 ],
@@ -1420,13 +1421,12 @@ class _SettingsSectionState extends State<_SettingsSection> {
                 message: context.l10n.t('settingsMessage'),
                 trailing: FilledButton.icon(
                   onPressed: _saving ? null : () => _save(ref),
-                  icon:
-                      _saving
-                          ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Icon(Icons.save_rounded),
+                  icon: _saving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_rounded),
                   label: Text(
                     _saving
                         ? context.l10n.t('saving')
@@ -1513,15 +1513,15 @@ class _SettingsSectionState extends State<_SettingsSection> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _oneSubmissionPerUser,
-                onChanged:
-                    (value) => setState(() => _oneSubmissionPerUser = value),
+                onChanged: (value) =>
+                    setState(() => _oneSubmissionPerUser = value),
                 title: Text(context.l10n.t('oneSubmissionPerUser')),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _editableAfterSubmission,
-                onChanged:
-                    (value) => setState(() => _editableAfterSubmission = value),
+                onChanged: (value) =>
+                    setState(() => _editableAfterSubmission = value),
                 title: Text(context.l10n.t('answersEditableAfterSubmission')),
               ),
               AppSpacing.gapMd,
@@ -1544,22 +1544,19 @@ class _SettingsSectionState extends State<_SettingsSection> {
             id: widget.form.id,
             request: UpdateFormRequest(
               title: _titleController.text.trim(),
-              description:
-                  _descriptionController.text.trim().isEmpty
-                      ? null
-                      : _descriptionController.text.trim(),
-              category:
-                  _categoryController.text.trim().isEmpty
-                      ? null
-                      : _categoryController.text.trim(),
+              description: _descriptionController.text.trim().isEmpty
+                  ? null
+                  : _descriptionController.text.trim(),
+              category: _categoryController.text.trim().isEmpty
+                  ? null
+                  : _categoryController.text.trim(),
               tags: _tagsController.text
                   .split(',')
                   .map(
-                    (tag) =>
-                        tag
-                            .trim()
-                            .replaceFirst(RegExp(r'^#+'), '')
-                            .toLowerCase(),
+                    (tag) => tag
+                        .trim()
+                        .replaceFirst(RegExp(r'^#+'), '')
+                        .toLowerCase(),
                   )
                   .where((tag) => tag.isNotEmpty)
                   .toSet()
@@ -1581,11 +1578,7 @@ class _SettingsSectionState extends State<_SettingsSection> {
     } catch (error) {
       if (context.mounted) {
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              FriendlyApiErrorMessage.from(error),
-            ),
-          ),
+          SnackBar(content: Text(FriendlyApiErrorMessage.from(error))),
         );
       }
     } finally {
@@ -1602,18 +1595,16 @@ class _SettingsSectionState extends State<_SettingsSection> {
       endAt: widget.form.settings.endAt,
       maxSubmissions: widget.form.settings.maxSubmissions,
       submissionCooldownSeconds: widget.form.settings.submissionCooldownSeconds,
-      submissionMode:
-          _allowAnonymous
-              ? SubmissionMode.anonymousSubmission
-              : _editableAfterSubmission
-              ? SubmissionMode.editableSubmission
-              : _oneSubmissionPerUser
-              ? SubmissionMode.singleSubmission
-              : SubmissionMode.multipleSubmissions,
-      answerVisibility:
-          _allowAnonymous
-              ? AnswerVisibility.anonymous
-              : widget.form.settings.answerVisibility,
+      submissionMode: _allowAnonymous
+          ? SubmissionMode.anonymousSubmission
+          : _editableAfterSubmission
+          ? SubmissionMode.editableSubmission
+          : _oneSubmissionPerUser
+          ? SubmissionMode.singleSubmission
+          : SubmissionMode.multipleSubmissions,
+      answerVisibility: _allowAnonymous
+          ? AnswerVisibility.anonymous
+          : widget.form.settings.answerVisibility,
       guestsCanAnswer: _guestCanAnswer,
       metadata: widget.form.settings.metadata ?? const <String, Object?>{},
     );
@@ -1633,7 +1624,6 @@ class _SettingsSectionState extends State<_SettingsSection> {
     );
   }
 }
-
 
 class _AssignmentsSection extends ConsumerWidget {
   const _AssignmentsSection({required this.form});
@@ -1717,7 +1707,9 @@ class _AssignmentTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.36),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.56)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.56),
+        ),
       ),
       child: Row(
         children: [
@@ -1728,7 +1720,10 @@ class _AssignmentTile extends StatelessWidget {
               color: scheme.primaryContainer.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(_assignmentIcon(assignment), color: scheme.onPrimaryContainer),
+            child: Icon(
+              _assignmentIcon(assignment),
+              color: scheme.onPrimaryContainer,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1739,12 +1734,16 @@ class _AssignmentTile extends StatelessWidget {
                   assignment.label?.trim().isNotEmpty == true
                       ? assignment.label!.trim()
                       : _assignmentAudienceTitle(context, assignment),
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   _assignmentAudienceSubtitle(context, assignment),
-                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -1756,7 +1755,9 @@ class _AssignmentTile extends StatelessWidget {
               _TinyStatusChip(
                 label: 'مشاهده',
                 active: canSee,
-                icon: canSee ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                icon: canSee
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
               ),
               _TinyStatusChip(
                 label: 'پاسخ',
@@ -1800,9 +1801,9 @@ class _TinyStatusChip extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w900,
-                ),
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -1827,13 +1828,18 @@ IconData _assignmentIcon(FormAssignmentDto2 assignment) {
   }
 }
 
-String _assignmentAudienceTitle(BuildContext context, FormAssignmentDto2 assignment) {
+String _assignmentAudienceTitle(
+  BuildContext context,
+  FormAssignmentDto2 assignment,
+) {
   switch (assignment.audienceType) {
     case 'user':
       return 'کاربر خاص';
     case 'role':
       final role = assignment.audienceRole;
-      return role == null ? 'نقش خاص' : 'نقش ${context.l10n.enumLabel(role.toJson())}';
+      return role == null
+          ? 'نقش خاص'
+          : 'نقش ${context.l10n.enumLabel(role.toJson())}';
     case 'group':
       return 'گروه یا کلاس';
     case 'organization':
@@ -1845,7 +1851,10 @@ String _assignmentAudienceTitle(BuildContext context, FormAssignmentDto2 assignm
   }
 }
 
-String _assignmentAudienceSubtitle(BuildContext context, FormAssignmentDto2 assignment) {
+String _assignmentAudienceSubtitle(
+  BuildContext context,
+  FormAssignmentDto2 assignment,
+) {
   switch (assignment.audienceType) {
     case 'user':
       return assignment.audienceUserId == null
@@ -1853,7 +1862,9 @@ String _assignmentAudienceSubtitle(BuildContext context, FormAssignmentDto2 assi
           : 'شناسه کاربر: ${_shortId(assignment.audienceUserId!)}';
     case 'role':
       final role = assignment.audienceRole;
-      return role == null ? 'همه کاربران یک نقش' : 'همه کاربران با نقش ${context.l10n.enumLabel(role.toJson())}';
+      return role == null
+          ? 'همه کاربران یک نقش'
+          : 'همه کاربران با نقش ${context.l10n.enumLabel(role.toJson())}';
     case 'group':
       return assignment.audienceGroupId == null
           ? 'مخاطبان یک گروه یا کلاس'
@@ -1913,15 +1924,13 @@ class _AccessCodesPanelState extends ConsumerState<_AccessCodesPanel> {
         return FeedbackInlinePanel(
           icon: Icons.key_rounded,
           title: context.l10n.t('formAccessCodes'),
-          message:
-              data == null
-                  ? context.l10n.t('loading')
-                  : context.l10n.t('formAccessCodesMessage'),
+          message: data == null
+              ? context.l10n.t('loading')
+              : context.l10n.t('formAccessCodesMessage'),
           trailing: TextButton.icon(
-            onPressed:
-                snapshot.connectionState == ConnectionState.waiting
-                    ? null
-                    : () => _openEditor(data),
+            onPressed: snapshot.connectionState == ConnectionState.waiting
+                ? null
+                : () => _openEditor(data),
             icon: const Icon(Icons.edit_rounded),
             label: Text(context.l10n.t('edit')),
           ),
@@ -1962,10 +1971,8 @@ class _AccessCodesPanelState extends ConsumerState<_AccessCodesPanel> {
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _clearShared,
-                      onChanged:
-                          (value) => setSheetState(
-                            () => _clearShared = value ?? false,
-                          ),
+                      onChanged: (value) =>
+                          setSheetState(() => _clearShared = value ?? false),
                       title: Text(context.l10n.t('clearFormPassword')),
                     ),
                   TextField(
@@ -1989,13 +1996,12 @@ class _AccessCodesPanelState extends ConsumerState<_AccessCodesPanel> {
                   AppSpacing.gapMd,
                   FilledButton.icon(
                     onPressed: _saving ? null : () => _save(context),
-                    icon:
-                        _saving
-                            ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : const Icon(Icons.save_rounded),
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
                     label: Text(context.l10n.t('save')),
                   ),
                 ],
@@ -2031,13 +2037,12 @@ class _AccessCodesPanelState extends ConsumerState<_AccessCodesPanel> {
           .setFormAccessCodes(
             id: widget.formId,
             request: SetFormAccessCodesRequest(
-              sharedPassword:
-                  _sharedController.text.trim().isEmpty
-                      ? null
-                      : SharedFormPasswordInputDto(
-                        code: _sharedController.text.trim(),
-                        enabled: true,
-                      ),
+              sharedPassword: _sharedController.text.trim().isEmpty
+                  ? null
+                  : SharedFormPasswordInputDto(
+                      code: _sharedController.text.trim(),
+                      enabled: true,
+                    ),
               clearSharedPassword: _clearShared,
               identityCodes: identityCodes,
             ),
@@ -2114,9 +2119,9 @@ class _PublishSectionState extends State<_PublishSection> {
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   context.l10n.t('selectTargetRoles'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 _RoleMultiSelect(
@@ -2140,18 +2145,17 @@ class _PublishSectionState extends State<_PublishSection> {
                     label: Text(context.l10n.t('submitForApproval')),
                   ),
                   OutlinedButton.icon(
-                    onPressed:
-                        _busy || widget.form.status == FormStatus.closed
-                            ? null
-                            : () => _close(ref),
+                    onPressed: _busy || widget.form.status == FormStatus.closed
+                        ? null
+                        : () => _close(ref),
                     icon: const Icon(Icons.lock_rounded),
                     label: Text(context.l10n.t('close')),
                   ),
                   TextButton.icon(
                     onPressed:
                         _busy || widget.form.status == FormStatus.archived
-                            ? null
-                            : () => _archive(ref),
+                        ? null
+                        : () => _archive(ref),
                     icon: const Icon(Icons.archive_rounded),
                     label: Text(context.l10n.t('enum.archived')),
                   ),
@@ -2167,21 +2171,19 @@ class _PublishSectionState extends State<_PublishSection> {
   Future<void> _publish(WidgetRef ref) async {
     await _runAction(
       ref,
-      successMessage:
-          _mode == PublishMode.publicLink
-              ? context.l10n.t('publishedShareHint')
-              : context.l10n.t('formPublished'),
-      action:
-          () => ref
-              .read(formsRepositoryProvider)
-              .publishForm(
-                id: widget.form.id,
-                request: PublishFormRequest(
-                  publishMode: _mode,
-                  visibility: _safeVisibility(widget.form.visibility),
-                  publicProtection: widget.form.publicProtection,
-                ),
-              ),
+      successMessage: _mode == PublishMode.publicLink
+          ? context.l10n.t('publishedShareHint')
+          : context.l10n.t('formPublished'),
+      action: () => ref
+          .read(formsRepositoryProvider)
+          .publishForm(
+            id: widget.form.id,
+            request: PublishFormRequest(
+              publishMode: _mode,
+              visibility: _safeVisibility(widget.form.visibility),
+              publicProtection: widget.form.publicProtection,
+            ),
+          ),
     );
     if (mounted && _mode == PublishMode.publicLink) {
       context.go('/forms/${widget.form.id}/share');
@@ -2192,15 +2194,14 @@ class _PublishSectionState extends State<_PublishSection> {
     await _runAction(
       ref,
       successMessage: context.l10n.t('submittedForApproval'),
-      action:
-          () => ref
-              .read(formsRepositoryProvider)
-              .submitFormForApproval(
-                id: widget.form.id,
-                request: SubmitForApprovalRequest(
-                  note: context.l10n.t('submittedFromClient'),
-                ),
-              ),
+      action: () => ref
+          .read(formsRepositoryProvider)
+          .submitFormForApproval(
+            id: widget.form.id,
+            request: SubmitForApprovalRequest(
+              note: context.l10n.t('submittedFromClient'),
+            ),
+          ),
     );
   }
 
@@ -2215,15 +2216,12 @@ class _PublishSectionState extends State<_PublishSection> {
     await _runAction(
       ref,
       successMessage: l10n.t('formClosedToast'),
-      action:
-          () => ref
-              .read(formsRepositoryProvider)
-              .closeForm(
-                id: widget.form.id,
-                request: CloseFormRequest(
-                  reason: reason.isEmpty ? null : reason,
-                ),
-              ),
+      action: () => ref
+          .read(formsRepositoryProvider)
+          .closeForm(
+            id: widget.form.id,
+            request: CloseFormRequest(reason: reason.isEmpty ? null : reason),
+          ),
     );
   }
 
@@ -2239,15 +2237,14 @@ class _PublishSectionState extends State<_PublishSection> {
       await _runAction(
         ref,
         successMessage: l10n.t('formArchivedToast'),
-        action:
-            () => ref
-                .read(formsRepositoryProvider)
-                .archiveForm(
-                  id: widget.form.id,
-                  request: ArchiveFormRequest(
-                    reason: reason.isEmpty ? null : reason,
-                  ),
-                ),
+        action: () => ref
+            .read(formsRepositoryProvider)
+            .archiveForm(
+              id: widget.form.id,
+              request: ArchiveFormRequest(
+                reason: reason.isEmpty ? null : reason,
+              ),
+            ),
       );
     }
   }
@@ -2265,11 +2262,7 @@ class _PublishSectionState extends State<_PublishSection> {
       ref.invalidate(formsControllerProvider);
       messenger.showSnackBar(SnackBar(content: Text(successMessage)));
     } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -2308,28 +2301,24 @@ class _ShareSection extends StatelessWidget {
             )
           else ...[
             _InlineNotice(
-              icon:
-                  publicUrl == null
-                      ? Icons.info_outline_rounded
-                      : Icons.verified_rounded,
-              title:
-                  publicUrl == null
-                      ? context.l10n.t('relativePublicLinkTitle')
-                      : context.l10n.t('publicLinkReady'),
-              message:
-                  publicUrl == null
-                      ? context.l10n.t('publicBaseUrlMissing')
-                      : context.l10n.t('publicLinkReadyMessage'),
+              icon: publicUrl == null
+                  ? Icons.info_outline_rounded
+                  : Icons.verified_rounded,
+              title: publicUrl == null
+                  ? context.l10n.t('relativePublicLinkTitle')
+                  : context.l10n.t('publicLinkReady'),
+              message: publicUrl == null
+                  ? context.l10n.t('publicBaseUrlMissing')
+                  : context.l10n.t('publicLinkReadyMessage'),
             ),
             AppSpacing.gapMd,
             TextField(
               readOnly: true,
               controller: TextEditingController(text: copyValue ?? ''),
               decoration: InputDecoration(
-                labelText:
-                    publicUrl == null
-                        ? context.l10n.t('publicPath')
-                        : context.l10n.t('publicUrl'),
+                labelText: publicUrl == null
+                    ? context.l10n.t('publicPath')
+                    : context.l10n.t('publicUrl'),
                 prefixIcon: const Icon(Icons.link_rounded),
               ),
             ),
@@ -2339,19 +2328,16 @@ class _ShareSection extends StatelessWidget {
               runSpacing: AppSpacing.xs,
               children: [
                 FilledButton.icon(
-                  onPressed:
-                      copyValue == null
-                          ? null
-                          : () {
-                            Clipboard.setData(ClipboardData(text: copyValue));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  context.l10n.t('publicLinkCopied'),
-                                ),
-                              ),
-                            );
-                          },
+                  onPressed: copyValue == null
+                      ? null
+                      : () {
+                          Clipboard.setData(ClipboardData(text: copyValue));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(context.l10n.t('publicLinkCopied')),
+                            ),
+                          );
+                        },
                   icon: const Icon(Icons.copy_rounded),
                   label: Text(context.l10n.t('copyLink')),
                 ),
@@ -2402,17 +2388,15 @@ String? _buildPublicShareUrl(String token) {
 }
 
 String _joinUrl(String base, String path) {
-  final normalizedBase =
-      base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+  final normalizedBase = base.endsWith('/')
+      ? base.substring(0, base.length - 1)
+      : base;
   final normalizedPath = path.startsWith('/') ? path : '/$path';
   return '$normalizedBase$normalizedPath';
 }
 
 class _RoleMultiSelect extends StatelessWidget {
-  const _RoleMultiSelect({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _RoleMultiSelect({required this.selected, required this.onChanged});
 
   final Set<UserRole> selected;
   final ValueChanged<Set<UserRole>> onChanged;
@@ -2478,29 +2462,26 @@ class _ResultsSection extends ConsumerWidget {
           ),
           AppSpacing.gapLg,
           analytics.when(
-            loading:
-                () => LoadingPanel(message: context.l10n.t('loadingResults')),
-            error:
-                (error, stackTrace) => ErrorPanel(
-                  error: error,
-                  onRetry: () => ref.invalidate(formAnalyticsProvider(form.id)),
-                  onBack: () => context.go('/forms'),
-                  onSignIn: () => context.go('/login'),
-                ),
+            loading: () =>
+                LoadingPanel(message: context.l10n.t('loadingResults')),
+            error: (error, stackTrace) => ErrorPanel(
+              error: error,
+              onRetry: () => ref.invalidate(formAnalyticsProvider(form.id)),
+              onBack: () => context.go('/forms'),
+              onSignIn: () => context.go('/login'),
+            ),
             data: (value) => _AnalyticsOverview(analytics: value),
           ),
           AppSpacing.gapLg,
           submissions.when(
-            loading:
-                () =>
-                    LoadingPanel(message: context.l10n.t('loadingSubmissions')),
-            error:
-                (error, stackTrace) => ErrorPanel(
-                  error: error,
-                  onRetry: () => ref.invalidate(submissionsProvider(form.id)),
-                  onBack: () => context.go('/forms'),
-                  onSignIn: () => context.go('/login'),
-                ),
+            loading: () =>
+                LoadingPanel(message: context.l10n.t('loadingSubmissions')),
+            error: (error, stackTrace) => ErrorPanel(
+              error: error,
+              onRetry: () => ref.invalidate(submissionsProvider(form.id)),
+              onBack: () => context.go('/forms'),
+              onSignIn: () => context.go('/login'),
+            ),
             data: (value) => _SubmissionsPanel(form: form, response: value),
           ),
         ],
@@ -2727,12 +2708,11 @@ class _SubmissionSummaryTile extends StatelessWidget {
               ),
             ),
             FilledButton.tonalIcon(
-              onPressed:
-                  () => _showSubmissionDetailSheet(
-                    context,
-                    form: form,
-                    submissionId: submission.id,
-                  ),
+              onPressed: () => _showSubmissionDetailSheet(
+                context,
+                form: form,
+                submissionId: submission.id,
+              ),
               icon: const Icon(Icons.visibility_rounded),
               label: Text(context.l10n.t('viewDetails')),
             ),
@@ -2753,9 +2733,8 @@ Future<void> _showSubmissionDetailSheet(
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder:
-        (context) =>
-            _SubmissionDetailSheet(form: form, submissionId: submissionId),
+    builder: (context) =>
+        _SubmissionDetailSheet(form: form, submissionId: submissionId),
   );
 }
 
@@ -2781,22 +2760,17 @@ class _SubmissionDetailSheet extends ConsumerWidget {
           top: 8,
         ),
         child: detail.when(
-          loading:
-              () => LoadingPanel(
-                message: context.l10n.t('loadingSubmissionDetail'),
-              ),
-          error:
-              (error, stackTrace) => ErrorPanel(
-                error: error,
-                onRetry:
-                    () =>
-                        ref.invalidate(submissionDetailProvider(submissionId)),
-                onBack: () => Navigator.of(context).maybePop(),
-                onSignIn: () => context.go('/login'),
-              ),
-          data:
-              (submission) =>
-                  _SubmissionDetailContent(form: form, submission: submission),
+          loading: () =>
+              LoadingPanel(message: context.l10n.t('loadingSubmissionDetail')),
+          error: (error, stackTrace) => ErrorPanel(
+            error: error,
+            onRetry: () =>
+                ref.invalidate(submissionDetailProvider(submissionId)),
+            onBack: () => Navigator.of(context).maybePop(),
+            onSignIn: () => context.go('/login'),
+          ),
+          data: (submission) =>
+              _SubmissionDetailContent(form: form, submission: submission),
         ),
       ),
     );
@@ -3025,9 +2999,7 @@ class _AnswerTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3096,12 +3068,11 @@ class _ResponsiveCardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns =
-            constraints.maxWidth >= 980
-                ? 3
-                : constraints.maxWidth >= 620
-                ? 2
-                : 1;
+        final columns = constraints.maxWidth >= 980
+            ? 3
+            : constraints.maxWidth >= 620
+            ? 2
+            : 1;
         return GridView.count(
           crossAxisCount: columns,
           childAspectRatio: columns == 1 ? 4.2 : 3.2,
@@ -3568,8 +3539,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color:
-            published ? scheme.primary : scheme.surface.withValues(alpha: 0.7),
+        color: published
+            ? scheme.primary
+            : scheme.surface.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -3603,25 +3575,24 @@ Future<String?> _reasonDialog(
   final controller = TextEditingController();
   final result = await showDialog<String>(
     context: context,
-    builder:
-        (context) => AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(labelText: hint),
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.t('cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: Text(context.l10n.t('continue')),
-            ),
-          ],
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: hint),
+        maxLines: 3,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('cancel')),
         ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          child: Text(context.l10n.t('continue')),
+        ),
+      ],
+    ),
   );
   controller.dispose();
   return result;
@@ -3657,4 +3628,3 @@ bool _fieldSubmitsAnswer(FieldType type) {
     _ => true,
   };
 }
-

@@ -70,7 +70,6 @@ class FormDetailEntity {
   final DateTime updatedAt;
 }
 
-
 class PublicFormEntity {
   const PublicFormEntity({
     required this.id,

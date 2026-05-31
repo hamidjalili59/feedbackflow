@@ -104,8 +104,7 @@ class _FieldInput extends StatelessWidget {
         value: value,
         onChanged: onChanged,
       ),
-      FieldType.singleChoice ||
-      FieldType.quizQuestion => _SingleChoiceInput(
+      FieldType.singleChoice || FieldType.quizQuestion => _SingleChoiceInput(
         field: field,
         value: value,
         onChanged: onChanged,
@@ -167,10 +166,9 @@ class _FieldInput extends StatelessWidget {
       ),
       FieldType.fileUpload || FieldType.imageUpload => _UploadPreview(
         field: field,
-        icon:
-            field.type == FieldType.imageUpload
-                ? Icons.image_outlined
-                : Icons.upload_file_rounded,
+        icon: field.type == FieldType.imageUpload
+            ? Icons.image_outlined
+            : Icons.upload_file_rounded,
       ),
       FieldType.signature => _SignaturePreview(onChanged: onChanged),
       FieldType.ranking => _RankingInput(
@@ -204,9 +202,13 @@ class _TextInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ltrInput =
+        field.type == FieldType.phone || field.type == FieldType.email;
     return TextFormField(
       initialValue: value?.toString() ?? '',
       keyboardType: _keyboardType(field.type),
+      textDirection: ltrInput ? TextDirection.ltr : null,
+      textAlign: ltrInput ? TextAlign.left : TextAlign.start,
       decoration: InputDecoration(
         labelText:
             field.placeholder ?? context.l10n.fieldType(field.type.toJson()),
@@ -484,8 +486,9 @@ class _MultiChoiceInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected =
-        value is List ? Set<Object?>.from(value as List) : <Object?>{};
+    final selected = value is List
+        ? Set<Object?>.from(value as List)
+        : <Object?>{};
     final options = _options(field);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -538,10 +541,13 @@ class _ChoiceListFrame extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final useGrid = constraints.maxWidth.isFinite &&
+        final useGrid =
+            constraints.maxWidth.isFinite &&
             constraints.maxWidth >= 620 &&
             children.length > 3;
-        final itemWidth = useGrid ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
+        final itemWidth = useGrid
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
         final list = useGrid
             ? Wrap(
                 spacing: 12,
@@ -583,9 +589,9 @@ class _ChoiceListFrame extends StatelessWidget {
                     child: Text(
                       helper,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -648,7 +654,9 @@ class _ChoiceCard extends StatelessWidget {
                     BoxShadow(
                       blurRadius: 22,
                       offset: const Offset(0, 12),
-                      color: scheme.primary.withValues(alpha: dark ? 0.16 : 0.11),
+                      color: scheme.primary.withValues(
+                        alpha: dark ? 0.16 : 0.11,
+                      ),
                     ),
                   ]
                 : null,
@@ -668,28 +676,28 @@ class _ChoiceCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall?.copyWith(
-                            color: selected ? scheme.primary : scheme.onSurface,
-                            fontWeight: FontWeight.w900,
-                            height: 1.25,
-                          ),
+                        color: selected ? scheme.primary : scheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        height: 1.25,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       description?.trim().isNotEmpty == true
                           ? description!.trim()
                           : selected
-                              ? 'انتخاب شده'
-                              : 'برای انتخاب لمس کنید',
+                          ? 'انتخاب شده'
+                          : 'برای انتخاب لمس کنید',
                       textAlign: TextAlign.right,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
-                            color: selected
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant.withValues(alpha: 0.78),
-                            fontWeight: FontWeight.w700,
-                            height: 1.35,
-                          ),
+                        color: selected
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
@@ -714,9 +722,9 @@ class _ChoiceCard extends StatelessWidget {
                     : Text(
                         '$index',
                         style: theme.textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
               ),
             ],
@@ -746,7 +754,9 @@ class _ChoiceIndicator extends StatelessWidget {
         shape: shape,
         borderRadius: multiple ? BorderRadius.circular(8) : null,
         border: Border.all(
-          color: selected ? scheme.primary : scheme.outline.withValues(alpha: 0.46),
+          color: selected
+              ? scheme.primary
+              : scheme.outline.withValues(alpha: 0.46),
           width: 2,
         ),
       ),
@@ -762,7 +772,10 @@ class _ChoiceIndicator extends StatelessWidget {
 }
 
 class _ChoiceCounterBadge extends StatelessWidget {
-  const _ChoiceCounterBadge({required this.selectedCount, required this.totalCount});
+  const _ChoiceCounterBadge({
+    required this.selectedCount,
+    required this.totalCount,
+  });
 
   final int selectedCount;
   final int totalCount;
@@ -781,14 +794,18 @@ class _ChoiceCounterBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.checklist_rounded, size: 16, color: scheme.onSecondaryContainer),
+            Icon(
+              Icons.checklist_rounded,
+              size: 16,
+              color: scheme.onSecondaryContainer,
+            ),
             const SizedBox(width: 6),
             Text(
               '$selectedCount از $totalCount انتخاب شده',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onSecondaryContainer,
-                    fontWeight: FontWeight.w900,
-                  ),
+                color: scheme.onSecondaryContainer,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ],
         ),
@@ -810,14 +827,12 @@ class _DropdownInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final optionValues =
-        _options(
-          field,
-        ).map((option) => _optionValue(option).toString()).toSet();
-    final current =
-        value == null || !optionValues.contains(value.toString())
-            ? null
-            : value.toString();
+    final optionValues = _options(
+      field,
+    ).map((option) => _optionValue(option).toString()).toSet();
+    final current = value == null || !optionValues.contains(value.toString())
+        ? null
+        : value.toString();
     return DropdownButtonFormField<String>(
       initialValue: current,
       decoration: InputDecoration(
@@ -858,10 +873,9 @@ class _StarRatingInput extends StatelessWidget {
         for (var rating = 1; rating <= max; rating++)
           FeedbackRatingButton(
             selected: rating <= current,
-            icon:
-                rating <= current
-                    ? Icons.star_rounded
-                    : Icons.star_outline_rounded,
+            icon: rating <= current
+                ? Icons.star_rounded
+                : Icons.star_outline_rounded,
             onPressed: () => onChanged(rating),
           ),
       ],
@@ -919,10 +933,9 @@ class _SliderInput extends StatelessWidget {
     final max = field.config.max ?? (field.type == FieldType.nps ? 10 : 5);
     final step = field.config.step ?? 1;
     final divisions = step <= 0 ? null : ((max - min) / step).round();
-    final current =
-        value is num
-            ? (value as num).toDouble().clamp(min, max).toDouble()
-            : min;
+    final current = value is num
+        ? (value as num).toDouble().clamp(min, max).toDouble()
+        : min;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -933,8 +946,9 @@ class _SliderInput extends StatelessWidget {
               child: Slider(
                 min: min,
                 max: max,
-                divisions:
-                    divisions != null && divisions > 0 ? divisions : null,
+                divisions: divisions != null && divisions > 0
+                    ? divisions
+                    : null,
                 value: current,
                 label: current.toStringAsFixed(current % 1 == 0 ? 0 : 1),
                 onChanged: onChanged,
@@ -968,7 +982,9 @@ class _FaceScaleInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = field.type == FieldType.likertScale
-        ? (field.config.columns?.isNotEmpty == true ? field.config.columns! : _faceLikertOptions)
+        ? (field.config.columns?.isNotEmpty == true
+              ? field.config.columns!
+              : _faceLikertOptions)
         : (_options(field).isNotEmpty ? _options(field) : _faceLikertOptions);
     return Column(
       children: [
@@ -982,7 +998,11 @@ class _FaceScaleInput extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _FaceOptionButton(
-                    moodIndex: _moodIndexForOption(i, options.length, options[i]),
+                    moodIndex: _moodIndexForOption(
+                      i,
+                      options.length,
+                      options[i],
+                    ),
                     label: _localizedOptionLabel(context, options[i]),
                     selected: _sameOption(value, options[i]),
                     onTap: () => onChanged(_optionValue(options[i])),
@@ -993,12 +1013,14 @@ class _FaceScaleInput extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          value == null ? 'یک گزینه را انتخاب کنید' : _selectedFaceLabel(context, value, options),
+          value == null
+              ? 'یک گزینه را انتخاب کنید'
+              : _selectedFaceLabel(context, value, options),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     );
@@ -1037,9 +1059,20 @@ class _FaceOptionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: selected ? const Color(0xFFE2F8EC) : Colors.white,
-            border: Border.all(color: selected ? const Color(0xFF35C981) : const Color(0xFFE4E9F3), width: selected ? 4 : 1),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF35C981)
+                  : const Color(0xFFE4E9F3),
+              width: selected ? 4 : 1,
+            ),
             boxShadow: selected
-                ? [BoxShadow(blurRadius: 20, offset: const Offset(0, 9), color: const Color(0xFF35C981).withValues(alpha: 0.20))]
+                ? [
+                    BoxShadow(
+                      blurRadius: 20,
+                      offset: const Offset(0, 9),
+                      color: const Color(0xFF35C981).withValues(alpha: 0.20),
+                    ),
+                  ]
                 : null,
           ),
           child: CustomPaint(
@@ -1067,8 +1100,16 @@ class _MoodFacePainter extends CustomPainter {
 
     final eyePaint = Paint()..color = const Color(0xFF17203B);
     final eyeY = center.dy - radius * 0.22;
-    canvas.drawCircle(Offset(center.dx - radius * 0.32, eyeY), radius * 0.09, eyePaint);
-    canvas.drawCircle(Offset(center.dx + radius * 0.32, eyeY), radius * 0.09, eyePaint);
+    canvas.drawCircle(
+      Offset(center.dx - radius * 0.32, eyeY),
+      radius * 0.09,
+      eyePaint,
+    );
+    canvas.drawCircle(
+      Offset(center.dx + radius * 0.32, eyeY),
+      radius * 0.09,
+      eyePaint,
+    );
 
     final mouthPaint = Paint()
       ..color = const Color(0xFF17203B)
@@ -1079,14 +1120,24 @@ class _MoodFacePainter extends CustomPainter {
     if (moodIndex <= 1) {
       final depth = moodIndex == 0 ? radius * 0.34 : radius * 0.22;
       path.moveTo(center.dx - radius * 0.34, center.dy + radius * 0.34);
-      path.quadraticBezierTo(center.dx, center.dy + radius * 0.10 - depth, center.dx + radius * 0.34, center.dy + radius * 0.34);
+      path.quadraticBezierTo(
+        center.dx,
+        center.dy + radius * 0.10 - depth,
+        center.dx + radius * 0.34,
+        center.dy + radius * 0.34,
+      );
     } else if (moodIndex == 2) {
       path.moveTo(center.dx - radius * 0.32, center.dy + radius * 0.26);
       path.lineTo(center.dx + radius * 0.32, center.dy + radius * 0.26);
     } else {
       final lift = moodIndex == 4 ? radius * 0.42 : radius * 0.30;
       path.moveTo(center.dx - radius * 0.36, center.dy + radius * 0.12);
-      path.quadraticBezierTo(center.dx, center.dy + lift, center.dx + radius * 0.36, center.dy + radius * 0.12);
+      path.quadraticBezierTo(
+        center.dx,
+        center.dy + lift,
+        center.dx + radius * 0.36,
+        center.dy + radius * 0.12,
+      );
     }
     canvas.drawPath(path, mouthPaint);
 
@@ -1096,23 +1147,35 @@ class _MoodFacePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = radius * 0.08
         ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(center.dx - radius * 0.48, eyeY - radius * 0.22), Offset(center.dx - radius * 0.20, eyeY - radius * 0.10), browPaint);
-      canvas.drawLine(Offset(center.dx + radius * 0.48, eyeY - radius * 0.22), Offset(center.dx + radius * 0.20, eyeY - radius * 0.10), browPaint);
+      canvas.drawLine(
+        Offset(center.dx - radius * 0.48, eyeY - radius * 0.22),
+        Offset(center.dx - radius * 0.20, eyeY - radius * 0.10),
+        browPaint,
+      );
+      canvas.drawLine(
+        Offset(center.dx + radius * 0.48, eyeY - radius * 0.22),
+        Offset(center.dx + radius * 0.20, eyeY - radius * 0.10),
+        browPaint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _MoodFacePainter oldDelegate) => oldDelegate.moodIndex != moodIndex || oldDelegate.color != color;
+  bool shouldRepaint(covariant _MoodFacePainter oldDelegate) =>
+      oldDelegate.moodIndex != moodIndex || oldDelegate.color != color;
 }
 
-Color _moodColor(int moodIndex) => switch (moodIndex < 0 ? 0 : moodIndex > 4 ? 4 : moodIndex) {
-      0 => const Color(0xFFFF5B4D),
-      1 => const Color(0xFFFF9D41),
-      2 => const Color(0xFFFFD950),
-      3 => const Color(0xFF28D58A),
-      _ => const Color(0xFF66C985),
-    };
-
+Color _moodColor(int moodIndex) => switch (moodIndex < 0
+    ? 0
+    : moodIndex > 4
+    ? 4
+    : moodIndex) {
+  0 => const Color(0xFFFF5B4D),
+  1 => const Color(0xFFFF9D41),
+  2 => const Color(0xFFFFD950),
+  3 => const Color(0xFF28D58A),
+  _ => const Color(0xFF66C985),
+};
 
 class _MatrixSingleChoiceInput extends StatelessWidget {
   const _MatrixSingleChoiceInput({
@@ -1127,20 +1190,17 @@ class _MatrixSingleChoiceInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowValues =
-        value is Map
-            ? Map<String, Object?>.from(value as Map)
-            : <String, Object?>{};
+    final rowValues = value is Map
+        ? Map<String, Object?>.from(value as Map)
+        : <String, Object?>{};
     return _MatrixShell(
       rows: _rows(field),
       columns: _columns(field),
-      cellBuilder:
-          (row, column) => Radio<Object?>(
-            value: _optionValue(column),
-            groupValue: rowValues[row.id],
-            onChanged:
-                (selected) => onChanged({...rowValues, row.id: selected}),
-          ),
+      cellBuilder: (row, column) => Radio<Object?>(
+        value: _optionValue(column),
+        groupValue: rowValues[row.id],
+        onChanged: (selected) => onChanged({...rowValues, row.id: selected}),
+      ),
     );
   }
 }
@@ -1158,18 +1218,16 @@ class _MatrixMultipleChoiceInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowValues =
-        value is Map
-            ? Map<String, Object?>.from(value as Map)
-            : <String, Object?>{};
+    final rowValues = value is Map
+        ? Map<String, Object?>.from(value as Map)
+        : <String, Object?>{};
     return _MatrixShell(
       rows: _rows(field),
       columns: _columns(field),
       cellBuilder: (row, column) {
-        final selected =
-            rowValues[row.id] is List
-                ? Set<Object?>.from(rowValues[row.id] as List)
-                : <Object?>{};
+        final selected = rowValues[row.id] is List
+            ? Set<Object?>.from(rowValues[row.id] as List)
+            : <Object?>{};
         final optionValue = _optionValue(column);
         return Checkbox(
           value: selected.contains(optionValue),
@@ -1272,10 +1330,9 @@ class _BooleanSwitchInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return FeedbackInlinePanel(
       icon: Icons.toggle_on_rounded,
-      title:
-          value == true
-              ? context.l10n.t('enabled')
-              : context.l10n.t('disabled'),
+      title: value == true
+          ? context.l10n.t('enabled')
+          : context.l10n.t('disabled'),
       message: context.l10n.t('useSwitch'),
       trailing: Switch(value: value == true, onChanged: onChanged),
     );
@@ -1297,10 +1354,9 @@ class _ConsentInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return FeedbackInlinePanel(
       icon: Icons.verified_user_outlined,
-      title:
-          field.type == FieldType.termsAcceptance
-              ? context.l10n.t('termsAcceptance')
-              : context.l10n.t('consentCheckbox'),
+      title: field.type == FieldType.termsAcceptance
+          ? context.l10n.t('termsAcceptance')
+          : context.l10n.t('consentCheckbox'),
       message: field.description ?? field.label,
       trailing: Checkbox(value: value == true, onChanged: onChanged),
     );
@@ -1319,10 +1375,9 @@ class _UploadPreview extends StatelessWidget {
     final size = field.config.maxFileSizeMb;
     return FeedbackInlinePanel(
       icon: icon,
-      title:
-          field.type == FieldType.imageUpload
-              ? context.l10n.t('imageUploadPreview')
-              : context.l10n.t('fileUploadPreview'),
+      title: field.type == FieldType.imageUpload
+          ? context.l10n.t('imageUploadPreview')
+          : context.l10n.t('fileUploadPreview'),
       message: [
         if (mime != null && mime.isNotEmpty)
           '${context.l10n.t('allowed')}: $mime',
@@ -1383,10 +1438,9 @@ class _RankingInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final configuredOptions = _options(field);
-    final current =
-        value is List
-            ? List<Object?>.from(value as List)
-            : configuredOptions.map(_optionValue).toList(growable: false);
+    final current = value is List
+        ? List<Object?>.from(value as List)
+        : configuredOptions.map(_optionValue).toList(growable: false);
     final byValue = {
       for (final option in configuredOptions)
         _optionValue(option).toString(): _localizedOptionLabel(context, option),
@@ -1404,28 +1458,26 @@ class _RankingInput extends StatelessWidget {
               children: [
                 IconButton(
                   tooltip: context.l10n.t('moveUp'),
-                  onPressed:
-                      index == 0
-                          ? null
-                          : () {
-                            final next = [...current];
-                            final item = next.removeAt(index);
-                            next.insert(index - 1, item);
-                            onChanged(next);
-                          },
+                  onPressed: index == 0
+                      ? null
+                      : () {
+                          final next = [...current];
+                          final item = next.removeAt(index);
+                          next.insert(index - 1, item);
+                          onChanged(next);
+                        },
                   icon: const Icon(Icons.keyboard_arrow_up_rounded),
                 ),
                 IconButton(
                   tooltip: context.l10n.t('moveDown'),
-                  onPressed:
-                      index == current.length - 1
-                          ? null
-                          : () {
-                            final next = [...current];
-                            final item = next.removeAt(index);
-                            next.insert(index + 1, item);
-                            onChanged(next);
-                          },
+                  onPressed: index == current.length - 1
+                      ? null
+                      : () {
+                          final next = [...current];
+                          final item = next.removeAt(index);
+                          next.insert(index + 1, item);
+                          onChanged(next);
+                        },
                   icon: const Icon(Icons.keyboard_arrow_down_rounded),
                 ),
               ],
@@ -1444,14 +1496,12 @@ class _ReadOnlyComputedField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FeedbackInlinePanel(
-      icon:
-          field.type == FieldType.scoreDisplay
-              ? Icons.scoreboard_rounded
-              : Icons.functions_rounded,
-      title:
-          field.type == FieldType.scoreDisplay
-              ? context.l10n.t('scoreDisplay')
-              : context.l10n.t('calculatedField'),
+      icon: field.type == FieldType.scoreDisplay
+          ? Icons.scoreboard_rounded
+          : Icons.functions_rounded,
+      title: field.type == FieldType.scoreDisplay
+          ? context.l10n.t('scoreDisplay')
+          : context.l10n.t('calculatedField'),
       message: context.l10n.t('computedByBackend'),
     );
   }
@@ -1603,33 +1653,77 @@ String? _optionDescription(FieldOptionDto option) {
 bool _sameOption(Object? value, FieldOptionDto option) =>
     value?.toString() == _optionValue(option).toString();
 
-
 const _faceLikertOptions = <FieldOptionDto>[
-  FieldOptionDto(id: 'very_bad', label: 'خیلی ناراضی', value: 'very_bad', orderIndex: 0),
+  FieldOptionDto(
+    id: 'very_bad',
+    label: 'خیلی ناراضی',
+    value: 'very_bad',
+    orderIndex: 0,
+  ),
   FieldOptionDto(id: 'bad', label: 'ناراضی', value: 'bad', orderIndex: 1),
-  FieldOptionDto(id: 'neutral', label: 'معمولی', value: 'neutral', orderIndex: 2),
+  FieldOptionDto(
+    id: 'neutral',
+    label: 'معمولی',
+    value: 'neutral',
+    orderIndex: 2,
+  ),
   FieldOptionDto(id: 'happy', label: 'خوشحال', value: 'happy', orderIndex: 3),
-  FieldOptionDto(id: 'very_happy', label: 'خیلی خوشحال', value: 'very_happy', orderIndex: 4),
+  FieldOptionDto(
+    id: 'very_happy',
+    label: 'خیلی خوشحال',
+    value: 'very_happy',
+    orderIndex: 4,
+  ),
 ];
 
 int _moodIndexForOption(int index, int total, FieldOptionDto option) {
   final label = option.label.toLowerCase();
   final value = option.value.toString().toLowerCase();
   final text = '$label $value';
-  if (text.contains('😡') || text.contains('angry') || text.contains('very_bad') || text.contains('خیلی ناراضی')) return 0;
-  if (text.contains('🙁') || text.contains('sad') || text.contains('bad') || text.contains('ناراضی')) return 1;
-  if (text.contains('😐') || text.contains('neutral') || text.contains('معمولی') || text.contains('متوسط')) return 2;
-  if (text.contains('🙂') || text.contains('excellent') || text.contains('very_happy') || text.contains('عالی') || text.contains('خیلی خوشحال')) return 4;
-  if (text.contains('😊') || text.contains('happy') || text.contains('good') || text.contains('خوب') || text.contains('خوشحال')) return 3;
+  if (text.contains('😡') ||
+      text.contains('angry') ||
+      text.contains('very_bad') ||
+      text.contains('خیلی ناراضی'))
+    return 0;
+  if (text.contains('🙁') ||
+      text.contains('sad') ||
+      text.contains('bad') ||
+      text.contains('ناراضی'))
+    return 1;
+  if (text.contains('😐') ||
+      text.contains('neutral') ||
+      text.contains('معمولی') ||
+      text.contains('متوسط'))
+    return 2;
+  if (text.contains('🙂') ||
+      text.contains('excellent') ||
+      text.contains('very_happy') ||
+      text.contains('عالی') ||
+      text.contains('خیلی خوشحال'))
+    return 4;
+  if (text.contains('😊') ||
+      text.contains('happy') ||
+      text.contains('good') ||
+      text.contains('خوب') ||
+      text.contains('خوشحال'))
+    return 3;
   if (total <= 1) return 2;
   final mapped = (index * 4 / (total - 1)).round();
-  return mapped < 0 ? 0 : mapped > 4 ? 4 : mapped;
+  return mapped < 0
+      ? 0
+      : mapped > 4
+      ? 4
+      : mapped;
 }
 
-
-String _selectedFaceLabel(BuildContext context, Object? value, List<FieldOptionDto> options) {
+String _selectedFaceLabel(
+  BuildContext context,
+  Object? value,
+  List<FieldOptionDto> options,
+) {
   for (final option in options) {
-    if (_sameOption(value, option)) return _localizedOptionLabel(context, option);
+    if (_sameOption(value, option))
+      return _localizedOptionLabel(context, option);
   }
   return value?.toString() ?? '';
 }

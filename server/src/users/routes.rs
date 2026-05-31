@@ -12,7 +12,7 @@ use crate::{
         password::hash_secret,
         service::{
             audit, normalize_optional_email, normalize_optional_gender, normalize_phone,
-            row_to_user_detail,
+            phone_lookup_candidates, row_to_user_detail,
         },
         AuthUser,
     },
@@ -155,9 +155,10 @@ pub async fn create_user(
     let phone = normalize_phone(&payload.phone)?;
     let email = normalize_optional_email(payload.email.as_deref())?;
     let gender = normalize_optional_gender(payload.gender.as_deref())?;
+    let phone_candidates = phone_lookup_candidates(&phone);
     let existing_phone: Option<Uuid> =
-        sqlx::query_scalar("select id from users where phone=$1 and deleted_at is null")
-            .bind(&phone)
+        sqlx::query_scalar("select id from users where phone = any($1) and deleted_at is null")
+            .bind(&phone_candidates)
             .fetch_optional(&state.db)
             .await?;
     if existing_phone.is_some() {
@@ -222,15 +223,22 @@ pub async fn get_my_user(
 fn can_create_role(actor: UserRole, target: UserRole) -> bool {
     match actor {
         UserRole::Manager | UserRole::Admin => {
-            matches!(target, UserRole::Teacher | UserRole::Student)
+            matches!(
+                target,
+                UserRole::Parent | UserRole::Teacher | UserRole::Student
+            )
         }
         UserRole::Ceo => matches!(
             target,
-            UserRole::Teacher | UserRole::Student | UserRole::Manager
+            UserRole::Parent | UserRole::Teacher | UserRole::Student | UserRole::Manager
         ),
         UserRole::SuperAdmin => matches!(
             target,
-            UserRole::Teacher | UserRole::Student | UserRole::Manager | UserRole::Ceo
+            UserRole::Parent
+                | UserRole::Teacher
+                | UserRole::Student
+                | UserRole::Manager
+                | UserRole::Ceo
         ),
         _ => false,
     }
@@ -238,9 +246,17 @@ fn can_create_role(actor: UserRole, target: UserRole) -> bool {
 
 fn manageable_roles(actor: UserRole) -> Vec<UserRole> {
     match actor {
-        UserRole::Manager | UserRole::Admin => vec![UserRole::Teacher, UserRole::Student],
-        UserRole::Ceo => vec![UserRole::Teacher, UserRole::Student, UserRole::Manager],
+        UserRole::Manager | UserRole::Admin => {
+            vec![UserRole::Parent, UserRole::Teacher, UserRole::Student]
+        }
+        UserRole::Ceo => vec![
+            UserRole::Parent,
+            UserRole::Teacher,
+            UserRole::Student,
+            UserRole::Manager,
+        ],
         UserRole::SuperAdmin => vec![
+            UserRole::Parent,
             UserRole::Teacher,
             UserRole::Student,
             UserRole::Manager,
@@ -377,10 +393,11 @@ pub async fn update_user(
 
     let phone = if let Some(phone) = payload.phone {
         let phone = normalize_phone(&phone)?;
+        let phone_candidates = phone_lookup_candidates(&phone);
         let owner_id: Option<Uuid> = sqlx::query_scalar(
-            "select id from users where phone=$1 and id <> $2 and deleted_at is null",
+            "select id from users where phone = any($1) and id <> $2 and deleted_at is null",
         )
-        .bind(&phone)
+        .bind(&phone_candidates)
         .bind(id)
         .fetch_optional(&state.db)
         .await?;

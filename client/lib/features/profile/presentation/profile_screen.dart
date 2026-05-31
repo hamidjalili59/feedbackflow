@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/theme/app_breakpoints.dart';
 import '../../../presentation/theme/app_spacing.dart';
+import '../../../presentation/widgets/directional_value_text.dart';
 import '../../../presentation/widgets/app_chrome.dart';
 import '../../../presentation/widgets/app_shell.dart';
 
@@ -18,9 +19,7 @@ class ProfileScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     return AppShell(
       selected: AppDestination.profile,
-      appBar: AdaptiveAppBar(
-        title: Text(context.l10n.t('profile')),
-      ),
+      appBar: AdaptiveAppBar(title: Text(context.l10n.t('profile'))),
       body: auth.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) =>
@@ -82,16 +81,16 @@ class _ProfileBody extends StatelessWidget {
       children: [
         Center(
           child: ConstrainedBox(
-            constraints:
-                const BoxConstraints(maxWidth: AppBreakpoints.contentMax),
+            constraints: const BoxConstraints(
+              maxWidth: AppBreakpoints.contentMax,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 PageHeaderCard(
                   icon: Icons.person_rounded,
                   title: user.displayName,
-                  subtitle: context.l10n
-                      .enumLabel(user.primaryRole.toJson()),
+                  subtitle: context.l10n.enumLabel(user.primaryRole.toJson()),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 SoftCard(
@@ -100,20 +99,13 @@ class _ProfileBody extends StatelessWidget {
                       ListTile(
                         leading: const Icon(Icons.phone_rounded),
                         title: Text(context.l10n.t('phoneNumber')),
-                        subtitle: Text(
-                          user.phone,
-                          textDirection: TextDirection.ltr,
-                        ),
+                        subtitle: LtrValueText(user.phone),
                       ),
                       if (user.email != null && user.email!.isNotEmpty)
                         ListTile(
-                          leading:
-                              const Icon(Icons.alternate_email_rounded),
+                          leading: const Icon(Icons.alternate_email_rounded),
                           title: Text(context.l10n.t('email')),
-                          subtitle: Text(
-                            user.email!,
-                            textDirection: TextDirection.ltr,
-                          ),
+                          subtitle: LtrValueText(user.email!),
                         ),
                     ],
                   ),
@@ -141,10 +133,9 @@ class _ProfileBody extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                     side: BorderSide(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .error
-                          .withValues(alpha: 0.4),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.error.withValues(alpha: 0.4),
                     ),
                   ),
                   onPressed: onSignOut,

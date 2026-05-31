@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/phone/phone_number_normalizer.dart';
+import '../../../data/dto/dto.dart';
 import '../../../presentation/common/friendly_api_error_message.dart';
 import '../../../presentation/theme/app_spacing.dart';
 import '../../../presentation/theme/app_theme.dart';
+import '../../../presentation/widgets/directional_value_text.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.redirectLocation, this.noticeKey});
@@ -42,18 +44,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authControllerProvider);
     final loading = auth.isLoading;
 
-    ref.listen<AsyncValue<AuthSession?>>(authControllerProvider, (previous, next) {
+    ref.listen<AsyncValue<AuthSession?>>(authControllerProvider, (
+      previous,
+      next,
+    ) {
       final session = next.asData?.value;
       if (session != null) {
         HapticFeedback.mediumImpact();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) context.go(_safeRedirectLocation(widget.redirectLocation));
+          if (context.mounted)
+            context.go(_safeRedirectLocation(widget.redirectLocation));
         });
       }
       if (next.hasError && previous?.error != next.error) {
         HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(FriendlyApiErrorMessage.from(next.error!, context: context))),
+          SnackBar(content: Text(_loginErrorMessage(next.error!, context))),
         );
       }
     });
@@ -75,7 +81,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Text(
                       'خوش آمدید',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             color: AppTheme.ink,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.6,
@@ -88,9 +95,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : 'لطفا شماره موبایل خود را وارد کنید.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF79809C),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: const Color(0xFF79809C),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 72),
                     AnimatedSwitcher(
@@ -100,7 +107,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       transitionBuilder: (child, animation) => FadeTransition(
                         opacity: animation,
                         child: SlideTransition(
-                          position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(animation),
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.04),
+                            end: Offset.zero,
+                          ).animate(animation),
                           child: child,
                         ),
                       ),
@@ -112,7 +122,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               obscure: _obscure,
                               phone: _normalizedPhone ?? '',
                               onBack: _backToPhone,
-                              onToggle: () => setState(() => _obscure = !_obscure),
+                              onToggle: () =>
+                                  setState(() => _obscure = !_obscure),
                               onSubmit: _submit,
                             )
                           : _PhoneInput(
@@ -124,17 +135,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (auth.hasError) ...[
                       const SizedBox(height: 16),
-                      _LoginError(message: FriendlyApiErrorMessage.from(auth.error!, context: context)),
+                      _LoginError(
+                        message: _loginErrorMessage(auth.error!, context),
+                      ),
                     ],
                     const SizedBox(height: 24),
                     SizedBox(
                       height: 54,
                       child: FilledButton(
-                        onPressed: loading ? null : (_passwordStep ? _submit : _continueToPassword),
+                        onPressed: loading
+                            ? null
+                            : (_passwordStep ? _submit : _continueToPassword),
                         child: loading
                             ? const SizedBox.square(
                                 dimension: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(_passwordStep ? 'ورود' : 'ادامه'),
                       ),
@@ -156,9 +174,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _guestHelpText,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF858BA6),
-                            height: 1.7,
-                          ),
+                        color: const Color(0xFF858BA6),
+                        height: 1.7,
+                      ),
                     ),
                     const SizedBox(height: 48),
                   ],
@@ -171,11 +189,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  String _loginErrorMessage(Object error, BuildContext context) {
+    final code = FriendlyApiErrorMessage.errorCodeOf(error);
+    if (code == ErrorCode.unauthorized && _passwordStep) {
+      return 'شماره موبایل یا رمز عبور درست نیست. اگر کاربر را تازه ساخته‌اید، شماره را با همان شماره موبایل ثبت‌شده امتحان کنید.';
+    }
+    if (code == ErrorCode.validationError) {
+      return 'شماره موبایل یا رمز عبور معتبر نیست. شماره را مثل 09123456789 وارد کنید.';
+    }
+    return FriendlyApiErrorMessage.from(error, context: context);
+  }
+
   void _continueToPassword() {
     final normalized = PhoneNumberNormalizer.normalize(_phoneController.text);
     if (normalized.isEmpty) {
       _phoneFocus.requestFocus();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شماره موبایل را وارد کنید.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('شماره موبایل را وارد کنید.')),
+      );
       return;
     }
     HapticFeedback.selectionClick();
@@ -183,13 +214,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _normalizedPhone = normalized;
       _passwordStep = true;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _passwordFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _passwordFocus.requestFocus(),
+    );
   }
 
   void _backToPhone() {
     HapticFeedback.selectionClick();
     setState(() => _passwordStep = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _phoneFocus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _phoneFocus.requestFocus(),
+    );
   }
 
   Future<void> _submit() async {
@@ -197,26 +232,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _continueToPassword();
       return;
     }
-    final phone = _normalizedPhone ?? PhoneNumberNormalizer.normalize(_phoneController.text);
+    final phone =
+        _normalizedPhone ??
+        PhoneNumberNormalizer.normalize(_phoneController.text);
     final password = _passwordController.text;
     if (phone.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('شماره موبایل و رمز عبور الزامی است.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('شماره موبایل و رمز عبور الزامی است.')),
+      );
       return;
     }
-    await ref.read(authControllerProvider.notifier).login(phone: phone, password: password);
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(phone: phone, password: password);
   }
-
-
 
   String get _guestButtonLabel =>
       _publicTokenFromRedirect(widget.redirectLocation) == null
-          ? 'ورود میهمان'
-          : 'پاسخ ناشناس به همین فرم';
+      ? 'ورود میهمان'
+      : 'پاسخ ناشناس به همین فرم';
 
   String get _guestHelpText =>
       _publicTokenFromRedirect(widget.redirectLocation) == null
-          ? 'کاربر گرامی، شما می‌توانید بصورت میهمان یا شناسنامه در نظرسنجی مشارکت کنید.'
-          : 'پاسخ ناشناس فقط برای همین فرم استفاده می‌شود و حساب فعلی شما را خارج نمی‌کند.';
+      ? 'کاربر گرامی، شما می‌توانید بصورت میهمان یا شناسنامه در نظرسنجی مشارکت کنید.'
+      : 'پاسخ ناشناس فقط برای همین فرم استفاده می‌شود و حساب فعلی شما را خارج نمی‌کند.';
 
   Future<void> _startGuestLogin() async {
     final publicToken = _publicTokenFromRedirect(widget.redirectLocation);
@@ -237,7 +276,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       builder: (context) => const _GuestOrganizationSheet(),
     );
     if (!mounted || input == null) return;
-    await ref.read(authControllerProvider.notifier).guestLogin(
+    await ref
+        .read(authControllerProvider.notifier)
+        .guestLogin(
           organizationSlug: input.organizationSlug,
           displayName: input.displayName,
         );
@@ -245,7 +286,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 }
 
 class _PhoneInput extends StatelessWidget {
-  const _PhoneInput({required this.controller, required this.focusNode, required this.onSubmit, super.key});
+  const _PhoneInput({
+    required this.controller,
+    required this.focusNode,
+    required this.onSubmit,
+    super.key,
+  });
 
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -254,30 +300,62 @@ class _PhoneInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _InputShell(
-      child: Row(
-        children: [
-          Text('+۹۸', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppTheme.ink, fontWeight: FontWeight.w900)),
-          Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 16), color: const Color(0xFFE1E6F1)),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9۰-۹٠-٩+ ]'))],
-              decoration: const InputDecoration.collapsed(hintText: '۹۱۵ ۰۰۰ ۰۰۰۰'),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.1),
-              onSubmitted: (_) => onSubmit(),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          children: [
+            Text(
+              '+۹۸',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-        ],
+            Container(
+              width: 1,
+              height: 28,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: const Color(0xFFE1E6F1),
+            ),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.left,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9۰-۹٠-٩+ ]')),
+                ],
+                decoration: const InputDecoration.collapsed(
+                  hintText: '۹۱۵ ۰۰۰ ۰۰۰۰',
+                ),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                ),
+                onSubmitted: (_) => onSubmit(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _PasswordInput extends StatelessWidget {
-  const _PasswordInput({required this.controller, required this.focusNode, required this.obscure, required this.phone, required this.onBack, required this.onToggle, required this.onSubmit, super.key});
+  const _PasswordInput({
+    required this.controller,
+    required this.focusNode,
+    required this.obscure,
+    required this.phone,
+    required this.onBack,
+    required this.onToggle,
+    required this.onSubmit,
+    super.key,
+  });
 
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -298,21 +376,30 @@ class _PasswordInput extends StatelessWidget {
           child: TextButton.icon(
             onPressed: onBack,
             icon: const Icon(Icons.edit_rounded, size: 18),
-            label: Text(phone),
+            label: LtrValueText(phone),
           ),
         ),
         const SizedBox(height: 8),
         _InputShell(
           child: Row(
             children: [
-              IconButton(onPressed: onToggle, icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined)),
+              IconButton(
+                onPressed: onToggle,
+                icon: Icon(
+                  obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              ),
               Expanded(
                 child: TextField(
                   controller: controller,
                   focusNode: focusNode,
                   obscureText: obscure,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration.collapsed(hintText: 'رمز عبور'),
+                  decoration: const InputDecoration.collapsed(
+                    hintText: 'رمز عبور',
+                  ),
                   onSubmitted: (_) => onSubmit(),
                 ),
               ),
@@ -366,9 +453,20 @@ class _LoginError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 20),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppTheme.danger,
+            size: 20,
+          ),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.danger))),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.danger),
+            ),
+          ),
         ],
       ),
     );
@@ -392,7 +490,10 @@ String? _publicTokenFromRedirect(String? location) {
 }
 
 class _GuestLoginInput {
-  const _GuestLoginInput({required this.organizationSlug, required this.displayName});
+  const _GuestLoginInput({
+    required this.organizationSlug,
+    required this.displayName,
+  });
 
   final String organizationSlug;
   final String displayName;
@@ -402,7 +503,8 @@ class _GuestOrganizationSheet extends StatefulWidget {
   const _GuestOrganizationSheet();
 
   @override
-  State<_GuestOrganizationSheet> createState() => _GuestOrganizationSheetState();
+  State<_GuestOrganizationSheet> createState() =>
+      _GuestOrganizationSheetState();
 }
 
 class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
@@ -431,28 +533,33 @@ class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
             Text(
               'ورود میهمان',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
             Text(
               'برای ورود میهمان باید سازمان مشخص باشد. اگر از لینک عمومی نظرسنجی وارد شوید، سازمان از همان لینک تشخیص داده می‌شود؛ در غیر این صورت کد یا slug سازمان را وارد کنید.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.6,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.6,
+              ),
             ),
             const SizedBox(height: 18),
             TextFormField(
               controller: _organizationController,
               textInputAction: TextInputAction.next,
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.left,
               decoration: const InputDecoration(
                 labelText: 'کد سازمان / slug',
                 hintText: 'مثلا main-school',
                 prefixIcon: Icon(Icons.apartment_rounded),
               ),
               validator: (value) {
-                if ((value ?? '').trim().isEmpty) return 'کد سازمان را وارد کنید.';
+                if ((value ?? '').trim().isEmpty)
+                  return 'کد سازمان را وارد کنید.';
                 return null;
               },
             ),
@@ -483,9 +590,10 @@ class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
     Navigator.of(context).pop(
       _GuestLoginInput(
         organizationSlug: _organizationController.text.trim(),
-        displayName: _nameController.text.trim().isEmpty ? 'مهمان' : _nameController.text.trim(),
+        displayName: _nameController.text.trim().isEmpty
+            ? 'مهمان'
+            : _nameController.text.trim(),
       ),
     );
   }
 }
-

@@ -23,7 +23,8 @@ Raw<GoRouter> router(Ref ref) {
       // come back after authentication.
       final path = state.matchedLocation;
       final publicPaths = {'/', '/login', '/public'};
-      final isPublic = publicPaths.contains(path) ||
+      final isPublic =
+          publicPaths.contains(path) ||
           path.startsWith('/public/') ||
           path.startsWith('/login');
       if (!isPublic) {
@@ -45,10 +46,22 @@ Raw<GoRouter> router(Ref ref) {
           noticeKey: state.uri.queryParameters['notice'],
         ),
       ),
-      GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
-      GoRoute(path: '/forms', builder: (context, state) => const FormsListScreen()),
-      GoRoute(path: '/forms/new', builder: (context, state) => const CreateFormScreen()),
-      GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
+      GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/forms',
+        builder: (context, state) => const FormsListScreen(),
+      ),
+      GoRoute(
+        path: '/forms/new',
+        builder: (context, state) => const CreateFormScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
       GoRoute(
         path: '/forms/:id',
         builder: (context, state) => FormDetailScreen(
@@ -60,7 +73,9 @@ Raw<GoRouter> router(Ref ref) {
         path: '/forms/:id/:section',
         builder: (context, state) => FormDetailScreen(
           formId: state.pathParameters['id']!,
-          initialSection: formWorkspaceSectionFromWire(state.pathParameters['section']),
+          initialSection: formWorkspaceSectionFromWire(
+            state.pathParameters['section'],
+          ),
         ),
       ),
       GoRoute(

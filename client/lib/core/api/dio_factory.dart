@@ -49,9 +49,13 @@ class _BearerTokenInterceptor extends Interceptor {
   final AuthTokenStore _tokenStore;
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     final path = options.path;
-    final isPublicAuth = path.contains('/api/v1/auth/login') ||
+    final isPublicAuth =
+        path.contains('/api/v1/auth/login') ||
         path.contains('/api/v1/auth/register') ||
         path.contains('/api/v1/auth/refresh') ||
         path.contains('/api/v1/public/');
@@ -86,7 +90,10 @@ class _TokenRefreshInterceptor extends Interceptor {
   }
 
   @override
-  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) async {
+  void onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) async {
     final statusCode = response.statusCode;
     if (statusCode != 401 || _isAuthPath(response.requestOptions.path)) {
       handler.next(response);
@@ -114,10 +121,7 @@ class _TokenRefreshInterceptor extends Interceptor {
         handler.reject(e);
       } else {
         handler.reject(
-          DioException(
-            requestOptions: response.requestOptions,
-            error: e,
-          ),
+          DioException(requestOptions: response.requestOptions, error: e),
         );
       }
     }
@@ -151,10 +155,7 @@ class _TokenRefreshInterceptor extends Interceptor {
         handler.next(e);
       } else {
         handler.next(
-          DioException(
-            requestOptions: err.requestOptions,
-            error: e,
-          ),
+          DioException(requestOptions: err.requestOptions, error: e),
         );
       }
     }
@@ -175,12 +176,14 @@ class _TokenRefreshInterceptor extends Interceptor {
       }
 
       // Use a separate Dio instance to avoid interceptor loops.
-      final refreshDio = Dio(BaseOptions(
-        baseUrl: _dio.options.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: const {'Accept': 'application/json'},
-      ));
+      final refreshDio = Dio(
+        BaseOptions(
+          baseUrl: _dio.options.baseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: const {'Accept': 'application/json'},
+        ),
+      );
 
       final response = await refreshDio.post<Map<String, dynamic>>(
         '/api/v1/auth/refresh',
@@ -196,8 +199,10 @@ class _TokenRefreshInterceptor extends Interceptor {
 
       // The server wraps in an envelope: { success: true, data: { ... } }
       final envelope = data['data'] as Map<String, dynamic>?;
-      final newAccessToken = (envelope?['access_token'] ?? data['access_token']) as String?;
-      final newRefreshToken = (envelope?['refresh_token'] ?? data['refresh_token']) as String?;
+      final newAccessToken =
+          (envelope?['access_token'] ?? data['access_token']) as String?;
+      final newRefreshToken =
+          (envelope?['refresh_token'] ?? data['refresh_token']) as String?;
 
       if (newAccessToken == null || newRefreshToken == null) {
         await _tokenStore.clear();
@@ -227,7 +232,10 @@ class _ApiEnvelopeInterceptor extends Interceptor {
   final AuthTokenStore _tokenStore;
 
   @override
-  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) async {
+  void onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) async {
     final failure = _failureFromResponse(response);
     if (failure == null) {
       handler.next(response);

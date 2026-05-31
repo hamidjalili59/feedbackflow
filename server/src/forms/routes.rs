@@ -94,7 +94,9 @@ pub async fn get_answer_access(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::answer_access(&state, &auth, id).await?))
+    Ok(response::ok(
+        service::answer_access(&state, &auth, id).await?,
+    ))
 }
 pub async fn update_form(
     State(state): State<AppState>,
@@ -276,5 +278,7 @@ pub async fn get_dashboard_analytics(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::dashboard_analytics(&state, &auth).await?))
+    Ok(response::ok(
+        service::dashboard_analytics(&state, &auth).await?,
+    ))
 }

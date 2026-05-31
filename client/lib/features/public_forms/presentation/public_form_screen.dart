@@ -46,7 +46,9 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.invalidate(publicFormProvider(widget.publicToken)));
+    Future.microtask(
+      () => ref.invalidate(publicFormProvider(widget.publicToken)),
+    );
   }
 
   @override
@@ -55,7 +57,9 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
     if (oldWidget.publicToken != widget.publicToken ||
         oldWidget.initialRespondentMode != widget.initialRespondentMode) {
       _resetEntryState();
-      Future.microtask(() => ref.invalidate(publicFormProvider(widget.publicToken)));
+      Future.microtask(
+        () => ref.invalidate(publicFormProvider(widget.publicToken)),
+      );
     }
   }
 
@@ -98,19 +102,15 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
         ],
       ),
       body: formAsync.when(
-        loading:
-            () => LoadingPanel(message: context.l10n.t('loadingPublicForm')),
-        error:
-            (error, stackTrace) => ErrorPanel(
-              error: error,
-              onRetry:
-                  () => ref.invalidate(publicFormProvider(widget.publicToken)),
-              onBack:
-                  () =>
-                      Navigator.of(context).canPop()
-                          ? Navigator.of(context).maybePop()
-                          : context.go('/'),
-            ),
+        loading: () =>
+            LoadingPanel(message: context.l10n.t('loadingPublicForm')),
+        error: (error, stackTrace) => ErrorPanel(
+          error: error,
+          onRetry: () => ref.invalidate(publicFormProvider(widget.publicToken)),
+          onBack: () => Navigator.of(context).canPop()
+              ? Navigator.of(context).maybePop()
+              : context.go('/'),
+        ),
         data: (form) {
           final session = authAsync.asData?.value;
           _respondentMode ??= _defaultRespondentMode(
@@ -174,8 +174,8 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             submitting: _submitting,
             validatingAccess: _validatingAccess,
             answers: _answers,
-            onAnswerChanged:
-                (fieldId, value) => setState(() => _answers[fieldId] = value),
+            onAnswerChanged: (fieldId, value) =>
+                setState(() => _answers[fieldId] = value),
             onSubmit: () => _submit(form),
           );
         },
@@ -197,14 +197,12 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             publicToken: widget.publicToken,
             request: ValidatePublicFormAccessRequest(
               respondentMode: _respondentMode,
-              formPassword:
-                  _formPasswordController.text.trim().isEmpty
-                      ? null
-                      : _formPasswordController.text.trim(),
-              identityCode:
-                  _identityCodeController.text.trim().isEmpty
-                      ? null
-                      : _identityCodeController.text.trim(),
+              formPassword: _formPasswordController.text.trim().isEmpty
+                  ? null
+                  : _formPasswordController.text.trim(),
+              identityCode: _identityCodeController.text.trim().isEmpty
+                  ? null
+                  : _identityCodeController.text.trim(),
             ),
           );
       final token = response.accessToken;
@@ -460,8 +458,8 @@ class _PublicFormEntryGate extends StatelessWidget {
                         ],
                         selected: {selectedMode},
                         showSelectedIcon: false,
-                        onSelectionChanged:
-                            (values) => onModeChanged(values.first),
+                        onSelectionChanged: (values) =>
+                            onModeChanged(values.first),
                       ),
                       AppSpacing.gapMd,
                     ],
@@ -473,11 +471,10 @@ class _PublicFormEntryGate extends StatelessWidget {
                           labelText: context.l10n.t('formPassword'),
                           prefixIcon: const Icon(Icons.lock_outline_rounded),
                         ),
-                        validator:
-                            (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? context.l10n.t('requiredField')
-                                    : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? context.l10n.t('requiredField')
+                            : null,
                       ),
                       AppSpacing.gapMd,
                     ],
@@ -488,11 +485,10 @@ class _PublicFormEntryGate extends StatelessWidget {
                           labelText: context.l10n.t('guestName'),
                           prefixIcon: const Icon(Icons.person_outline_rounded),
                         ),
-                        validator:
-                            (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? context.l10n.t('requiredField')
-                                    : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? context.l10n.t('requiredField')
+                            : null,
                       ),
                       AppSpacing.gapMd,
                     ],
@@ -505,25 +501,21 @@ class _PublicFormEntryGate extends StatelessWidget {
                           prefixIcon: const Icon(Icons.key_rounded),
                           helperText: identityLabel,
                         ),
-                        validator:
-                            (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? context.l10n.t('requiredField')
-                                    : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? context.l10n.t('requiredField')
+                            : null,
                       ),
                       AppSpacing.gapMd,
                     ],
                     FilledButton.icon(
                       onPressed: validating ? null : onContinue,
-                      icon:
-                          validating
-                              ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Icon(Icons.arrow_forward_rounded),
+                      icon: validating
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.arrow_forward_rounded),
                       label: Text(context.l10n.t('continueAction')),
                     ),
                   ],
@@ -556,10 +548,9 @@ class _PublicFormIntro extends StatelessWidget {
         AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color:
-            theme.brightness == Brightness.dark
-                ? const Color(0xFF171A2A)
-                : Colors.white,
+        color: theme.brightness == Brightness.dark
+            ? const Color(0xFF171A2A)
+            : Colors.white,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         border: Border.all(
           color: scheme.outlineVariant.withValues(alpha: 0.55),
@@ -661,26 +652,23 @@ class _ProtectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return FeedbackInlinePanel(
       icon: validated ? Icons.verified_rounded : Icons.shield_rounded,
-      title:
-          validated
-              ? context.l10n.t('publicAccessValidated')
-              : context.l10n.t('protectedPublicForm'),
-      message:
-          validated
-              ? context.l10n.t('canSubmitNow')
-              : context.l10n.t('publicAccessAutoCheck'),
-      trailing:
-          validating
-              ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-              : Icon(
-                validated
-                    ? Icons.check_circle_rounded
-                    : Icons.lock_outline_rounded,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+      title: validated
+          ? context.l10n.t('publicAccessValidated')
+          : context.l10n.t('protectedPublicForm'),
+      message: validated
+          ? context.l10n.t('canSubmitNow')
+          : context.l10n.t('publicAccessAutoCheck'),
+      trailing: validating
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(
+              validated
+                  ? Icons.check_circle_rounded
+                  : Icons.lock_outline_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
     );
   }
 }
@@ -695,10 +683,9 @@ class _SubmittedView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final message =
-        authenticated
-            ? response.message
-            : context.l10n.t('guestSubmissionSuccessAuthRequired');
+    final message = authenticated
+        ? response.message
+        : context.l10n.t('guestSubmissionSuccessAuthRequired');
 
     return Center(
       child: ConstrainedBox(

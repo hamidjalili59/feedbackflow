@@ -233,8 +233,7 @@ abstract class AnalyticsBucketDto with _$AnalyticsBucketDto {
 }
 
 @freezed
-abstract class AnalyticsTimeseriesPointDto
-    with _$AnalyticsTimeseriesPointDto {
+abstract class AnalyticsTimeseriesPointDto with _$AnalyticsTimeseriesPointDto {
   @JsonSerializable(explicitToJson: true)
   const factory AnalyticsTimeseriesPointDto({
     @JsonKey(name: 'date') required String date,

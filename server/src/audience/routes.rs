@@ -16,10 +16,15 @@ use validator::Validate;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/audience-segments", get(list_segments).post(create_segment))
+        .route(
+            "/audience-segments",
+            get(list_segments).post(create_segment),
+        )
         .route(
             "/audience-segments/{id}",
-            get(get_segment).patch(update_segment).delete(delete_segment),
+            get(get_segment)
+                .patch(update_segment)
+                .delete(delete_segment),
         )
         .route(
             "/audience-segments/{id}/members",

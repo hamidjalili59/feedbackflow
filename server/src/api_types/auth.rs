@@ -33,7 +33,6 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct GuestLoginRequest {
     pub organization_id: Option<Uuid>,

@@ -48,15 +48,13 @@ class FeedbackFlowApiClient {
   ) {
     final map = _jsonObject(json);
     final dataRaw = map['data'];
-    final data =
-        dataRaw is Iterable
-            ? dataRaw.map(fromJsonT).toList(growable: false)
-            : null;
+    final data = dataRaw is Iterable
+        ? dataRaw.map(fromJsonT).toList(growable: false)
+        : null;
     final errorRaw = map['error'];
-    final error =
-        errorRaw is Map
-            ? ApiError.fromJson(Map<String, dynamic>.from(errorRaw))
-            : null;
+    final error = errorRaw is Map
+        ? ApiError.fromJson(Map<String, dynamic>.from(errorRaw))
+        : null;
     final metaRaw = map['meta'];
     ListMetaDto? meta;
     if (metaRaw is Map && metaRaw['pagination'] != null) {
@@ -371,7 +369,9 @@ class FeedbackFlowApiClient {
     required String id,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      _path('/api/v1/forms/{id}/answer-access', <String, String>{'id': id.toString()}),
+      _path('/api/v1/forms/{id}/answer-access', <String, String>{
+        'id': id.toString(),
+      }),
     );
     return _parseApiResponse<FormAnswerAccessDto2>(
       response.data,
@@ -512,7 +512,8 @@ class FeedbackFlowApiClient {
     );
     return _parseApiResponse<List<ChildProfileDto2>>(
       response.data,
-      (json) => _parseDtoList<ChildProfileDto2>(json, ChildProfileDto2.fromJson),
+      (json) =>
+          _parseDtoList<ChildProfileDto2>(json, ChildProfileDto2.fromJson),
     );
   }
 
@@ -693,11 +694,14 @@ class FeedbackFlowApiClient {
     required String id,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      _path('/api/v1/forms/{id}/assignments', <String, String>{'id': id.toString()}),
+      _path('/api/v1/forms/{id}/assignments', <String, String>{
+        'id': id.toString(),
+      }),
     );
     return _parseApiResponse<List<FormAssignmentDto2>>(
       response.data,
-      (json) => _parseDtoList<FormAssignmentDto2>(json, FormAssignmentDto2.fromJson),
+      (json) =>
+          _parseDtoList<FormAssignmentDto2>(json, FormAssignmentDto2.fromJson),
     );
   }
 

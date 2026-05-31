@@ -33,7 +33,10 @@ class ApiFailure implements Exception {
     );
   }
 
-  factory ApiFailure.fromEnvelope(Map<String, dynamic> json, {int? statusCode}) {
+  factory ApiFailure.fromEnvelope(
+    Map<String, dynamic> json, {
+    int? statusCode,
+  }) {
     final errorRaw = json['error'];
     if (errorRaw is Map) {
       return ApiFailure.fromError(
@@ -77,7 +80,9 @@ class ApiFailure implements Exception {
   factory ApiFailure.unexpected(Object error, {int? statusCode}) {
     return ApiFailure(
       code: _codeFromStatus(statusCode),
-      message: error.toString().isEmpty ? _messageFromStatus(statusCode) : error.toString(),
+      message: error.toString().isEmpty
+          ? _messageFromStatus(statusCode)
+          : error.toString(),
       details: error,
       statusCode: statusCode,
       kind: ApiFailureKind.unexpected,
@@ -117,16 +122,27 @@ class ApiFailure implements Exception {
     return null;
   }
 
-  bool get isAuthFailure => code == ErrorCode.unauthorized || code == ErrorCode.invalidToken || code == ErrorCode.tokenExpired;
-  bool get isPermissionFailure => code == ErrorCode.forbidden || code == ErrorCode.permissionDenied;
+  bool get isAuthFailure =>
+      code == ErrorCode.unauthorized ||
+      code == ErrorCode.invalidToken ||
+      code == ErrorCode.tokenExpired;
+  bool get isPermissionFailure =>
+      code == ErrorCode.forbidden || code == ErrorCode.permissionDenied;
   bool get isValidationFailure => code == ErrorCode.validationError;
   bool get isRateLimited => code == ErrorCode.rateLimited;
   bool get isPublicFormClosed => code == ErrorCode.formClosed;
-  bool get isFormUnavailable => code == ErrorCode.formClosed || code == ErrorCode.formNotPublished;
-  bool get isRetryable => kind == ApiFailureKind.network || kind == ApiFailureKind.timeout || code == ErrorCode.serviceUnavailable || code == ErrorCode.internalServerError || code == ErrorCode.rateLimited;
+  bool get isFormUnavailable =>
+      code == ErrorCode.formClosed || code == ErrorCode.formNotPublished;
+  bool get isRetryable =>
+      kind == ApiFailureKind.network ||
+      kind == ApiFailureKind.timeout ||
+      code == ErrorCode.serviceUnavailable ||
+      code == ErrorCode.internalServerError ||
+      code == ErrorCode.rateLimited;
 
   @override
-  String toString() => 'ApiFailure(code: ${code.toJson()}, message: $message, statusCode: $statusCode)';
+  String toString() =>
+      'ApiFailure(code: ${code.toJson()}, message: $message, statusCode: $statusCode)';
 }
 
 enum ApiFailureKind { api, network, timeout, cancelled, unexpected }
@@ -148,7 +164,9 @@ class EnvelopeGuard {
     }
     final data = response.data;
     if (data == null) {
-      throw const ApiContractException('The server returned success=true with null data.');
+      throw const ApiContractException(
+        'The server returned success=true with null data.',
+      );
     }
     return data;
   }
@@ -159,7 +177,9 @@ class EnvelopeGuard {
     }
     final data = response.data;
     if (data == null) {
-      throw const ApiContractException('The server returned success=true with null list data.');
+      throw const ApiContractException(
+        'The server returned success=true with null list data.',
+      );
     }
     return data;
   }
@@ -169,10 +189,14 @@ class EnvelopeGuard {
       throw ApiFailure.fromError(response.error);
     }
     if (response.data == null) {
-      throw const ApiContractException('The server returned success=true with null list data.');
+      throw const ApiContractException(
+        'The server returned success=true with null list data.',
+      );
     }
     if (response.meta?.pagination == null) {
-      throw const ApiContractException('The server returned a list without pagination meta.');
+      throw const ApiContractException(
+        'The server returned a list without pagination meta.',
+      );
     }
     return response;
   }

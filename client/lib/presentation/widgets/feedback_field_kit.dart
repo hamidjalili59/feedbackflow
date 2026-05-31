@@ -162,10 +162,14 @@ class FeedbackFieldCard extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: (compact
-                    ? theme.textTheme.titleSmall
-                    : theme.textTheme.titleMedium)
-                ?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.2),
+            style:
+                (compact
+                        ? theme.textTheme.titleSmall
+                        : theme.textTheme.titleMedium)
+                    ?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                    ),
           ),
           if ((description ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -216,18 +220,16 @@ class FeedbackOptionChip extends StatelessWidget {
         vertical: expand ? 12 : 10,
       ),
       decoration: BoxDecoration(
-        color:
-            selected
-                ? scheme.primary.withValues(alpha: 0.095)
-                : scheme.surface.withValues(
-                  alpha: theme.brightness == Brightness.dark ? 0.08 : 0.72,
-                ),
+        color: selected
+            ? scheme.primary.withValues(alpha: 0.095)
+            : scheme.surface.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.08 : 0.72,
+              ),
         borderRadius: radius,
         border: Border.all(
-          color:
-              selected
-                  ? scheme.primary
-                  : scheme.outlineVariant.withValues(alpha: 0.78),
+          color: selected
+              ? scheme.primary
+              : scheme.outlineVariant.withValues(alpha: 0.78),
           width: selected ? 1.45 : 1,
         ),
       ),
@@ -286,8 +288,9 @@ class FeedbackOptionChip extends StatelessWidget {
     return InkWell(
       borderRadius: radius,
       onTap: onTap,
-      child:
-          expand ? SizedBox(width: double.infinity, child: content) : content,
+      child: expand
+          ? SizedBox(width: double.infinity, child: content)
+          : content,
     );
   }
 }
@@ -367,33 +370,29 @@ class FeedbackRatingButton extends StatelessWidget {
         width: starLike ? 44 : 50,
         height: starLike ? 44 : 50,
         decoration: BoxDecoration(
-          color:
-              starLike
-                  ? Colors.transparent
-                  : selected
-                  ? scheme.primary.withValues(alpha: 0.12)
-                  : scheme.surfaceContainerHighest.withValues(alpha: 0.38),
+          color: starLike
+              ? Colors.transparent
+              : selected
+              ? scheme.primary.withValues(alpha: 0.12)
+              : scheme.surfaceContainerHighest.withValues(alpha: 0.38),
           borderRadius: BorderRadius.circular(starLike ? 999 : 18),
-          border:
-              starLike
-                  ? null
-                  : Border.all(
-                    color: selected ? scheme.primary : scheme.outlineVariant,
-                    width: selected ? 1.45 : 1,
-                  ),
+          border: starLike
+              ? null
+              : Border.all(
+                  color: selected ? scheme.primary : scheme.outlineVariant,
+                  width: selected ? 1.45 : 1,
+                ),
         ),
         child: Center(
-          child:
-              emoji != null
-                  ? Text(emoji!, style: const TextStyle(fontSize: 26))
-                  : Icon(
-                    selected ? Icons.star_rounded : Icons.star_rounded,
-                    size: starLike ? 34 : 27,
-                    color:
-                        selected
-                            ? const Color(0xFFFFC857)
-                            : scheme.outlineVariant,
-                  ),
+          child: emoji != null
+              ? Text(emoji!, style: const TextStyle(fontSize: 26))
+              : Icon(
+                  selected ? Icons.star_rounded : Icons.star_rounded,
+                  size: starLike ? 34 : 27,
+                  color: selected
+                      ? const Color(0xFFFFC857)
+                      : scheme.outlineVariant,
+                ),
         ),
       ),
     );

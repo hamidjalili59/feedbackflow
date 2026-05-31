@@ -47,7 +47,10 @@ class ApiFailureMapper {
         return ApiFailureMessage(title: 'Form unavailable', message: message);
       case ErrorCode.publicAccessDenied:
       case ErrorCode.publicProtectionRequired:
-        return ApiFailureMessage(title: 'Public access required', message: message);
+        return ApiFailureMessage(
+          title: 'Public access required',
+          message: message,
+        );
       case ErrorCode.notFound:
         return ApiFailureMessage(title: 'Not found', message: message);
       case ErrorCode.conflict:

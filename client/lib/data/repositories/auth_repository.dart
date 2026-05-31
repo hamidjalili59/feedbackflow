@@ -7,7 +7,9 @@ abstract class AuthRepository {
   Future<LoginResponse> guestLogin({required GuestLoginRequest request});
   Future<LogoutResponse> logout({required LogoutRequest request});
   Future<MeResponse> getMe();
-  Future<RefreshTokenResponse> refreshToken({required RefreshTokenRequest request});
+  Future<RefreshTokenResponse> refreshToken({
+    required RefreshTokenRequest request,
+  });
   Future<RegisterResponse> register({required RegisterRequest request});
 }
 
@@ -20,7 +22,6 @@ class DioAuthRepository implements AuthRepository {
   Future<LoginResponse> login({required LoginRequest request}) async {
     return EnvelopeGuard.data(await _api.login(request: request));
   }
-
 
   @override
   Future<LoginResponse> guestLogin({required GuestLoginRequest request}) async {
@@ -38,7 +39,9 @@ class DioAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<RefreshTokenResponse> refreshToken({required RefreshTokenRequest request}) async {
+  Future<RefreshTokenResponse> refreshToken({
+    required RefreshTokenRequest request,
+  }) async {
     return EnvelopeGuard.data(await _api.refreshToken(request: request));
   }
 
@@ -46,5 +49,4 @@ class DioAuthRepository implements AuthRepository {
   Future<RegisterResponse> register({required RegisterRequest request}) async {
     return EnvelopeGuard.data(await _api.register(request: request));
   }
-
 }

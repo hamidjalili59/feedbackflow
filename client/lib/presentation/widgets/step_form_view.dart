@@ -36,7 +36,9 @@ class _StepFormViewState extends State<StepFormView> {
   @override
   void initState() {
     super.initState();
-    _answerableFields = widget.fields.where((f) => _fieldSubmitsAnswer(f.type)).toList(growable: false);
+    _answerableFields = widget.fields
+        .where((f) => _fieldSubmitsAnswer(f.type))
+        .toList(growable: false);
     _pageController = PageController();
   }
 
@@ -44,7 +46,9 @@ class _StepFormViewState extends State<StepFormView> {
   void didUpdateWidget(covariant StepFormView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.fields != widget.fields) {
-      _answerableFields = widget.fields.where((f) => _fieldSubmitsAnswer(f.type)).toList(growable: false);
+      _answerableFields = widget.fields
+          .where((f) => _fieldSubmitsAnswer(f.type))
+          .toList(growable: false);
       if (_currentPage >= _answerableFields.length) _currentPage = 0;
     }
   }
@@ -56,11 +60,14 @@ class _StepFormViewState extends State<StepFormView> {
   }
 
   bool get _isLastPage => _currentPage >= _answerableFields.length - 1;
-  double get _progress => _answerableFields.isEmpty ? 1 : (_currentPage + 1) / _answerableFields.length;
+  double get _progress => _answerableFields.isEmpty
+      ? 1
+      : (_currentPage + 1) / _answerableFields.length;
 
   @override
   Widget build(BuildContext context) {
-    if (_answerableFields.isEmpty) return const Center(child: Text('هنوز پرسشی تعریف نشده است.'));
+    if (_answerableFields.isEmpty)
+      return const Center(child: Text('هنوز پرسشی تعریف نشده است.'));
     return Column(
       children: [
         SafeArea(
@@ -73,16 +80,19 @@ class _StepFormViewState extends State<StepFormView> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.close_rounded, color: AppTheme.ink),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppTheme.ink,
+                      ),
                     ),
                     Expanded(
                       child: Text(
                         'پرسش ${_currentPage + 1} از ${_answerableFields.length}',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: const Color(0xFF737B9A),
-                              fontWeight: FontWeight.w900,
-                            ),
+                          color: const Color(0xFF737B9A),
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48),
@@ -132,23 +142,41 @@ class _StepFormViewState extends State<StepFormView> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(32, 12, 32, 26),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: AppBreakpoints.narrowContentMax),
+              constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.narrowContentMax,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
                     height: 52,
                     child: FilledButton(
-                      onPressed: widget.submitting ? null : (_isLastPage ? widget.onSubmit : _goNext),
+                      onPressed: widget.submitting
+                          ? null
+                          : (_isLastPage ? widget.onSubmit : _goNext),
                       child: widget.submitting
-                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Colors.white,
+                              ),
+                            )
                           : Text(_isLastPage ? 'ثبت پاسخ' : 'بعدی'),
                     ),
                   ),
                   const SizedBox(height: 18),
                   TextButton(
                     onPressed: _currentPage > 0 ? _goBack : null,
-                    child: Text('قبلی', style: TextStyle(color: _currentPage > 0 ? const Color(0xFF9AA1B8) : const Color(0xFFC4CAD8), fontWeight: FontWeight.w900)),
+                    child: Text(
+                      'قبلی',
+                      style: TextStyle(
+                        color: _currentPage > 0
+                            ? const Color(0xFF9AA1B8)
+                            : const Color(0xFFC4CAD8),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -162,18 +190,29 @@ class _StepFormViewState extends State<StepFormView> {
   void _goNext() {
     if (_isLastPage) return;
     HapticFeedback.selectionClick();
-    _pageController.nextPage(duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _goBack() {
     if (_currentPage <= 0) return;
     HapticFeedback.selectionClick();
-    _pageController.previousPage(duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+    );
   }
 }
 
 class _QuestionPage extends StatelessWidget {
-  const _QuestionPage({required this.field, required this.index, required this.value, required this.onChanged});
+  const _QuestionPage({
+    required this.field,
+    required this.index,
+    required this.value,
+    required this.onChanged,
+  });
 
   final FormFieldDto field;
   final int index;
@@ -187,7 +226,9 @@ class _QuestionPage extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppBreakpoints.narrowContentMax),
+          constraints: const BoxConstraints(
+            maxWidth: AppBreakpoints.narrowContentMax,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -204,7 +245,13 @@ class _QuestionPage extends StatelessWidget {
               ),
               if ((field.description ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text(field.description!, textAlign: TextAlign.right, style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF858BA6))),
+                Text(
+                  field.description!,
+                  textAlign: TextAlign.right,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF858BA6),
+                  ),
+                ),
               ],
               const SizedBox(height: 26),
               FieldRenderer(

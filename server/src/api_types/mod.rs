@@ -1,8 +1,8 @@
 pub mod activities;
 pub mod analytics;
+pub mod audience;
 pub mod audit;
 pub mod auth;
-pub mod audience;
 pub mod common;
 pub mod dashboard;
 pub mod enums;
@@ -19,9 +19,9 @@ pub mod users;
 
 pub use activities::*;
 pub use analytics::*;
+pub use audience::*;
 pub use audit::*;
 pub use auth::*;
-pub use audience::*;
 pub use common::*;
 pub use dashboard::*;
 pub use enums::*;

@@ -27,43 +27,50 @@ enum ActivityActionType {
 
 class ActivityActionTypeWire {
   static const unknown = ActivityActionType.unknown;
-  static const Map<String, ActivityActionType> _byWire = <String, ActivityActionType>{
-    'create_activity': ActivityActionType.createActivity,
-    'notify_user': ActivityActionType.notifyUser,
-    'notify_manager': ActivityActionType.notifyManager,
-    'send_email': ActivityActionType.sendEmail,
-    'send_webhook': ActivityActionType.sendWebhook,
-    'mark_submission': ActivityActionType.markSubmission,
-    'assign_follow_up': ActivityActionType.assignFollowUp,
-  };
+  static const Map<String, ActivityActionType> _byWire =
+      <String, ActivityActionType>{
+        'create_activity': ActivityActionType.createActivity,
+        'notify_user': ActivityActionType.notifyUser,
+        'notify_manager': ActivityActionType.notifyManager,
+        'send_email': ActivityActionType.sendEmail,
+        'send_webhook': ActivityActionType.sendWebhook,
+        'mark_submission': ActivityActionType.markSubmission,
+        'assign_follow_up': ActivityActionType.assignFollowUp,
+      };
 
-  static ActivityActionType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ActivityActionType.unknown) : ActivityActionType.unknown;
+  static ActivityActionType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ActivityActionType.unknown)
+      : ActivityActionType.unknown;
 
   static String toJson(ActivityActionType value) => value.wireValue;
 }
 
-class ActivityActionTypeJsonConverter implements JsonConverter<ActivityActionType, Object?> {
+class ActivityActionTypeJsonConverter
+    implements JsonConverter<ActivityActionType, Object?> {
   const ActivityActionTypeJsonConverter();
 
   @override
-  ActivityActionType fromJson(Object? json) => ActivityActionType.fromJson(json);
+  ActivityActionType fromJson(Object? json) =>
+      ActivityActionType.fromJson(json);
 
   @override
   Object? toJson(ActivityActionType object) => object.toJson();
 }
 
-class NullableActivityActionTypeJsonConverter implements JsonConverter<ActivityActionType?, Object?> {
+class NullableActivityActionTypeJsonConverter
+    implements JsonConverter<ActivityActionType?, Object?> {
   const NullableActivityActionTypeJsonConverter();
 
   @override
-  ActivityActionType? fromJson(Object? json) => json == null ? null : ActivityActionType.fromJson(json);
+  ActivityActionType? fromJson(Object? json) =>
+      json == null ? null : ActivityActionType.fromJson(json);
 
   @override
   Object? toJson(ActivityActionType? object) => object?.toJson();
 }
 
-class ActivityActionTypeListJsonConverter implements JsonConverter<List<ActivityActionType>, Object?> {
+class ActivityActionTypeListJsonConverter
+    implements JsonConverter<List<ActivityActionType>, Object?> {
   const ActivityActionTypeListJsonConverter();
 
   @override
@@ -73,10 +80,12 @@ class ActivityActionTypeListJsonConverter implements JsonConverter<List<Activity
   }
 
   @override
-  Object? toJson(List<ActivityActionType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityActionType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableActivityActionTypeListJsonConverter implements JsonConverter<List<ActivityActionType>?, Object?> {
+class NullableActivityActionTypeListJsonConverter
+    implements JsonConverter<List<ActivityActionType>?, Object?> {
   const NullableActivityActionTypeListJsonConverter();
 
   @override
@@ -87,7 +96,8 @@ class NullableActivityActionTypeListJsonConverter implements JsonConverter<List<
   }
 
   @override
-  Object? toJson(List<ActivityActionType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityActionType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ActivityStatus {
@@ -120,13 +130,15 @@ class ActivityStatusWire {
     'cancelled': ActivityStatus.cancelled,
   };
 
-  static ActivityStatus fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ActivityStatus.unknown) : ActivityStatus.unknown;
+  static ActivityStatus fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ActivityStatus.unknown)
+      : ActivityStatus.unknown;
 
   static String toJson(ActivityStatus value) => value.wireValue;
 }
 
-class ActivityStatusJsonConverter implements JsonConverter<ActivityStatus, Object?> {
+class ActivityStatusJsonConverter
+    implements JsonConverter<ActivityStatus, Object?> {
   const ActivityStatusJsonConverter();
 
   @override
@@ -136,17 +148,20 @@ class ActivityStatusJsonConverter implements JsonConverter<ActivityStatus, Objec
   Object? toJson(ActivityStatus object) => object.toJson();
 }
 
-class NullableActivityStatusJsonConverter implements JsonConverter<ActivityStatus?, Object?> {
+class NullableActivityStatusJsonConverter
+    implements JsonConverter<ActivityStatus?, Object?> {
   const NullableActivityStatusJsonConverter();
 
   @override
-  ActivityStatus? fromJson(Object? json) => json == null ? null : ActivityStatus.fromJson(json);
+  ActivityStatus? fromJson(Object? json) =>
+      json == null ? null : ActivityStatus.fromJson(json);
 
   @override
   Object? toJson(ActivityStatus? object) => object?.toJson();
 }
 
-class ActivityStatusListJsonConverter implements JsonConverter<List<ActivityStatus>, Object?> {
+class ActivityStatusListJsonConverter
+    implements JsonConverter<List<ActivityStatus>, Object?> {
   const ActivityStatusListJsonConverter();
 
   @override
@@ -156,10 +171,12 @@ class ActivityStatusListJsonConverter implements JsonConverter<List<ActivityStat
   }
 
   @override
-  Object? toJson(List<ActivityStatus> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityStatus> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableActivityStatusListJsonConverter implements JsonConverter<List<ActivityStatus>?, Object?> {
+class NullableActivityStatusListJsonConverter
+    implements JsonConverter<List<ActivityStatus>?, Object?> {
   const NullableActivityStatusListJsonConverter();
 
   @override
@@ -170,7 +187,8 @@ class NullableActivityStatusListJsonConverter implements JsonConverter<List<Acti
   }
 
   @override
-  Object? toJson(List<ActivityStatus>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityStatus>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ActivityTriggerType {
@@ -201,45 +219,52 @@ enum ActivityTriggerType {
 
 class ActivityTriggerTypeWire {
   static const unknown = ActivityTriggerType.unknown;
-  static const Map<String, ActivityTriggerType> _byWire = <String, ActivityTriggerType>{
-    'submission_created': ActivityTriggerType.submissionCreated,
-    'score_above': ActivityTriggerType.scoreAbove,
-    'score_below': ActivityTriggerType.scoreBelow,
-    'answer_equals': ActivityTriggerType.answerEquals,
-    'answer_contains': ActivityTriggerType.answerContains,
-    'nps_low': ActivityTriggerType.npsLow,
-    'nps_high': ActivityTriggerType.npsHigh,
-    'submission_count_reached': ActivityTriggerType.submissionCountReached,
-    'form_closed': ActivityTriggerType.formClosed,
-  };
+  static const Map<String, ActivityTriggerType> _byWire =
+      <String, ActivityTriggerType>{
+        'submission_created': ActivityTriggerType.submissionCreated,
+        'score_above': ActivityTriggerType.scoreAbove,
+        'score_below': ActivityTriggerType.scoreBelow,
+        'answer_equals': ActivityTriggerType.answerEquals,
+        'answer_contains': ActivityTriggerType.answerContains,
+        'nps_low': ActivityTriggerType.npsLow,
+        'nps_high': ActivityTriggerType.npsHigh,
+        'submission_count_reached': ActivityTriggerType.submissionCountReached,
+        'form_closed': ActivityTriggerType.formClosed,
+      };
 
-  static ActivityTriggerType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ActivityTriggerType.unknown) : ActivityTriggerType.unknown;
+  static ActivityTriggerType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ActivityTriggerType.unknown)
+      : ActivityTriggerType.unknown;
 
   static String toJson(ActivityTriggerType value) => value.wireValue;
 }
 
-class ActivityTriggerTypeJsonConverter implements JsonConverter<ActivityTriggerType, Object?> {
+class ActivityTriggerTypeJsonConverter
+    implements JsonConverter<ActivityTriggerType, Object?> {
   const ActivityTriggerTypeJsonConverter();
 
   @override
-  ActivityTriggerType fromJson(Object? json) => ActivityTriggerType.fromJson(json);
+  ActivityTriggerType fromJson(Object? json) =>
+      ActivityTriggerType.fromJson(json);
 
   @override
   Object? toJson(ActivityTriggerType object) => object.toJson();
 }
 
-class NullableActivityTriggerTypeJsonConverter implements JsonConverter<ActivityTriggerType?, Object?> {
+class NullableActivityTriggerTypeJsonConverter
+    implements JsonConverter<ActivityTriggerType?, Object?> {
   const NullableActivityTriggerTypeJsonConverter();
 
   @override
-  ActivityTriggerType? fromJson(Object? json) => json == null ? null : ActivityTriggerType.fromJson(json);
+  ActivityTriggerType? fromJson(Object? json) =>
+      json == null ? null : ActivityTriggerType.fromJson(json);
 
   @override
   Object? toJson(ActivityTriggerType? object) => object?.toJson();
 }
 
-class ActivityTriggerTypeListJsonConverter implements JsonConverter<List<ActivityTriggerType>, Object?> {
+class ActivityTriggerTypeListJsonConverter
+    implements JsonConverter<List<ActivityTriggerType>, Object?> {
   const ActivityTriggerTypeListJsonConverter();
 
   @override
@@ -249,10 +274,12 @@ class ActivityTriggerTypeListJsonConverter implements JsonConverter<List<Activit
   }
 
   @override
-  Object? toJson(List<ActivityTriggerType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityTriggerType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableActivityTriggerTypeListJsonConverter implements JsonConverter<List<ActivityTriggerType>?, Object?> {
+class NullableActivityTriggerTypeListJsonConverter
+    implements JsonConverter<List<ActivityTriggerType>?, Object?> {
   const NullableActivityTriggerTypeListJsonConverter();
 
   @override
@@ -263,7 +290,8 @@ class NullableActivityTriggerTypeListJsonConverter implements JsonConverter<List
   }
 
   @override
-  Object? toJson(List<ActivityTriggerType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ActivityTriggerType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum AnswerVisibility {
@@ -290,21 +318,24 @@ enum AnswerVisibility {
 
 class AnswerVisibilityWire {
   static const unknown = AnswerVisibility.unknown;
-  static const Map<String, AnswerVisibility> _byWire = <String, AnswerVisibility>{
-    'visible_to_creator': AnswerVisibility.visibleToCreator,
-    'visible_to_admin': AnswerVisibility.visibleToAdmin,
-    'visible_to_manager': AnswerVisibility.visibleToManager,
-    'anonymous': AnswerVisibility.anonymous,
-    'private': AnswerVisibility.private,
-  };
+  static const Map<String, AnswerVisibility> _byWire =
+      <String, AnswerVisibility>{
+        'visible_to_creator': AnswerVisibility.visibleToCreator,
+        'visible_to_admin': AnswerVisibility.visibleToAdmin,
+        'visible_to_manager': AnswerVisibility.visibleToManager,
+        'anonymous': AnswerVisibility.anonymous,
+        'private': AnswerVisibility.private,
+      };
 
-  static AnswerVisibility fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? AnswerVisibility.unknown) : AnswerVisibility.unknown;
+  static AnswerVisibility fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? AnswerVisibility.unknown)
+      : AnswerVisibility.unknown;
 
   static String toJson(AnswerVisibility value) => value.wireValue;
 }
 
-class AnswerVisibilityJsonConverter implements JsonConverter<AnswerVisibility, Object?> {
+class AnswerVisibilityJsonConverter
+    implements JsonConverter<AnswerVisibility, Object?> {
   const AnswerVisibilityJsonConverter();
 
   @override
@@ -314,17 +345,20 @@ class AnswerVisibilityJsonConverter implements JsonConverter<AnswerVisibility, O
   Object? toJson(AnswerVisibility object) => object.toJson();
 }
 
-class NullableAnswerVisibilityJsonConverter implements JsonConverter<AnswerVisibility?, Object?> {
+class NullableAnswerVisibilityJsonConverter
+    implements JsonConverter<AnswerVisibility?, Object?> {
   const NullableAnswerVisibilityJsonConverter();
 
   @override
-  AnswerVisibility? fromJson(Object? json) => json == null ? null : AnswerVisibility.fromJson(json);
+  AnswerVisibility? fromJson(Object? json) =>
+      json == null ? null : AnswerVisibility.fromJson(json);
 
   @override
   Object? toJson(AnswerVisibility? object) => object?.toJson();
 }
 
-class AnswerVisibilityListJsonConverter implements JsonConverter<List<AnswerVisibility>, Object?> {
+class AnswerVisibilityListJsonConverter
+    implements JsonConverter<List<AnswerVisibility>, Object?> {
   const AnswerVisibilityListJsonConverter();
 
   @override
@@ -334,10 +368,12 @@ class AnswerVisibilityListJsonConverter implements JsonConverter<List<AnswerVisi
   }
 
   @override
-  Object? toJson(List<AnswerVisibility> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<AnswerVisibility> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableAnswerVisibilityListJsonConverter implements JsonConverter<List<AnswerVisibility>?, Object?> {
+class NullableAnswerVisibilityListJsonConverter
+    implements JsonConverter<List<AnswerVisibility>?, Object?> {
   const NullableAnswerVisibilityListJsonConverter();
 
   @override
@@ -348,7 +384,8 @@ class NullableAnswerVisibilityListJsonConverter implements JsonConverter<List<An
   }
 
   @override
-  Object? toJson(List<AnswerVisibility>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<AnswerVisibility>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ApprovalStatus {
@@ -385,13 +422,15 @@ class ApprovalStatusWire {
     'cancelled': ApprovalStatus.cancelled,
   };
 
-  static ApprovalStatus fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ApprovalStatus.unknown) : ApprovalStatus.unknown;
+  static ApprovalStatus fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ApprovalStatus.unknown)
+      : ApprovalStatus.unknown;
 
   static String toJson(ApprovalStatus value) => value.wireValue;
 }
 
-class ApprovalStatusJsonConverter implements JsonConverter<ApprovalStatus, Object?> {
+class ApprovalStatusJsonConverter
+    implements JsonConverter<ApprovalStatus, Object?> {
   const ApprovalStatusJsonConverter();
 
   @override
@@ -401,17 +440,20 @@ class ApprovalStatusJsonConverter implements JsonConverter<ApprovalStatus, Objec
   Object? toJson(ApprovalStatus object) => object.toJson();
 }
 
-class NullableApprovalStatusJsonConverter implements JsonConverter<ApprovalStatus?, Object?> {
+class NullableApprovalStatusJsonConverter
+    implements JsonConverter<ApprovalStatus?, Object?> {
   const NullableApprovalStatusJsonConverter();
 
   @override
-  ApprovalStatus? fromJson(Object? json) => json == null ? null : ApprovalStatus.fromJson(json);
+  ApprovalStatus? fromJson(Object? json) =>
+      json == null ? null : ApprovalStatus.fromJson(json);
 
   @override
   Object? toJson(ApprovalStatus? object) => object?.toJson();
 }
 
-class ApprovalStatusListJsonConverter implements JsonConverter<List<ApprovalStatus>, Object?> {
+class ApprovalStatusListJsonConverter
+    implements JsonConverter<List<ApprovalStatus>, Object?> {
   const ApprovalStatusListJsonConverter();
 
   @override
@@ -421,10 +463,12 @@ class ApprovalStatusListJsonConverter implements JsonConverter<List<ApprovalStat
   }
 
   @override
-  Object? toJson(List<ApprovalStatus> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ApprovalStatus> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableApprovalStatusListJsonConverter implements JsonConverter<List<ApprovalStatus>?, Object?> {
+class NullableApprovalStatusListJsonConverter
+    implements JsonConverter<List<ApprovalStatus>?, Object?> {
   const NullableApprovalStatusListJsonConverter();
 
   @override
@@ -435,7 +479,8 @@ class NullableApprovalStatusListJsonConverter implements JsonConverter<List<Appr
   }
 
   @override
-  Object? toJson(List<ApprovalStatus>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ApprovalStatus>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum AuditAction {
@@ -488,8 +533,9 @@ class AuditActionWire {
     'submission_created': AuditAction.submissionCreated,
   };
 
-  static AuditAction fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? AuditAction.unknown) : AuditAction.unknown;
+  static AuditAction fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? AuditAction.unknown)
+      : AuditAction.unknown;
 
   static String toJson(AuditAction value) => value.wireValue;
 }
@@ -504,17 +550,20 @@ class AuditActionJsonConverter implements JsonConverter<AuditAction, Object?> {
   Object? toJson(AuditAction object) => object.toJson();
 }
 
-class NullableAuditActionJsonConverter implements JsonConverter<AuditAction?, Object?> {
+class NullableAuditActionJsonConverter
+    implements JsonConverter<AuditAction?, Object?> {
   const NullableAuditActionJsonConverter();
 
   @override
-  AuditAction? fromJson(Object? json) => json == null ? null : AuditAction.fromJson(json);
+  AuditAction? fromJson(Object? json) =>
+      json == null ? null : AuditAction.fromJson(json);
 
   @override
   Object? toJson(AuditAction? object) => object?.toJson();
 }
 
-class AuditActionListJsonConverter implements JsonConverter<List<AuditAction>, Object?> {
+class AuditActionListJsonConverter
+    implements JsonConverter<List<AuditAction>, Object?> {
   const AuditActionListJsonConverter();
 
   @override
@@ -524,10 +573,12 @@ class AuditActionListJsonConverter implements JsonConverter<List<AuditAction>, O
   }
 
   @override
-  Object? toJson(List<AuditAction> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<AuditAction> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableAuditActionListJsonConverter implements JsonConverter<List<AuditAction>?, Object?> {
+class NullableAuditActionListJsonConverter
+    implements JsonConverter<List<AuditAction>?, Object?> {
   const NullableAuditActionListJsonConverter();
 
   @override
@@ -538,7 +589,8 @@ class NullableAuditActionListJsonConverter implements JsonConverter<List<AuditAc
   }
 
   @override
-  Object? toJson(List<AuditAction>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<AuditAction>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ErrorCode {
@@ -595,8 +647,9 @@ class ErrorCodeWire {
     'SERVICE_UNAVAILABLE': ErrorCode.serviceUnavailable,
   };
 
-  static ErrorCode fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ErrorCode.unknown) : ErrorCode.unknown;
+  static ErrorCode fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ErrorCode.unknown)
+      : ErrorCode.unknown;
 
   static String toJson(ErrorCode value) => value.wireValue;
 }
@@ -611,17 +664,20 @@ class ErrorCodeJsonConverter implements JsonConverter<ErrorCode, Object?> {
   Object? toJson(ErrorCode object) => object.toJson();
 }
 
-class NullableErrorCodeJsonConverter implements JsonConverter<ErrorCode?, Object?> {
+class NullableErrorCodeJsonConverter
+    implements JsonConverter<ErrorCode?, Object?> {
   const NullableErrorCodeJsonConverter();
 
   @override
-  ErrorCode? fromJson(Object? json) => json == null ? null : ErrorCode.fromJson(json);
+  ErrorCode? fromJson(Object? json) =>
+      json == null ? null : ErrorCode.fromJson(json);
 
   @override
   Object? toJson(ErrorCode? object) => object?.toJson();
 }
 
-class ErrorCodeListJsonConverter implements JsonConverter<List<ErrorCode>, Object?> {
+class ErrorCodeListJsonConverter
+    implements JsonConverter<List<ErrorCode>, Object?> {
   const ErrorCodeListJsonConverter();
 
   @override
@@ -631,10 +687,12 @@ class ErrorCodeListJsonConverter implements JsonConverter<List<ErrorCode>, Objec
   }
 
   @override
-  Object? toJson(List<ErrorCode> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ErrorCode> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableErrorCodeListJsonConverter implements JsonConverter<List<ErrorCode>?, Object?> {
+class NullableErrorCodeListJsonConverter
+    implements JsonConverter<List<ErrorCode>?, Object?> {
   const NullableErrorCodeListJsonConverter();
 
   @override
@@ -645,7 +703,8 @@ class NullableErrorCodeListJsonConverter implements JsonConverter<List<ErrorCode
   }
 
   @override
-  Object? toJson(List<ErrorCode>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ErrorCode>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum FieldType {
@@ -746,8 +805,9 @@ class FieldTypeWire {
     'page_break': FieldType.pageBreak,
   };
 
-  static FieldType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? FieldType.unknown) : FieldType.unknown;
+  static FieldType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? FieldType.unknown)
+      : FieldType.unknown;
 
   static String toJson(FieldType value) => value.wireValue;
 }
@@ -762,17 +822,20 @@ class FieldTypeJsonConverter implements JsonConverter<FieldType, Object?> {
   Object? toJson(FieldType object) => object.toJson();
 }
 
-class NullableFieldTypeJsonConverter implements JsonConverter<FieldType?, Object?> {
+class NullableFieldTypeJsonConverter
+    implements JsonConverter<FieldType?, Object?> {
   const NullableFieldTypeJsonConverter();
 
   @override
-  FieldType? fromJson(Object? json) => json == null ? null : FieldType.fromJson(json);
+  FieldType? fromJson(Object? json) =>
+      json == null ? null : FieldType.fromJson(json);
 
   @override
   Object? toJson(FieldType? object) => object?.toJson();
 }
 
-class FieldTypeListJsonConverter implements JsonConverter<List<FieldType>, Object?> {
+class FieldTypeListJsonConverter
+    implements JsonConverter<List<FieldType>, Object?> {
   const FieldTypeListJsonConverter();
 
   @override
@@ -782,10 +845,12 @@ class FieldTypeListJsonConverter implements JsonConverter<List<FieldType>, Objec
   }
 
   @override
-  Object? toJson(List<FieldType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FieldType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableFieldTypeListJsonConverter implements JsonConverter<List<FieldType>?, Object?> {
+class NullableFieldTypeListJsonConverter
+    implements JsonConverter<List<FieldType>?, Object?> {
   const NullableFieldTypeListJsonConverter();
 
   @override
@@ -796,7 +861,8 @@ class NullableFieldTypeListJsonConverter implements JsonConverter<List<FieldType
   }
 
   @override
-  Object? toJson(List<FieldType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FieldType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum FormAudienceType {
@@ -825,23 +891,26 @@ enum FormAudienceType {
 
 class FormAudienceTypeWire {
   static const unknown = FormAudienceType.unknown;
-  static const Map<String, FormAudienceType> _byWire = <String, FormAudienceType>{
-    'user': FormAudienceType.user,
-    'role': FormAudienceType.role,
-    'group': FormAudienceType.group,
-    'class': FormAudienceType.classValue,
-    'department': FormAudienceType.department,
-    'organization': FormAudienceType.organization,
-    'public': FormAudienceType.public,
-  };
+  static const Map<String, FormAudienceType> _byWire =
+      <String, FormAudienceType>{
+        'user': FormAudienceType.user,
+        'role': FormAudienceType.role,
+        'group': FormAudienceType.group,
+        'class': FormAudienceType.classValue,
+        'department': FormAudienceType.department,
+        'organization': FormAudienceType.organization,
+        'public': FormAudienceType.public,
+      };
 
-  static FormAudienceType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? FormAudienceType.unknown) : FormAudienceType.unknown;
+  static FormAudienceType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? FormAudienceType.unknown)
+      : FormAudienceType.unknown;
 
   static String toJson(FormAudienceType value) => value.wireValue;
 }
 
-class FormAudienceTypeJsonConverter implements JsonConverter<FormAudienceType, Object?> {
+class FormAudienceTypeJsonConverter
+    implements JsonConverter<FormAudienceType, Object?> {
   const FormAudienceTypeJsonConverter();
 
   @override
@@ -851,17 +920,20 @@ class FormAudienceTypeJsonConverter implements JsonConverter<FormAudienceType, O
   Object? toJson(FormAudienceType object) => object.toJson();
 }
 
-class NullableFormAudienceTypeJsonConverter implements JsonConverter<FormAudienceType?, Object?> {
+class NullableFormAudienceTypeJsonConverter
+    implements JsonConverter<FormAudienceType?, Object?> {
   const NullableFormAudienceTypeJsonConverter();
 
   @override
-  FormAudienceType? fromJson(Object? json) => json == null ? null : FormAudienceType.fromJson(json);
+  FormAudienceType? fromJson(Object? json) =>
+      json == null ? null : FormAudienceType.fromJson(json);
 
   @override
   Object? toJson(FormAudienceType? object) => object?.toJson();
 }
 
-class FormAudienceTypeListJsonConverter implements JsonConverter<List<FormAudienceType>, Object?> {
+class FormAudienceTypeListJsonConverter
+    implements JsonConverter<List<FormAudienceType>, Object?> {
   const FormAudienceTypeListJsonConverter();
 
   @override
@@ -871,10 +943,12 @@ class FormAudienceTypeListJsonConverter implements JsonConverter<List<FormAudien
   }
 
   @override
-  Object? toJson(List<FormAudienceType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FormAudienceType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableFormAudienceTypeListJsonConverter implements JsonConverter<List<FormAudienceType>?, Object?> {
+class NullableFormAudienceTypeListJsonConverter
+    implements JsonConverter<List<FormAudienceType>?, Object?> {
   const NullableFormAudienceTypeListJsonConverter();
 
   @override
@@ -885,7 +959,8 @@ class NullableFormAudienceTypeListJsonConverter implements JsonConverter<List<Fo
   }
 
   @override
-  Object? toJson(List<FormAudienceType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FormAudienceType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum FormStatus {
@@ -926,8 +1001,9 @@ class FormStatusWire {
     'archived': FormStatus.archived,
   };
 
-  static FormStatus fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? FormStatus.unknown) : FormStatus.unknown;
+  static FormStatus fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? FormStatus.unknown)
+      : FormStatus.unknown;
 
   static String toJson(FormStatus value) => value.wireValue;
 }
@@ -942,17 +1018,20 @@ class FormStatusJsonConverter implements JsonConverter<FormStatus, Object?> {
   Object? toJson(FormStatus object) => object.toJson();
 }
 
-class NullableFormStatusJsonConverter implements JsonConverter<FormStatus?, Object?> {
+class NullableFormStatusJsonConverter
+    implements JsonConverter<FormStatus?, Object?> {
   const NullableFormStatusJsonConverter();
 
   @override
-  FormStatus? fromJson(Object? json) => json == null ? null : FormStatus.fromJson(json);
+  FormStatus? fromJson(Object? json) =>
+      json == null ? null : FormStatus.fromJson(json);
 
   @override
   Object? toJson(FormStatus? object) => object?.toJson();
 }
 
-class FormStatusListJsonConverter implements JsonConverter<List<FormStatus>, Object?> {
+class FormStatusListJsonConverter
+    implements JsonConverter<List<FormStatus>, Object?> {
   const FormStatusListJsonConverter();
 
   @override
@@ -962,10 +1041,12 @@ class FormStatusListJsonConverter implements JsonConverter<List<FormStatus>, Obj
   }
 
   @override
-  Object? toJson(List<FormStatus> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FormStatus> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableFormStatusListJsonConverter implements JsonConverter<List<FormStatus>?, Object?> {
+class NullableFormStatusListJsonConverter
+    implements JsonConverter<List<FormStatus>?, Object?> {
   const NullableFormStatusListJsonConverter();
 
   @override
@@ -976,7 +1057,8 @@ class NullableFormStatusListJsonConverter implements JsonConverter<List<FormStat
   }
 
   @override
-  Object? toJson(List<FormStatus>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<FormStatus>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum PermissionAction {
@@ -1011,29 +1093,32 @@ enum PermissionAction {
 
 class PermissionActionWire {
   static const unknown = PermissionAction.unknown;
-  static const Map<String, PermissionAction> _byWire = <String, PermissionAction>{
-    'create': PermissionAction.create,
-    'read': PermissionAction.read,
-    'update': PermissionAction.update,
-    'delete': PermissionAction.delete,
-    'publish': PermissionAction.publish,
-    'approve': PermissionAction.approve,
-    'reject': PermissionAction.reject,
-    'answer': PermissionAction.answer,
-    'view_results': PermissionAction.viewResults,
-    'export': PermissionAction.exportValue,
-    'manage_permissions': PermissionAction.managePermissions,
-    'manage_scoring': PermissionAction.manageScoring,
-    'manage_public_protection': PermissionAction.managePublicProtection,
-  };
+  static const Map<String, PermissionAction> _byWire =
+      <String, PermissionAction>{
+        'create': PermissionAction.create,
+        'read': PermissionAction.read,
+        'update': PermissionAction.update,
+        'delete': PermissionAction.delete,
+        'publish': PermissionAction.publish,
+        'approve': PermissionAction.approve,
+        'reject': PermissionAction.reject,
+        'answer': PermissionAction.answer,
+        'view_results': PermissionAction.viewResults,
+        'export': PermissionAction.exportValue,
+        'manage_permissions': PermissionAction.managePermissions,
+        'manage_scoring': PermissionAction.manageScoring,
+        'manage_public_protection': PermissionAction.managePublicProtection,
+      };
 
-  static PermissionAction fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? PermissionAction.unknown) : PermissionAction.unknown;
+  static PermissionAction fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? PermissionAction.unknown)
+      : PermissionAction.unknown;
 
   static String toJson(PermissionAction value) => value.wireValue;
 }
 
-class PermissionActionJsonConverter implements JsonConverter<PermissionAction, Object?> {
+class PermissionActionJsonConverter
+    implements JsonConverter<PermissionAction, Object?> {
   const PermissionActionJsonConverter();
 
   @override
@@ -1043,17 +1128,20 @@ class PermissionActionJsonConverter implements JsonConverter<PermissionAction, O
   Object? toJson(PermissionAction object) => object.toJson();
 }
 
-class NullablePermissionActionJsonConverter implements JsonConverter<PermissionAction?, Object?> {
+class NullablePermissionActionJsonConverter
+    implements JsonConverter<PermissionAction?, Object?> {
   const NullablePermissionActionJsonConverter();
 
   @override
-  PermissionAction? fromJson(Object? json) => json == null ? null : PermissionAction.fromJson(json);
+  PermissionAction? fromJson(Object? json) =>
+      json == null ? null : PermissionAction.fromJson(json);
 
   @override
   Object? toJson(PermissionAction? object) => object?.toJson();
 }
 
-class PermissionActionListJsonConverter implements JsonConverter<List<PermissionAction>, Object?> {
+class PermissionActionListJsonConverter
+    implements JsonConverter<List<PermissionAction>, Object?> {
   const PermissionActionListJsonConverter();
 
   @override
@@ -1063,10 +1151,12 @@ class PermissionActionListJsonConverter implements JsonConverter<List<Permission
   }
 
   @override
-  Object? toJson(List<PermissionAction> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PermissionAction> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullablePermissionActionListJsonConverter implements JsonConverter<List<PermissionAction>?, Object?> {
+class NullablePermissionActionListJsonConverter
+    implements JsonConverter<List<PermissionAction>?, Object?> {
   const NullablePermissionActionListJsonConverter();
 
   @override
@@ -1077,7 +1167,8 @@ class NullablePermissionActionListJsonConverter implements JsonConverter<List<Pe
   }
 
   @override
-  Object? toJson(List<PermissionAction>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PermissionAction>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum PublicProtectionLevel {
@@ -1104,41 +1195,48 @@ enum PublicProtectionLevel {
 
 class PublicProtectionLevelWire {
   static const unknown = PublicProtectionLevel.unknown;
-  static const Map<String, PublicProtectionLevel> _byWire = <String, PublicProtectionLevel>{
-    'none': PublicProtectionLevel.none,
-    'basic': PublicProtectionLevel.basic,
-    'standard': PublicProtectionLevel.standard,
-    'strict': PublicProtectionLevel.strict,
-    'custom': PublicProtectionLevel.custom,
-  };
+  static const Map<String, PublicProtectionLevel> _byWire =
+      <String, PublicProtectionLevel>{
+        'none': PublicProtectionLevel.none,
+        'basic': PublicProtectionLevel.basic,
+        'standard': PublicProtectionLevel.standard,
+        'strict': PublicProtectionLevel.strict,
+        'custom': PublicProtectionLevel.custom,
+      };
 
-  static PublicProtectionLevel fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? PublicProtectionLevel.unknown) : PublicProtectionLevel.unknown;
+  static PublicProtectionLevel fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? PublicProtectionLevel.unknown)
+      : PublicProtectionLevel.unknown;
 
   static String toJson(PublicProtectionLevel value) => value.wireValue;
 }
 
-class PublicProtectionLevelJsonConverter implements JsonConverter<PublicProtectionLevel, Object?> {
+class PublicProtectionLevelJsonConverter
+    implements JsonConverter<PublicProtectionLevel, Object?> {
   const PublicProtectionLevelJsonConverter();
 
   @override
-  PublicProtectionLevel fromJson(Object? json) => PublicProtectionLevel.fromJson(json);
+  PublicProtectionLevel fromJson(Object? json) =>
+      PublicProtectionLevel.fromJson(json);
 
   @override
   Object? toJson(PublicProtectionLevel object) => object.toJson();
 }
 
-class NullablePublicProtectionLevelJsonConverter implements JsonConverter<PublicProtectionLevel?, Object?> {
+class NullablePublicProtectionLevelJsonConverter
+    implements JsonConverter<PublicProtectionLevel?, Object?> {
   const NullablePublicProtectionLevelJsonConverter();
 
   @override
-  PublicProtectionLevel? fromJson(Object? json) => json == null ? null : PublicProtectionLevel.fromJson(json);
+  PublicProtectionLevel? fromJson(Object? json) =>
+      json == null ? null : PublicProtectionLevel.fromJson(json);
 
   @override
   Object? toJson(PublicProtectionLevel? object) => object?.toJson();
 }
 
-class PublicProtectionLevelListJsonConverter implements JsonConverter<List<PublicProtectionLevel>, Object?> {
+class PublicProtectionLevelListJsonConverter
+    implements JsonConverter<List<PublicProtectionLevel>, Object?> {
   const PublicProtectionLevelListJsonConverter();
 
   @override
@@ -1148,10 +1246,12 @@ class PublicProtectionLevelListJsonConverter implements JsonConverter<List<Publi
   }
 
   @override
-  Object? toJson(List<PublicProtectionLevel> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PublicProtectionLevel> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullablePublicProtectionLevelListJsonConverter implements JsonConverter<List<PublicProtectionLevel>?, Object?> {
+class NullablePublicProtectionLevelListJsonConverter
+    implements JsonConverter<List<PublicProtectionLevel>?, Object?> {
   const NullablePublicProtectionLevelListJsonConverter();
 
   @override
@@ -1162,7 +1262,8 @@ class NullablePublicProtectionLevelListJsonConverter implements JsonConverter<Li
   }
 
   @override
-  Object? toJson(List<PublicProtectionLevel>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PublicProtectionLevel>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum PublishMode {
@@ -1197,8 +1298,9 @@ class PublishModeWire {
     'public_link': PublishMode.publicLink,
   };
 
-  static PublishMode fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? PublishMode.unknown) : PublishMode.unknown;
+  static PublishMode fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? PublishMode.unknown)
+      : PublishMode.unknown;
 
   static String toJson(PublishMode value) => value.wireValue;
 }
@@ -1213,17 +1315,20 @@ class PublishModeJsonConverter implements JsonConverter<PublishMode, Object?> {
   Object? toJson(PublishMode object) => object.toJson();
 }
 
-class NullablePublishModeJsonConverter implements JsonConverter<PublishMode?, Object?> {
+class NullablePublishModeJsonConverter
+    implements JsonConverter<PublishMode?, Object?> {
   const NullablePublishModeJsonConverter();
 
   @override
-  PublishMode? fromJson(Object? json) => json == null ? null : PublishMode.fromJson(json);
+  PublishMode? fromJson(Object? json) =>
+      json == null ? null : PublishMode.fromJson(json);
 
   @override
   Object? toJson(PublishMode? object) => object?.toJson();
 }
 
-class PublishModeListJsonConverter implements JsonConverter<List<PublishMode>, Object?> {
+class PublishModeListJsonConverter
+    implements JsonConverter<List<PublishMode>, Object?> {
   const PublishModeListJsonConverter();
 
   @override
@@ -1233,10 +1338,12 @@ class PublishModeListJsonConverter implements JsonConverter<List<PublishMode>, O
   }
 
   @override
-  Object? toJson(List<PublishMode> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PublishMode> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullablePublishModeListJsonConverter implements JsonConverter<List<PublishMode>?, Object?> {
+class NullablePublishModeListJsonConverter
+    implements JsonConverter<List<PublishMode>?, Object?> {
   const NullablePublishModeListJsonConverter();
 
   @override
@@ -1247,7 +1354,8 @@ class NullablePublishModeListJsonConverter implements JsonConverter<List<Publish
   }
 
   @override
-  Object? toJson(List<PublishMode>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<PublishMode>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum RateLimitStrategy {
@@ -1275,22 +1383,25 @@ enum RateLimitStrategy {
 
 class RateLimitStrategyWire {
   static const unknown = RateLimitStrategy.unknown;
-  static const Map<String, RateLimitStrategy> _byWire = <String, RateLimitStrategy>{
-    'ip': RateLimitStrategy.ip,
-    'user': RateLimitStrategy.user,
-    'token': RateLimitStrategy.token,
-    'fingerprint': RateLimitStrategy.fingerprint,
-    'captcha': RateLimitStrategy.captcha,
-    'combined': RateLimitStrategy.combined,
-  };
+  static const Map<String, RateLimitStrategy> _byWire =
+      <String, RateLimitStrategy>{
+        'ip': RateLimitStrategy.ip,
+        'user': RateLimitStrategy.user,
+        'token': RateLimitStrategy.token,
+        'fingerprint': RateLimitStrategy.fingerprint,
+        'captcha': RateLimitStrategy.captcha,
+        'combined': RateLimitStrategy.combined,
+      };
 
-  static RateLimitStrategy fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? RateLimitStrategy.unknown) : RateLimitStrategy.unknown;
+  static RateLimitStrategy fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? RateLimitStrategy.unknown)
+      : RateLimitStrategy.unknown;
 
   static String toJson(RateLimitStrategy value) => value.wireValue;
 }
 
-class RateLimitStrategyJsonConverter implements JsonConverter<RateLimitStrategy, Object?> {
+class RateLimitStrategyJsonConverter
+    implements JsonConverter<RateLimitStrategy, Object?> {
   const RateLimitStrategyJsonConverter();
 
   @override
@@ -1300,17 +1411,20 @@ class RateLimitStrategyJsonConverter implements JsonConverter<RateLimitStrategy,
   Object? toJson(RateLimitStrategy object) => object.toJson();
 }
 
-class NullableRateLimitStrategyJsonConverter implements JsonConverter<RateLimitStrategy?, Object?> {
+class NullableRateLimitStrategyJsonConverter
+    implements JsonConverter<RateLimitStrategy?, Object?> {
   const NullableRateLimitStrategyJsonConverter();
 
   @override
-  RateLimitStrategy? fromJson(Object? json) => json == null ? null : RateLimitStrategy.fromJson(json);
+  RateLimitStrategy? fromJson(Object? json) =>
+      json == null ? null : RateLimitStrategy.fromJson(json);
 
   @override
   Object? toJson(RateLimitStrategy? object) => object?.toJson();
 }
 
-class RateLimitStrategyListJsonConverter implements JsonConverter<List<RateLimitStrategy>, Object?> {
+class RateLimitStrategyListJsonConverter
+    implements JsonConverter<List<RateLimitStrategy>, Object?> {
   const RateLimitStrategyListJsonConverter();
 
   @override
@@ -1320,10 +1434,12 @@ class RateLimitStrategyListJsonConverter implements JsonConverter<List<RateLimit
   }
 
   @override
-  Object? toJson(List<RateLimitStrategy> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<RateLimitStrategy> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableRateLimitStrategyListJsonConverter implements JsonConverter<List<RateLimitStrategy>?, Object?> {
+class NullableRateLimitStrategyListJsonConverter
+    implements JsonConverter<List<RateLimitStrategy>?, Object?> {
   const NullableRateLimitStrategyListJsonConverter();
 
   @override
@@ -1334,7 +1450,8 @@ class NullableRateLimitStrategyListJsonConverter implements JsonConverter<List<R
   }
 
   @override
-  Object? toJson(List<RateLimitStrategy>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<RateLimitStrategy>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ResourceType {
@@ -1377,13 +1494,15 @@ class ResourceTypeWire {
     'audit_log': ResourceType.auditLog,
   };
 
-  static ResourceType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ResourceType.unknown) : ResourceType.unknown;
+  static ResourceType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ResourceType.unknown)
+      : ResourceType.unknown;
 
   static String toJson(ResourceType value) => value.wireValue;
 }
 
-class ResourceTypeJsonConverter implements JsonConverter<ResourceType, Object?> {
+class ResourceTypeJsonConverter
+    implements JsonConverter<ResourceType, Object?> {
   const ResourceTypeJsonConverter();
 
   @override
@@ -1393,17 +1512,20 @@ class ResourceTypeJsonConverter implements JsonConverter<ResourceType, Object?> 
   Object? toJson(ResourceType object) => object.toJson();
 }
 
-class NullableResourceTypeJsonConverter implements JsonConverter<ResourceType?, Object?> {
+class NullableResourceTypeJsonConverter
+    implements JsonConverter<ResourceType?, Object?> {
   const NullableResourceTypeJsonConverter();
 
   @override
-  ResourceType? fromJson(Object? json) => json == null ? null : ResourceType.fromJson(json);
+  ResourceType? fromJson(Object? json) =>
+      json == null ? null : ResourceType.fromJson(json);
 
   @override
   Object? toJson(ResourceType? object) => object?.toJson();
 }
 
-class ResourceTypeListJsonConverter implements JsonConverter<List<ResourceType>, Object?> {
+class ResourceTypeListJsonConverter
+    implements JsonConverter<List<ResourceType>, Object?> {
   const ResourceTypeListJsonConverter();
 
   @override
@@ -1413,10 +1535,12 @@ class ResourceTypeListJsonConverter implements JsonConverter<List<ResourceType>,
   }
 
   @override
-  Object? toJson(List<ResourceType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ResourceType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableResourceTypeListJsonConverter implements JsonConverter<List<ResourceType>?, Object?> {
+class NullableResourceTypeListJsonConverter
+    implements JsonConverter<List<ResourceType>?, Object?> {
   const NullableResourceTypeListJsonConverter();
 
   @override
@@ -1427,7 +1551,8 @@ class NullableResourceTypeListJsonConverter implements JsonConverter<List<Resour
   }
 
   @override
-  Object? toJson(List<ResourceType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ResourceType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ScoreRuleType {
@@ -1464,13 +1589,15 @@ class ScoreRuleTypeWire {
     'negative_score': ScoreRuleType.negativeScore,
   };
 
-  static ScoreRuleType fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ScoreRuleType.unknown) : ScoreRuleType.unknown;
+  static ScoreRuleType fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ScoreRuleType.unknown)
+      : ScoreRuleType.unknown;
 
   static String toJson(ScoreRuleType value) => value.wireValue;
 }
 
-class ScoreRuleTypeJsonConverter implements JsonConverter<ScoreRuleType, Object?> {
+class ScoreRuleTypeJsonConverter
+    implements JsonConverter<ScoreRuleType, Object?> {
   const ScoreRuleTypeJsonConverter();
 
   @override
@@ -1480,17 +1607,20 @@ class ScoreRuleTypeJsonConverter implements JsonConverter<ScoreRuleType, Object?
   Object? toJson(ScoreRuleType object) => object.toJson();
 }
 
-class NullableScoreRuleTypeJsonConverter implements JsonConverter<ScoreRuleType?, Object?> {
+class NullableScoreRuleTypeJsonConverter
+    implements JsonConverter<ScoreRuleType?, Object?> {
   const NullableScoreRuleTypeJsonConverter();
 
   @override
-  ScoreRuleType? fromJson(Object? json) => json == null ? null : ScoreRuleType.fromJson(json);
+  ScoreRuleType? fromJson(Object? json) =>
+      json == null ? null : ScoreRuleType.fromJson(json);
 
   @override
   Object? toJson(ScoreRuleType? object) => object?.toJson();
 }
 
-class ScoreRuleTypeListJsonConverter implements JsonConverter<List<ScoreRuleType>, Object?> {
+class ScoreRuleTypeListJsonConverter
+    implements JsonConverter<List<ScoreRuleType>, Object?> {
   const ScoreRuleTypeListJsonConverter();
 
   @override
@@ -1500,10 +1630,12 @@ class ScoreRuleTypeListJsonConverter implements JsonConverter<List<ScoreRuleType
   }
 
   @override
-  Object? toJson(List<ScoreRuleType> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ScoreRuleType> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableScoreRuleTypeListJsonConverter implements JsonConverter<List<ScoreRuleType>?, Object?> {
+class NullableScoreRuleTypeListJsonConverter
+    implements JsonConverter<List<ScoreRuleType>?, Object?> {
   const NullableScoreRuleTypeListJsonConverter();
 
   @override
@@ -1514,7 +1646,8 @@ class NullableScoreRuleTypeListJsonConverter implements JsonConverter<List<Score
   }
 
   @override
-  Object? toJson(List<ScoreRuleType>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ScoreRuleType>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum ScoringMode {
@@ -1551,8 +1684,9 @@ class ScoringModeWire {
     'custom': ScoringMode.custom,
   };
 
-  static ScoringMode fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? ScoringMode.unknown) : ScoringMode.unknown;
+  static ScoringMode fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? ScoringMode.unknown)
+      : ScoringMode.unknown;
 
   static String toJson(ScoringMode value) => value.wireValue;
 }
@@ -1567,17 +1701,20 @@ class ScoringModeJsonConverter implements JsonConverter<ScoringMode, Object?> {
   Object? toJson(ScoringMode object) => object.toJson();
 }
 
-class NullableScoringModeJsonConverter implements JsonConverter<ScoringMode?, Object?> {
+class NullableScoringModeJsonConverter
+    implements JsonConverter<ScoringMode?, Object?> {
   const NullableScoringModeJsonConverter();
 
   @override
-  ScoringMode? fromJson(Object? json) => json == null ? null : ScoringMode.fromJson(json);
+  ScoringMode? fromJson(Object? json) =>
+      json == null ? null : ScoringMode.fromJson(json);
 
   @override
   Object? toJson(ScoringMode? object) => object?.toJson();
 }
 
-class ScoringModeListJsonConverter implements JsonConverter<List<ScoringMode>, Object?> {
+class ScoringModeListJsonConverter
+    implements JsonConverter<List<ScoringMode>, Object?> {
   const ScoringModeListJsonConverter();
 
   @override
@@ -1587,10 +1724,12 @@ class ScoringModeListJsonConverter implements JsonConverter<List<ScoringMode>, O
   }
 
   @override
-  Object? toJson(List<ScoringMode> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ScoringMode> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableScoringModeListJsonConverter implements JsonConverter<List<ScoringMode>?, Object?> {
+class NullableScoringModeListJsonConverter
+    implements JsonConverter<List<ScoringMode>?, Object?> {
   const NullableScoringModeListJsonConverter();
 
   @override
@@ -1601,7 +1740,8 @@ class NullableScoringModeListJsonConverter implements JsonConverter<List<Scoring
   }
 
   @override
-  Object? toJson(List<ScoringMode>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<ScoringMode>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum SortOrder {
@@ -1630,8 +1770,9 @@ class SortOrderWire {
     'desc': SortOrder.desc,
   };
 
-  static SortOrder fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? SortOrder.unknown) : SortOrder.unknown;
+  static SortOrder fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? SortOrder.unknown)
+      : SortOrder.unknown;
 
   static String toJson(SortOrder value) => value.wireValue;
 }
@@ -1646,17 +1787,20 @@ class SortOrderJsonConverter implements JsonConverter<SortOrder, Object?> {
   Object? toJson(SortOrder object) => object.toJson();
 }
 
-class NullableSortOrderJsonConverter implements JsonConverter<SortOrder?, Object?> {
+class NullableSortOrderJsonConverter
+    implements JsonConverter<SortOrder?, Object?> {
   const NullableSortOrderJsonConverter();
 
   @override
-  SortOrder? fromJson(Object? json) => json == null ? null : SortOrder.fromJson(json);
+  SortOrder? fromJson(Object? json) =>
+      json == null ? null : SortOrder.fromJson(json);
 
   @override
   Object? toJson(SortOrder? object) => object?.toJson();
 }
 
-class SortOrderListJsonConverter implements JsonConverter<List<SortOrder>, Object?> {
+class SortOrderListJsonConverter
+    implements JsonConverter<List<SortOrder>, Object?> {
   const SortOrderListJsonConverter();
 
   @override
@@ -1666,10 +1810,12 @@ class SortOrderListJsonConverter implements JsonConverter<List<SortOrder>, Objec
   }
 
   @override
-  Object? toJson(List<SortOrder> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<SortOrder> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableSortOrderListJsonConverter implements JsonConverter<List<SortOrder>?, Object?> {
+class NullableSortOrderListJsonConverter
+    implements JsonConverter<List<SortOrder>?, Object?> {
   const NullableSortOrderListJsonConverter();
 
   @override
@@ -1680,7 +1826,8 @@ class NullableSortOrderListJsonConverter implements JsonConverter<List<SortOrder
   }
 
   @override
-  Object? toJson(List<SortOrder>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<SortOrder>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum SubmissionMode {
@@ -1713,13 +1860,15 @@ class SubmissionModeWire {
     'anonymous_submission': SubmissionMode.anonymousSubmission,
   };
 
-  static SubmissionMode fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? SubmissionMode.unknown) : SubmissionMode.unknown;
+  static SubmissionMode fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? SubmissionMode.unknown)
+      : SubmissionMode.unknown;
 
   static String toJson(SubmissionMode value) => value.wireValue;
 }
 
-class SubmissionModeJsonConverter implements JsonConverter<SubmissionMode, Object?> {
+class SubmissionModeJsonConverter
+    implements JsonConverter<SubmissionMode, Object?> {
   const SubmissionModeJsonConverter();
 
   @override
@@ -1729,17 +1878,20 @@ class SubmissionModeJsonConverter implements JsonConverter<SubmissionMode, Objec
   Object? toJson(SubmissionMode object) => object.toJson();
 }
 
-class NullableSubmissionModeJsonConverter implements JsonConverter<SubmissionMode?, Object?> {
+class NullableSubmissionModeJsonConverter
+    implements JsonConverter<SubmissionMode?, Object?> {
   const NullableSubmissionModeJsonConverter();
 
   @override
-  SubmissionMode? fromJson(Object? json) => json == null ? null : SubmissionMode.fromJson(json);
+  SubmissionMode? fromJson(Object? json) =>
+      json == null ? null : SubmissionMode.fromJson(json);
 
   @override
   Object? toJson(SubmissionMode? object) => object?.toJson();
 }
 
-class SubmissionModeListJsonConverter implements JsonConverter<List<SubmissionMode>, Object?> {
+class SubmissionModeListJsonConverter
+    implements JsonConverter<List<SubmissionMode>, Object?> {
   const SubmissionModeListJsonConverter();
 
   @override
@@ -1749,10 +1901,12 @@ class SubmissionModeListJsonConverter implements JsonConverter<List<SubmissionMo
   }
 
   @override
-  Object? toJson(List<SubmissionMode> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<SubmissionMode> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableSubmissionModeListJsonConverter implements JsonConverter<List<SubmissionMode>?, Object?> {
+class NullableSubmissionModeListJsonConverter
+    implements JsonConverter<List<SubmissionMode>?, Object?> {
   const NullableSubmissionModeListJsonConverter();
 
   @override
@@ -1763,7 +1917,8 @@ class NullableSubmissionModeListJsonConverter implements JsonConverter<List<Subm
   }
 
   @override
-  Object? toJson(List<SubmissionMode>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<SubmissionMode>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum UserRole {
@@ -1820,17 +1975,20 @@ class UserRoleJsonConverter implements JsonConverter<UserRole, Object?> {
   Object? toJson(UserRole object) => object.toJson();
 }
 
-class NullableUserRoleJsonConverter implements JsonConverter<UserRole?, Object?> {
+class NullableUserRoleJsonConverter
+    implements JsonConverter<UserRole?, Object?> {
   const NullableUserRoleJsonConverter();
 
   @override
-  UserRole? fromJson(Object? json) => json == null ? null : UserRole.fromJson(json);
+  UserRole? fromJson(Object? json) =>
+      json == null ? null : UserRole.fromJson(json);
 
   @override
   Object? toJson(UserRole? object) => object?.toJson();
 }
 
-class UserRoleListJsonConverter implements JsonConverter<List<UserRole>, Object?> {
+class UserRoleListJsonConverter
+    implements JsonConverter<List<UserRole>, Object?> {
   const UserRoleListJsonConverter();
 
   @override
@@ -1840,10 +1998,12 @@ class UserRoleListJsonConverter implements JsonConverter<List<UserRole>, Object?
   }
 
   @override
-  Object? toJson(List<UserRole> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<UserRole> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableUserRoleListJsonConverter implements JsonConverter<List<UserRole>?, Object?> {
+class NullableUserRoleListJsonConverter
+    implements JsonConverter<List<UserRole>?, Object?> {
   const NullableUserRoleListJsonConverter();
 
   @override
@@ -1854,7 +2014,8 @@ class NullableUserRoleListJsonConverter implements JsonConverter<List<UserRole>?
   }
 
   @override
-  Object? toJson(List<UserRole>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<UserRole>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }
 
 enum VisibilityMode {
@@ -1891,13 +2052,15 @@ class VisibilityModeWire {
     'public_link': VisibilityMode.publicLink,
   };
 
-  static VisibilityMode fromJson(Object? value) =>
-      value is String ? (_byWire[value] ?? VisibilityMode.unknown) : VisibilityMode.unknown;
+  static VisibilityMode fromJson(Object? value) => value is String
+      ? (_byWire[value] ?? VisibilityMode.unknown)
+      : VisibilityMode.unknown;
 
   static String toJson(VisibilityMode value) => value.wireValue;
 }
 
-class VisibilityModeJsonConverter implements JsonConverter<VisibilityMode, Object?> {
+class VisibilityModeJsonConverter
+    implements JsonConverter<VisibilityMode, Object?> {
   const VisibilityModeJsonConverter();
 
   @override
@@ -1907,17 +2070,20 @@ class VisibilityModeJsonConverter implements JsonConverter<VisibilityMode, Objec
   Object? toJson(VisibilityMode object) => object.toJson();
 }
 
-class NullableVisibilityModeJsonConverter implements JsonConverter<VisibilityMode?, Object?> {
+class NullableVisibilityModeJsonConverter
+    implements JsonConverter<VisibilityMode?, Object?> {
   const NullableVisibilityModeJsonConverter();
 
   @override
-  VisibilityMode? fromJson(Object? json) => json == null ? null : VisibilityMode.fromJson(json);
+  VisibilityMode? fromJson(Object? json) =>
+      json == null ? null : VisibilityMode.fromJson(json);
 
   @override
   Object? toJson(VisibilityMode? object) => object?.toJson();
 }
 
-class VisibilityModeListJsonConverter implements JsonConverter<List<VisibilityMode>, Object?> {
+class VisibilityModeListJsonConverter
+    implements JsonConverter<List<VisibilityMode>, Object?> {
   const VisibilityModeListJsonConverter();
 
   @override
@@ -1927,10 +2093,12 @@ class VisibilityModeListJsonConverter implements JsonConverter<List<VisibilityMo
   }
 
   @override
-  Object? toJson(List<VisibilityMode> object) => object.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<VisibilityMode> object) =>
+      object.map((e) => e.toJson()).toList(growable: false);
 }
 
-class NullableVisibilityModeListJsonConverter implements JsonConverter<List<VisibilityMode>?, Object?> {
+class NullableVisibilityModeListJsonConverter
+    implements JsonConverter<List<VisibilityMode>?, Object?> {
   const NullableVisibilityModeListJsonConverter();
 
   @override
@@ -1941,5 +2109,6 @@ class NullableVisibilityModeListJsonConverter implements JsonConverter<List<Visi
   }
 
   @override
-  Object? toJson(List<VisibilityMode>? object) => object?.map((e) => e.toJson()).toList(growable: false);
+  Object? toJson(List<VisibilityMode>? object) =>
+      object?.map((e) => e.toJson()).toList(growable: false);
 }

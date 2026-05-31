@@ -26,8 +26,14 @@ class AppSpacing {
   static const EdgeInsets pageWide = EdgeInsets.all(xl);
   static const EdgeInsets card = EdgeInsets.all(md);
   static const EdgeInsets cardLarge = EdgeInsets.all(lg);
-  static const EdgeInsets field = EdgeInsets.symmetric(horizontal: md, vertical: sm);
-  static const EdgeInsets button = EdgeInsets.symmetric(horizontal: lg, vertical: sm);
+  static const EdgeInsets field = EdgeInsets.symmetric(
+    horizontal: md,
+    vertical: sm,
+  );
+  static const EdgeInsets button = EdgeInsets.symmetric(
+    horizontal: lg,
+    vertical: sm,
+  );
 
   static const SizedBox gapXxs = SizedBox(height: xxs);
   static const SizedBox gapXs = SizedBox(height: xs);

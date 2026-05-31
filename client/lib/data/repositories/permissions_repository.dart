@@ -4,10 +4,21 @@ import '../dto/dto.dart';
 
 abstract class PermissionsRepository {
   Future<EffectivePermissionsDto> getEffectivePermissions();
-  Future<List<FieldTypePermissionDto>> getFieldTypePermissions({int page = 1, int pageSize = 20, String? search, String? sortBy, SortOrder? sortOrder, String? filters});
-  Future<UpdateResultDto> updateFieldTypePermissions({required UpdateFieldTypePermissionsRequest request});
+  Future<List<FieldTypePermissionDto>> getFieldTypePermissions({
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    String? sortBy,
+    SortOrder? sortOrder,
+    String? filters,
+  });
+  Future<UpdateResultDto> updateFieldTypePermissions({
+    required UpdateFieldTypePermissionsRequest request,
+  });
   Future<List<PublishingRuleDto>> getPublishingRules();
-  Future<UpdateResultDto> updatePublishingRules({required UpdatePublishingRulesRequest request});
+  Future<UpdateResultDto> updatePublishingRules({
+    required UpdatePublishingRulesRequest request,
+  });
 }
 
 class DioPermissionsRepository implements PermissionsRepository {
@@ -21,13 +32,33 @@ class DioPermissionsRepository implements PermissionsRepository {
   }
 
   @override
-  Future<List<FieldTypePermissionDto>> getFieldTypePermissions({int page = 1, int pageSize = 20, String? search, String? sortBy, SortOrder? sortOrder, String? filters}) async {
-    return EnvelopeGuard.dataList(await _api.getFieldTypePermissions(page: page, pageSize: pageSize, search: search, sortBy: sortBy, sortOrder: sortOrder, filters: filters));
+  Future<List<FieldTypePermissionDto>> getFieldTypePermissions({
+    int page = 1,
+    int pageSize = 20,
+    String? search,
+    String? sortBy,
+    SortOrder? sortOrder,
+    String? filters,
+  }) async {
+    return EnvelopeGuard.dataList(
+      await _api.getFieldTypePermissions(
+        page: page,
+        pageSize: pageSize,
+        search: search,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        filters: filters,
+      ),
+    );
   }
 
   @override
-  Future<UpdateResultDto> updateFieldTypePermissions({required UpdateFieldTypePermissionsRequest request}) async {
-    return EnvelopeGuard.data(await _api.updateFieldTypePermissions(request: request));
+  Future<UpdateResultDto> updateFieldTypePermissions({
+    required UpdateFieldTypePermissionsRequest request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.updateFieldTypePermissions(request: request),
+    );
   }
 
   @override
@@ -36,8 +67,11 @@ class DioPermissionsRepository implements PermissionsRepository {
   }
 
   @override
-  Future<UpdateResultDto> updatePublishingRules({required UpdatePublishingRulesRequest request}) async {
-    return EnvelopeGuard.data(await _api.updatePublishingRules(request: request));
+  Future<UpdateResultDto> updatePublishingRules({
+    required UpdatePublishingRulesRequest request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.updatePublishingRules(request: request),
+    );
   }
-
 }
