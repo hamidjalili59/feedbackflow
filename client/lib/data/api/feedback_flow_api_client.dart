@@ -1477,6 +1477,64 @@ class FeedbackFlowApiClient {
     );
   }
 
+  /// operationId: getUserRelationships
+  /// GET /api/v1/users/{id}/relationships
+  /// Requires Bearer JWT.
+  Future<ApiResponse<UserFamilyLinksDto>> getUserRelationships({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/users/{id}/relationships', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<UserFamilyLinksDto>(
+      response.data,
+      (json) => UserFamilyLinksDto.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// operationId: createUserRelationship
+  /// POST /api/v1/users/{id}/relationships
+  /// Requires Bearer JWT.
+  Future<ApiResponse<UserRelationshipDto>> createUserRelationship({
+    required String id,
+    required CreateUserRelationshipRequest request,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      _path('/api/v1/users/{id}/relationships', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<UserRelationshipDto>(
+      response.data,
+      (json) => UserRelationshipDto.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// operationId: deleteUserRelationship
+  /// DELETE /api/v1/users/{id}/relationships/{relationship_id}
+  /// Requires Bearer JWT.
+  Future<ApiResponse<DeleteResultDto>> deleteUserRelationship({
+    required String id,
+    required String relationshipId,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path(
+        '/api/v1/users/{id}/relationships/{relationship_id}',
+        <String, String>{
+          'id': id.toString(),
+          'relationship_id': relationshipId.toString(),
+        },
+      ),
+    );
+    return _parseApiResponse<DeleteResultDto>(
+      response.data,
+      (json) => DeleteResultDto.fromJson(_jsonObject(json)),
+    );
+  }
+
   /// operationId: getUserSubordinates
   /// GET /api/v1/users/{id}/subordinates
   /// Requires Bearer JWT.

@@ -22,11 +22,31 @@ use sqlx::Row;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
+async fn fresh_auth_user(state: &AppState, auth: &AuthUser) -> Result<AuthUser, AppError> {
+    let row = sqlx::query(
+        "select organization_id, primary_role from users where id=$1 and deleted_at is null",
+    )
+    .bind(auth.user_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(row) = row else {
+        return Err(AppError::unauthorized("User account was not found"));
+    };
+    let role = enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(auth.role);
+    Ok(AuthUser {
+        user_id: auth.user_id,
+        organization_id: row.try_get("organization_id")?,
+        role,
+    })
+}
+
 pub async fn dashboard_me(
     state: &AppState,
     auth: &AuthUser,
     q: DashboardQuery,
 ) -> Result<DashboardResponseDto, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     let period = q.period.unwrap_or_else(|| "this_month".to_owned());
     let children = if auth.role == UserRole::Parent {
         children_for_parent(state, auth).await?
@@ -111,6 +131,8 @@ pub async fn children_for_parent(
     state: &AppState,
     auth: &AuthUser,
 ) -> Result<Vec<ChildProfileDto>, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     let org_id = auth
         .organization_id
         .ok_or_else(|| AppError::forbidden("Children require an organization"))?;
@@ -165,6 +187,8 @@ pub async fn my_surveys(
     auth: &AuthUser,
     q: MySurveysQuery,
 ) -> Result<Vec<SurveyCardDto>, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     let org_id = auth
         .organization_id
         .ok_or_else(|| AppError::forbidden("Surveys require an organization"))?;
@@ -278,6 +302,8 @@ pub async fn survey_calendar(
     auth: &AuthUser,
     q: CalendarQuery,
 ) -> Result<CalendarResponseDto, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     let period = q.period.unwrap_or_else(|| "this_month".to_owned());
     let (default_start, default_end) = period_range(&period);
     let start_date = q
@@ -377,6 +403,8 @@ pub async fn timeseries(
     auth: &AuthUser,
     q: TimeseriesQuery,
 ) -> Result<TimeseriesResponseDto, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     let org_id = auth
         .organization_id
         .ok_or_else(|| AppError::forbidden("Analytics require an organization"))?;
@@ -406,6 +434,8 @@ pub async fn rankings(
     auth: &AuthUser,
     q: RankingQuery,
 ) -> Result<RankingResponseDto, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     if !matches!(
         auth.role,
         UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
@@ -500,6 +530,8 @@ pub async fn alerts(
     auth: &AuthUser,
     q: AlertQuery,
 ) -> Result<AnalyticsAlertsResponseDto, AppError> {
+    let fresh_auth = fresh_auth_user(state, auth).await?;
+    let auth = &fresh_auth;
     if !matches!(
         auth.role,
         UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin

@@ -21,6 +21,15 @@ abstract class UsersRepository {
     required String id,
     required UpdateUserRequest request,
   });
+  Future<UserFamilyLinksDto> getUserRelationships({required String id});
+  Future<UserRelationshipDto> createUserRelationship({
+    required String id,
+    required CreateUserRelationshipRequest request,
+  });
+  Future<DeleteResultDto> deleteUserRelationship({
+    required String id,
+    required String relationshipId,
+  });
   Future<ListResponse<SubordinateUserDto>> getUserSubordinates({
     required String id,
     int page = 1,
@@ -86,6 +95,31 @@ class DioUsersRepository implements UsersRepository {
     required UpdateUserRequest request,
   }) async {
     return EnvelopeGuard.data(await _api.updateUser(id: id, request: request));
+  }
+
+  @override
+  Future<UserFamilyLinksDto> getUserRelationships({required String id}) async {
+    return EnvelopeGuard.data(await _api.getUserRelationships(id: id));
+  }
+
+  @override
+  Future<UserRelationshipDto> createUserRelationship({
+    required String id,
+    required CreateUserRelationshipRequest request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.createUserRelationship(id: id, request: request),
+    );
+  }
+
+  @override
+  Future<DeleteResultDto> deleteUserRelationship({
+    required String id,
+    required String relationshipId,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.deleteUserRelationship(id: id, relationshipId: relationshipId),
+    );
   }
 
   @override

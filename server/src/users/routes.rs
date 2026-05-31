@@ -1,6 +1,6 @@
 use crate::{
     api_types::{
-        common::{ListQuery, PaginationMeta},
+        common::{DeleteResultDto, ListQuery, PaginationMeta},
         enums::{
             enum_from_str, enum_to_string, AuditAction, PermissionAction, ResourceType, SortOrder,
             UserRole,
@@ -35,6 +35,14 @@ pub fn routes() -> Router<AppState> {
         .route("/users", get(list_users).post(create_user))
         .route("/users/me", get(get_my_user).patch(update_my_profile))
         .route("/users/{id}", get(get_user).patch(update_user))
+        .route(
+            "/users/{id}/relationships",
+            get(list_user_relationships).post(create_user_relationship),
+        )
+        .route(
+            "/users/{id}/relationships/{relationship_id}",
+            get(get_user_relationship).delete(delete_user_relationship),
+        )
         .route("/users/{id}/subordinates", get(get_subordinates))
 }
 
@@ -478,6 +486,293 @@ pub async fn update_user(
     )
     .await?;
     Ok(response::ok(row_to_user_detail(&row)?))
+}
+
+fn can_manage_family_links(actor: UserRole) -> bool {
+    matches!(
+        actor,
+        UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
+    )
+}
+
+async fn fetch_user_summary_by_id(state: &AppState, id: Uuid) -> Result<UserSummaryDto, AppError> {
+    let row = sqlx::query(
+        "select id, organization_id, phone, email, display_name, gender, primary_role, status \
+         from users where id=$1 and deleted_at is null",
+    )
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+    row_to_user_summary(&row)
+}
+
+fn ensure_family_link_access(auth: &AuthUser, target: &UserSummaryDto) -> Result<(), AppError> {
+    if auth.user_id == target.id {
+        return Ok(());
+    }
+    if !can_manage_family_links(auth.role) {
+        return Err(AppError::forbidden(
+            "Only managers/admins can manage family relationships",
+        ));
+    }
+    if !matches!(auth.role, UserRole::SuperAdmin) && auth.organization_id != target.organization_id
+    {
+        return Err(AppError::forbidden(
+            "You can only manage family relationships in your organization",
+        ));
+    }
+    Ok(())
+}
+
+fn row_to_user_relationship(row: &sqlx::postgres::PgRow) -> Result<UserRelationshipDto, AppError> {
+    Ok(UserRelationshipDto {
+        id: row.try_get("relationship_id")?,
+        organization_id: row.try_get("relationship_organization_id")?,
+        parent_user_id: row.try_get("parent_user_id")?,
+        child_user_id: row.try_get("child_user_id")?,
+        relationship_type: row.try_get("relationship_type")?,
+        created_at: row.try_get("relationship_created_at")?,
+    })
+}
+
+fn row_to_family_relationship(
+    row: &sqlx::postgres::PgRow,
+) -> Result<UserFamilyRelationshipDto, AppError> {
+    Ok(UserFamilyRelationshipDto {
+        relationship: row_to_user_relationship(row)?,
+        user: row_to_user_summary(row)?,
+    })
+}
+
+async fn load_family_links(state: &AppState, id: Uuid) -> Result<UserFamilyLinksDto, AppError> {
+    let parents_rows = sqlx::query(
+        "select \
+            ur.id as relationship_id, ur.organization_id as relationship_organization_id, \
+            ur.parent_user_id, ur.child_user_id, ur.relationship_type, \
+            ur.created_at as relationship_created_at, \
+            u.id, u.organization_id, u.phone, u.email, u.display_name, u.gender, u.primary_role, u.status \
+         from user_relationships ur \
+         join users u on u.id=ur.parent_user_id \
+         where ur.child_user_id=$1 \
+           and ur.relationship_type='parent_child' \
+           and u.deleted_at is null \
+         order by u.display_name asc",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let children_rows = sqlx::query(
+        "select \
+            ur.id as relationship_id, ur.organization_id as relationship_organization_id, \
+            ur.parent_user_id, ur.child_user_id, ur.relationship_type, \
+            ur.created_at as relationship_created_at, \
+            u.id, u.organization_id, u.phone, u.email, u.display_name, u.gender, u.primary_role, u.status \
+         from user_relationships ur \
+         join users u on u.id=ur.child_user_id \
+         where ur.parent_user_id=$1 \
+           and ur.relationship_type='parent_child' \
+           and u.deleted_at is null \
+         order by u.display_name asc",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let parents = parents_rows
+        .iter()
+        .map(row_to_family_relationship)
+        .collect::<Result<Vec<_>, _>>()?;
+    let children = children_rows
+        .iter()
+        .map(row_to_family_relationship)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(UserFamilyLinksDto { parents, children })
+}
+
+pub async fn list_user_relationships(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let target = fetch_user_summary_by_id(&state, id).await?;
+    ensure_family_link_access(&auth, &target)?;
+    Ok(response::ok(load_family_links(&state, id).await?))
+}
+
+pub async fn get_user_relationship(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, relationship_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let target = fetch_user_summary_by_id(&state, id).await?;
+    ensure_family_link_access(&auth, &target)?;
+    let row = sqlx::query(
+        "select \
+            ur.id as relationship_id, ur.organization_id as relationship_organization_id, \
+            ur.parent_user_id, ur.child_user_id, ur.relationship_type, \
+            ur.created_at as relationship_created_at, \
+            case when ur.parent_user_id=$1 then c.id else p.id end as id, \
+            case when ur.parent_user_id=$1 then c.organization_id else p.organization_id end as organization_id, \
+            case when ur.parent_user_id=$1 then c.phone else p.phone end as phone, \
+            case when ur.parent_user_id=$1 then c.email else p.email end as email, \
+            case when ur.parent_user_id=$1 then c.display_name else p.display_name end as display_name, \
+            case when ur.parent_user_id=$1 then c.gender else p.gender end as gender, \
+            case when ur.parent_user_id=$1 then c.primary_role else p.primary_role end as primary_role, \
+            case when ur.parent_user_id=$1 then c.status else p.status end as status \
+         from user_relationships ur \
+         join users p on p.id=ur.parent_user_id \
+         join users c on c.id=ur.child_user_id \
+         where ur.id=$2 \
+           and ur.relationship_type='parent_child' \
+           and ($1=ur.parent_user_id or $1=ur.child_user_id) \
+           and p.deleted_at is null and c.deleted_at is null",
+    )
+    .bind(id)
+    .bind(relationship_id)
+    .fetch_one(&state.db)
+    .await?;
+    Ok(response::ok(row_to_family_relationship(&row)?))
+}
+
+pub async fn create_user_relationship(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<CreateUserRelationshipRequest>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    payload.validate()?;
+    if !can_manage_family_links(auth.role) {
+        return Err(AppError::forbidden(
+            "Only managers/admins can create family relationships",
+        ));
+    }
+    if id == payload.related_user_id {
+        return Err(AppError::validation(
+            "A user cannot be related to themselves",
+            json!({"related_user_id":"Select a different user."}),
+        ));
+    }
+
+    let relationship_type = payload
+        .relationship_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("parent_child");
+    if relationship_type != "parent_child" {
+        return Err(AppError::validation(
+            "Unsupported relationship type",
+            json!({"relationship_type":"Only parent_child is supported here."}),
+        ));
+    }
+
+    let target = fetch_user_summary_by_id(&state, id).await?;
+    let related = fetch_user_summary_by_id(&state, payload.related_user_id).await?;
+    ensure_family_link_access(&auth, &target)?;
+    if !can_manage_role(auth.role, target.primary_role)
+        || !can_manage_role(auth.role, related.primary_role)
+    {
+        return Err(AppError::forbidden(
+            "This role cannot manage one of the selected users",
+        ));
+    }
+    if target.organization_id.is_none() || target.organization_id != related.organization_id {
+        return Err(AppError::validation(
+            "Parent and student must belong to the same organization",
+            json!({"related_user_id":"Select a user from the same organization."}),
+        ));
+    }
+    if !matches!(auth.role, UserRole::SuperAdmin) && auth.organization_id != target.organization_id
+    {
+        return Err(AppError::forbidden(
+            "You can only manage family relationships in your organization",
+        ));
+    }
+
+    let (parent_user_id, child_user_id) = match (target.primary_role, related.primary_role) {
+        (UserRole::Student, UserRole::Parent) => (related.id, target.id),
+        (UserRole::Parent, UserRole::Student) => (target.id, related.id),
+        _ => {
+            return Err(AppError::validation(
+                "Family relationships must connect one parent and one student",
+                json!({"related_user_id":"Select a parent for a student, or a student for a parent."}),
+            ));
+        }
+    };
+    let org_id = target.organization_id.expect("checked above");
+
+    let row = sqlx::query(
+        "insert into user_relationships (organization_id, parent_user_id, child_user_id, relationship_type) \
+         values ($1,$2,$3,'parent_child') \
+         on conflict (parent_user_id, child_user_id, relationship_type) do update \
+           set relationship_type=excluded.relationship_type \
+         returning id as relationship_id, organization_id as relationship_organization_id, \
+                   parent_user_id, child_user_id, relationship_type, created_at as relationship_created_at",
+    )
+    .bind(org_id)
+    .bind(parent_user_id)
+    .bind(child_user_id)
+    .fetch_one(&state.db)
+    .await?;
+    let relationship = row_to_user_relationship(&row)?;
+    audit(
+        &state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Created,
+        "user_relationship",
+        Some(relationship.id),
+        json!({"source":"manage_family_links","parent_user_id":parent_user_id,"child_user_id":child_user_id}),
+    )
+    .await?;
+    Ok(response::created(relationship))
+}
+
+pub async fn delete_user_relationship(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, relationship_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let target = fetch_user_summary_by_id(&state, id).await?;
+    ensure_family_link_access(&auth, &target)?;
+    let row = sqlx::query(
+        "select ur.id, ur.organization_id, ur.parent_user_id, ur.child_user_id, ur.relationship_type, \
+                p.primary_role as parent_role, c.primary_role as child_role \
+         from user_relationships ur \
+         join users p on p.id=ur.parent_user_id \
+         join users c on c.id=ur.child_user_id \
+         where ur.id=$1 and ur.relationship_type='parent_child' \
+           and ($2=ur.parent_user_id or $2=ur.child_user_id) \
+           and p.deleted_at is null and c.deleted_at is null",
+    )
+    .bind(relationship_id)
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+    let org_id: Uuid = row.try_get("organization_id")?;
+    let parent_user_id: Uuid = row.try_get("parent_user_id")?;
+    let child_user_id: Uuid = row.try_get("child_user_id")?;
+    if !matches!(auth.role, UserRole::SuperAdmin) && auth.organization_id != Some(org_id) {
+        return Err(AppError::forbidden(
+            "You can only manage family relationships in your organization",
+        ));
+    }
+    sqlx::query("delete from user_relationships where id=$1")
+        .bind(relationship_id)
+        .execute(&state.db)
+        .await?;
+    audit(
+        &state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Deleted,
+        "user_relationship",
+        Some(relationship_id),
+        json!({"source":"manage_family_links","parent_user_id":parent_user_id,"child_user_id":child_user_id}),
+    )
+    .await?;
+    Ok(response::ok(DeleteResultDto { deleted: true }))
 }
 
 pub async fn get_subordinates(

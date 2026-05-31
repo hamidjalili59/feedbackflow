@@ -90,6 +90,24 @@ pub struct UserRelationshipDto {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct CreateUserRelationshipRequest {
+    pub related_user_id: Uuid,
+    pub relationship_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct UserFamilyRelationshipDto {
+    pub relationship: UserRelationshipDto,
+    pub user: UserSummaryDto,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct UserFamilyLinksDto {
+    pub parents: Vec<UserFamilyRelationshipDto>,
+    pub children: Vec<UserFamilyRelationshipDto>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SubordinateUserDto {
     pub user: UserSummaryDto,

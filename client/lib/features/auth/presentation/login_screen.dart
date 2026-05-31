@@ -560,7 +560,7 @@ class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
               decoration: InputDecoration(
                 labelText: context.l10n.t('guest.organizationCode'),
                 hintText: context.l10n.t('guest.organizationHint'),
-                prefixIcon: Icon(Icons.apartment_rounded),
+                prefixIcon: const Icon(Icons.apartment_rounded),
               ),
               validator: (value) {
                 if ((value ?? '').trim().isEmpty)
@@ -574,7 +574,7 @@ class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
                 labelText: context.l10n.t('guest.displayName'),
-                prefixIcon: Icon(Icons.person_outline_rounded),
+                prefixIcon: const Icon(Icons.person_outline_rounded),
               ),
               onFieldSubmitted: (_) => _submit(),
             ),

@@ -74,9 +74,10 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
         onRetry: () => ref.invalidate(dashboardExperienceProvider(_query)),
       ),
       data: (dashboard) {
-        final role = widget.session.user.primaryRole;
+        final role = dashboard.role == UserRole.unknown
+            ? widget.session.user.primaryRole
+            : dashboard.role;
         final management = _isManagementRole(role);
-        final family = role == UserRole.parent || role == UserRole.student;
         return RefreshIndicator(
           onRefresh: () async =>
               ref.invalidate(dashboardExperienceProvider(_query)),
@@ -87,23 +88,31 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                 padding: EdgeInsets.fromLTRB(18, 8, 18, compact ? 104 : 40),
                 children: [
                   _DashboardTopBar(
-                    dashboard: dashboard,
                     user: widget.session.user,
+                    role: role,
                     period: _period,
                     onPeriodChanged: (value) => setState(() => _period = value),
                   ),
                   const SizedBox(height: 16),
-                  if (family) ...[
-                    _FamilyHero(
+                  if (role == UserRole.parent) ...[
+                    _ParentChildrenHero(dashboard: dashboard),
+                    const SizedBox(height: 16),
+                    _ParentSurveyArea(dashboard: dashboard),
+                  ] else if (role == UserRole.student) ...[
+                    _StudentHero(
                       dashboard: dashboard,
                       user: widget.session.user,
                     ),
                     const SizedBox(height: 16),
                     _ParentSurveyArea(dashboard: dashboard),
-                  ] else ...[
-                    _ManagementHero(dashboard: dashboard),
+                  ] else if (role == UserRole.teacher) ...[
+                    _TeacherHero(dashboard: dashboard),
                     const SizedBox(height: 16),
-                    _OperationalCards(dashboard: dashboard),
+                    _OperationalCards(dashboard: dashboard, role: role),
+                  ] else ...[
+                    _ManagementHero(dashboard: dashboard, role: role),
+                    const SizedBox(height: 16),
+                    _OperationalCards(dashboard: dashboard, role: role),
                   ],
                   const SizedBox(height: 16),
                   _ResponsiveTwoColumn(
@@ -123,12 +132,10 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                   ],
                   if (management) ...[
                     const SizedBox(height: 16),
-                    _ManagementConfigurationRow(
-                      role: widget.session.user.primaryRole,
-                    ),
+                    _ManagementConfigurationRow(role: role),
                     const SizedBox(height: 16),
                     _CreateUserCard(
-                      actorRole: widget.session.user.primaryRole,
+                      actorRole: role,
                       onCreated: () {
                         setState(() => _userListVersion++);
                         ref.invalidate(dashboardExperienceProvider(_query));
@@ -137,7 +144,7 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                     const SizedBox(height: 16),
                     _UserManagementCard(
                       key: ValueKey('users-$_userListVersion'),
-                      actorRole: widget.session.user.primaryRole,
+                      actorRole: role,
                     ),
                     const SizedBox(height: 16),
                     const _PendingApprovalCard(),
@@ -156,14 +163,14 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
 
 class _DashboardTopBar extends StatelessWidget {
   const _DashboardTopBar({
-    required this.dashboard,
     required this.user,
+    required this.role,
     required this.period,
     required this.onPeriodChanged,
   });
 
-  final DashboardResponseDto2 dashboard;
   final UserDetailDto user;
+  final UserRole role;
   final String period;
   final ValueChanged<String> onPeriodChanged;
 
@@ -171,19 +178,17 @@ class _DashboardTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
-    final roleLabel = _roleLabel(context, dashboard.role);
-    final title = dashboard.role == UserRole.parent
-        ? context.l10n
-              .t('dashboard.childProgress')
-              .replaceAll(
-                '{name}',
-                dashboard.children.isNotEmpty
-                    ? dashboard.children.first.displayName
-                    : context.l10n.t('dashboard.childFallback'),
-              )
-        : dashboard.role == UserRole.student
+    final roleLabel = _roleLabel(context, role);
+    final title = role == UserRole.parent
+        ? context.l10n.t('dashboard.parentTitle')
+        : role == UserRole.student
         ? context.l10n.t('dashboard.studentTitle')
+        : role == UserRole.teacher
+        ? context.l10n.t('dashboard.teacherTitle')
         : context.l10n.t('dashboard.roleTitle').replaceAll('{role}', roleLabel);
+    final textAlign = context.l10n.textDirection == TextDirection.rtl
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
     return Row(
       children: [
         IconButton.filled(
@@ -204,7 +209,7 @@ class _DashboardTopBar extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: textAlign,
             children: [
               Text(
                 title,
@@ -215,7 +220,7 @@ class _DashboardTopBar extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${user.displayName} · ${_roleLabel(context, user.primaryRole)}',
+                '${user.displayName} · ${_roleLabel(context, role)}',
                 style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
             ],
@@ -283,31 +288,50 @@ class _PeriodDropdown extends StatelessWidget {
   }
 }
 
-class _FamilyHero extends StatelessWidget {
-  const _FamilyHero({required this.dashboard, required this.user});
+class _ParentChildrenHero extends StatelessWidget {
+  const _ParentChildrenHero({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftPanel(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(title: context.l10n.t('dashboard.parentChildren')),
+          const SizedBox(height: 12),
+          if (dashboard.children.isEmpty)
+            _EmptyTiny(message: context.l10n.t('dashboard.noChildrenForParent'))
+          else
+            for (final child in dashboard.children) ...[
+              _ChildCard(child: child),
+              if (child != dashboard.children.last) const SizedBox(height: 10),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentHero extends StatelessWidget {
+  const _StudentHero({required this.dashboard, required this.user});
 
   final DashboardResponseDto2 dashboard;
   final UserDetailDto user;
 
   @override
   Widget build(BuildContext context) {
-    final child = dashboard.children.isNotEmpty
-        ? dashboard.children.first
-        : null;
     return _SoftPanel(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (child != null)
-            _ChildCard(child: child)
-          else
-            _StudentProfileCard(user: user),
+          _StudentProfileCard(user: user),
           const SizedBox(height: 18),
           _SectionTitle(
-            title: dashboard.role == UserRole.student
-                ? context.l10n.t('dashboard.activity.student')
-                : context.l10n.t('dashboard.activity.general'),
+            title: context.l10n.t('dashboard.activity.student'),
             trailing: _ChartLegend(),
           ),
           const SizedBox(height: 12),
@@ -325,8 +349,8 @@ class _FamilyHero extends StatelessWidget {
   }
 }
 
-class _ManagementHero extends StatelessWidget {
-  const _ManagementHero({required this.dashboard});
+class _TeacherHero extends StatelessWidget {
+  const _TeacherHero({required this.dashboard});
 
   final DashboardResponseDto2 dashboard;
 
@@ -339,7 +363,38 @@ class _ManagementHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _SectionTitle(
-            title: context.l10n.t('dashboard.surveyParticipation'),
+            title: context.l10n.t('dashboard.teacherSurveyParticipation'),
+            trailing: _ChartLegend(),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 190,
+            child: _DashboardLineChart(chart: chart, prominent: true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManagementHero extends StatelessWidget {
+  const _ManagementHero({required this.dashboard, required this.role});
+
+  final DashboardResponseDto2 dashboard;
+  final UserRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    final chart = dashboard.charts.isNotEmpty ? dashboard.charts.first : null;
+    return _SoftPanel(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(
+            title: role == UserRole.ceo || role == UserRole.superAdmin
+                ? context.l10n.t('dashboard.organizationParticipation')
+                : context.l10n.t('dashboard.surveyParticipation'),
             trailing: _ChartLegend(),
           ),
           const SizedBox(height: 14),
@@ -608,9 +663,10 @@ class _StatusMini extends StatelessWidget {
 }
 
 class _OperationalCards extends StatelessWidget {
-  const _OperationalCards({required this.dashboard});
+  const _OperationalCards({required this.dashboard, required this.role});
 
   final DashboardResponseDto2 dashboard;
+  final UserRole role;
 
   @override
   Widget build(BuildContext context) {
@@ -625,7 +681,9 @@ class _OperationalCards extends StatelessWidget {
         child: _BigNumberTile(
           title: context.l10n.t('dashboard.participationCount'),
           value: '$total',
-          subtitle: context.l10n.t('dashboard.participationSubtitle'),
+          subtitle: role == UserRole.teacher
+              ? context.l10n.t('dashboard.teacherParticipationSubtitle')
+              : context.l10n.t('dashboard.participationSubtitle'),
           trend: dashboard.metrics.isNotEmpty
               ? dashboard.metrics.first.trend
               : null,
@@ -1313,7 +1371,7 @@ class _ActivityRow extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            item.timeAgo ?? '',
+            _localizedTimeAgo(context, item),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -1359,6 +1417,25 @@ class _ActivityRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _localizedTimeAgo(BuildContext context, ActivityFeedItemDto2 item) {
+  final createdAt = DateTime.tryParse(item.createdAt ?? '');
+  if (createdAt == null) return item.timeAgo ?? '';
+  final delta = DateTime.now().difference(createdAt.toLocal());
+  if (delta.inMinutes < 60) {
+    return context.l10n
+        .t('time.minutesAgo')
+        .replaceAll('{count}', '${math.max(1, delta.inMinutes)}');
+  }
+  if (delta.inHours < 24) {
+    return context.l10n
+        .t('time.hoursAgo')
+        .replaceAll('{count}', '${delta.inHours}');
+  }
+  return context.l10n
+      .t('time.daysAgo')
+      .replaceAll('{count}', '${delta.inDays}');
 }
 
 class _RankingsAndAlerts extends ConsumerWidget {
@@ -1565,7 +1642,9 @@ class _ManagementConfigurationRow extends ConsumerWidget {
                     _ManagementListItem(
                       title: metric.title,
                       subtitle: '${metric.key} · ${metric.metricType}',
-                      trailing: 'map: ${metric.mappingCount}',
+                      trailing: context.l10n
+                          .t('dashboard.mappingCount')
+                          .replaceAll('{count}', '${metric.mappingCount}'),
                     ),
                 ],
               ),
@@ -2672,6 +2751,12 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
                         spacing: 8,
                         children: [
                           Chip(label: Text(user.status)),
+                          if (_canHaveFamilyLinks(user.primaryRole))
+                            IconButton(
+                              tooltip: context.l10n.t('familyLinks'),
+                              onPressed: () => _manageFamily(user),
+                              icon: const Icon(Icons.family_restroom_rounded),
+                            ),
                           IconButton(
                             tooltip: context.l10n.t('edit'),
                             onPressed: () => _edit(user),
@@ -2729,6 +2814,14 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
       _page = page;
       _future = _load();
     });
+  }
+
+  Future<void> _manageFamily(UserSummaryDto user) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _FamilyLinksDialog(user: user),
+    );
+    if (mounted) _refresh();
   }
 
   Future<void> _edit(UserSummaryDto user) async {
@@ -2898,6 +2991,416 @@ class _EditUserDialogState extends State<_EditUserDialog> {
           child: Text(context.l10n.t('save')),
         ),
       ],
+    );
+  }
+}
+
+bool _canHaveFamilyLinks(UserRole role) =>
+    role == UserRole.parent || role == UserRole.student;
+
+class _FamilyLinksDialog extends ConsumerStatefulWidget {
+  const _FamilyLinksDialog({required this.user});
+
+  final UserSummaryDto user;
+
+  @override
+  ConsumerState<_FamilyLinksDialog> createState() => _FamilyLinksDialogState();
+}
+
+class _FamilyLinksDialogState extends ConsumerState<_FamilyLinksDialog> {
+  final _candidateSearch = TextEditingController();
+  late Future<UserFamilyLinksDto> _linksFuture = _loadLinks();
+  late Future<ListResponse<UserSummaryDto>> _candidatesFuture =
+      _loadCandidates();
+  String? _selectedUserId;
+  bool _saving = false;
+
+  UserRole get _candidateRole => widget.user.primaryRole == UserRole.student
+      ? UserRole.parent
+      : UserRole.student;
+
+  bool get _isStudent => widget.user.primaryRole == UserRole.student;
+
+  @override
+  void dispose() {
+    _candidateSearch.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.sizeOf(context).width.clamp(300.0, 560.0);
+    return AlertDialog(
+      title: Text(context.l10n.t('familyLinks')),
+      content: SizedBox(
+        width: maxWidth,
+        child: FutureBuilder<UserFamilyLinksDto>(
+          future: _linksFuture,
+          builder: (context, linksSnapshot) {
+            if (linksSnapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 180,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (linksSnapshot.hasError) {
+              return Text(
+                FriendlyApiErrorMessage.from(
+                  linksSnapshot.error!,
+                  context: context,
+                ),
+              );
+            }
+            final links =
+                linksSnapshot.data ??
+                const UserFamilyLinksDto(parents: [], children: []);
+            final activeLinks = _isStudent ? links.parents : links.children;
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _FamilyTargetSummary(user: widget.user),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    _isStudent
+                        ? context.l10n.t('linkedParents')
+                        : context.l10n.t('linkedStudents'),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  if (activeLinks.isEmpty)
+                    Text(
+                      _isStudent
+                          ? context.l10n.t('noLinkedParents')
+                          : context.l10n.t('noLinkedStudents'),
+                    )
+                  else
+                    for (final link in activeLinks)
+                      _FamilyLinkTile(
+                        link: link,
+                        onDelete: _saving
+                            ? null
+                            : () => _deleteRelationship(link),
+                      ),
+                  const Divider(height: AppSpacing.xl),
+                  Text(
+                    _isStudent
+                        ? context.l10n.t('addParentToStudent')
+                        : context.l10n.t('addStudentToParent'),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    _isStudent
+                        ? context.l10n.t('addParentToStudentHint')
+                        : context.l10n.t('addStudentToParentHint'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _candidateSearch,
+                          decoration: InputDecoration(
+                            labelText: context.l10n.t(
+                              'searchUserByNameOrPhone',
+                            ),
+                            prefixIcon: const Icon(Icons.search_rounded),
+                          ),
+                          onSubmitted: (_) => _refreshCandidates(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton.filledTonal(
+                        tooltip: context.l10n.t('search'),
+                        onPressed: _refreshCandidates,
+                        icon: const Icon(Icons.search_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FutureBuilder<ListResponse<UserSummaryDto>>(
+                    future: _candidatesFuture,
+                    builder: (context, candidatesSnapshot) {
+                      if (candidatesSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(AppSpacing.md),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      if (candidatesSnapshot.hasError) {
+                        return Text(
+                          FriendlyApiErrorMessage.from(
+                            candidatesSnapshot.error!,
+                            context: context,
+                          ),
+                        );
+                      }
+                      final linkedIds = activeLinks
+                          .map((link) => link.user.id)
+                          .toSet();
+                      final candidates =
+                          (candidatesSnapshot.data?.data ??
+                                  const <UserSummaryDto>[])
+                              .where(
+                                (candidate) =>
+                                    candidate.primaryRole == _candidateRole &&
+                                    candidate.id != widget.user.id &&
+                                    !linkedIds.contains(candidate.id) &&
+                                    (widget.user.organizationId == null ||
+                                        candidate.organizationId ==
+                                            widget.user.organizationId),
+                              )
+                              .toList(growable: false);
+                      if (candidates.isEmpty) {
+                        return Text(
+                          _candidateRole == UserRole.parent
+                              ? context.l10n.t('noParentCandidates')
+                              : context.l10n.t('noStudentCandidates'),
+                        );
+                      }
+                      final selectedStillExists = candidates.any(
+                        (user) => user.id == _selectedUserId,
+                      );
+                      final effectiveSelectedId = selectedStillExists
+                          ? _selectedUserId
+                          : null;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DropdownButtonFormField<String>(
+                            initialValue: effectiveSelectedId,
+                            decoration: InputDecoration(
+                              labelText: _candidateRole == UserRole.parent
+                                  ? context.l10n.t('selectParent')
+                                  : context.l10n.t('selectStudent'),
+                            ),
+                            items: [
+                              for (final candidate in candidates)
+                                DropdownMenuItem(
+                                  value: candidate.id,
+                                  child: Text(
+                                    '${candidate.displayName} · ${ltrIsolate(candidate.phone)}',
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _selectedUserId = value);
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          FilledButton.icon(
+                            onPressed: _saving || effectiveSelectedId == null
+                                ? null
+                                : _addRelationship,
+                            icon: _saving
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.link_rounded),
+                            label: Text(context.l10n.t('linkUsers')),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('close')),
+        ),
+      ],
+    );
+  }
+
+  Future<UserFamilyLinksDto> _loadLinks() {
+    return ref
+        .read(usersRepositoryProvider)
+        .getUserRelationships(id: widget.user.id);
+  }
+
+  Future<ListResponse<UserSummaryDto>> _loadCandidates() {
+    return ref
+        .read(usersRepositoryProvider)
+        .listUsers(
+          page: 1,
+          pageSize: 50,
+          search: _candidateSearch.text.trim().isEmpty
+              ? null
+              : _candidateSearch.text.trim(),
+          sortBy: 'display_name',
+          sortOrder: SortOrder.asc,
+        );
+  }
+
+  void _refreshLinks() {
+    setState(() {
+      _linksFuture = _loadLinks();
+      _selectedUserId = null;
+    });
+  }
+
+  void _refreshCandidates() {
+    setState(() {
+      _selectedUserId = null;
+      _candidatesFuture = _loadCandidates();
+    });
+  }
+
+  Future<void> _addRelationship() async {
+    final selectedUserId = _selectedUserId;
+    if (selectedUserId == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(usersRepositoryProvider)
+          .createUserRelationship(
+            id: widget.user.id,
+            request: CreateUserRelationshipRequest(
+              relatedUserId: selectedUserId,
+            ),
+          );
+      if (!mounted) return;
+      _refreshLinks();
+      _refreshCandidates();
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.l10n.t('familyLinkCreated'))),
+      );
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteRelationship(UserFamilyRelationshipDto link) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(usersRepositoryProvider)
+          .deleteUserRelationship(
+            id: widget.user.id,
+            relationshipId: link.relationship.id,
+          );
+      if (!mounted) return;
+      _refreshLinks();
+      _refreshCandidates();
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.l10n.t('familyLinkDeleted'))),
+      );
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _FamilyTargetSummary extends StatelessWidget {
+  const _FamilyTargetSummary({required this.user});
+
+  final UserSummaryDto user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            child: Text(user.displayName.characters.first.toUpperCase()),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  '${context.l10n.enumLabel(user.primaryRole.toJson())} · ${ltrIsolate(user.phone)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FamilyLinkTile extends StatelessWidget {
+  const _FamilyLinkTile({required this.link, required this.onDelete});
+
+  final UserFamilyRelationshipDto link;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = link.user;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        child: Text(user.displayName.characters.first.toUpperCase()),
+      ),
+      title: Text(
+        user.displayName,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        '${context.l10n.enumLabel(user.primaryRole.toJson())} · ${ltrIsolate(user.phone)}',
+      ),
+      trailing: IconButton(
+        tooltip: context.l10n.t('unlink'),
+        onPressed: onDelete,
+        icon: const Icon(Icons.link_off_rounded),
+      ),
     );
   }
 }
