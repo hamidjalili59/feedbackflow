@@ -53,9 +53,7 @@ pub async fn dashboard_me(
     } else {
         vec![]
     };
-    let selected_child_id = q
-        .child_id
-        .or_else(|| children.first().map(|child| child.id));
+    let selected_child_id = selected_child_id_for_parent(auth, q.child_id, &children)?;
     let latest_surveys = my_surveys(
         state,
         auth,
@@ -194,6 +192,7 @@ pub async fn my_surveys(
         .ok_or_else(|| AppError::forbidden("Surveys require an organization"))?;
     let limit = q.limit.clamp(1, 200);
     let period_bounds = q.period.as_deref().map(period_range);
+    let child_auth = child_auth_for_query(state, auth, q.child_id).await?;
     let rows = sqlx::query(
         "select f.id, f.creator_id, f.organization_id, f.title, f.description, f.category, f.tags, f.status, f.visibility, \
                 f.scheduled_at, f.published_at, f.closed_at, f.settings, \
@@ -223,7 +222,14 @@ pub async fn my_surveys(
             audience_service::user_matches_form_assignment(state, form_id, auth, false)
                 .await
                 .unwrap_or(false);
-        if !visible_by_json && !visible_by_assignment {
+        let visible_by_child_assignment = if let Some(child_auth) = child_auth.as_ref() {
+            audience_service::user_matches_form_assignment(state, form_id, child_auth, false)
+                .await
+                .unwrap_or(false)
+        } else {
+            false
+        };
+        if !visible_by_json && !visible_by_assignment && !visible_by_child_assignment {
             continue;
         }
         let my_submission_id: Option<Uuid> = row.try_get("my_submission_id")?;
@@ -249,9 +255,19 @@ pub async fn my_surveys(
             }
         }
         let settings: Value = row.try_get("settings").unwrap_or_else(|_| json!({}));
-        let labels = audience_service::assignment_labels_for_user(state, form_id, auth)
+        let mut labels = audience_service::assignment_labels_for_user(state, form_id, auth)
             .await
             .unwrap_or_default();
+        if let Some(child_auth) = child_auth.as_ref() {
+            for label in audience_service::assignment_labels_for_user(state, form_id, child_auth)
+                .await
+                .unwrap_or_default()
+            {
+                if !labels.contains(&label) {
+                    labels.push(label);
+                }
+            }
+        }
         out.push(SurveyCardDto {
             form_id,
             title: row.try_get("title")?,
@@ -295,6 +311,67 @@ pub async fn my_surveys(
         }
     }
     Ok(out)
+}
+
+fn selected_child_id_for_parent(
+    auth: &AuthUser,
+    requested: Option<Uuid>,
+    children: &[ChildProfileDto],
+) -> Result<Option<Uuid>, AppError> {
+    if auth.role != UserRole::Parent {
+        return Ok(None);
+    }
+    if let Some(child_id) = requested {
+        if children.iter().any(|child| child.id == child_id) {
+            return Ok(Some(child_id));
+        }
+        return Err(AppError::forbidden(
+            "Selected child is not linked to this parent",
+        ));
+    }
+    Ok(children.first().map(|child| child.id))
+}
+
+async fn child_auth_for_query(
+    state: &AppState,
+    auth: &AuthUser,
+    child_id: Option<Uuid>,
+) -> Result<Option<AuthUser>, AppError> {
+    let Some(child_id) = child_id else {
+        return Ok(None);
+    };
+    if auth.role != UserRole::Parent {
+        return Err(AppError::forbidden(
+            "Child filtering is only available to parent users",
+        ));
+    }
+    let org_id = auth
+        .organization_id
+        .ok_or_else(|| AppError::forbidden("Child filtering requires an organization"))?;
+    let row = sqlx::query(
+        "select u.primary_role \
+         from user_relationships ur \
+         join users u on u.id=ur.child_user_id and u.deleted_at is null \
+         where ur.organization_id=$1 and ur.parent_user_id=$2 and ur.child_user_id=$3 \
+           and ur.relationship_type='parent_child'",
+    )
+    .bind(org_id)
+    .bind(auth.user_id)
+    .bind(child_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(row) = row else {
+        return Err(AppError::forbidden(
+            "Selected child is not linked to this parent",
+        ));
+    };
+    let role =
+        enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Student);
+    Ok(Some(AuthUser {
+        user_id: child_id,
+        organization_id: Some(org_id),
+        role,
+    }))
 }
 
 pub async fn survey_calendar(

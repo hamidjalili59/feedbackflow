@@ -711,6 +711,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.activity.general': 'مشارکت در فعالیت‌ها',
     'dashboard.surveyParticipation': 'مشارکت در نظرسنجی',
     'dashboard.viewProfile': 'نمایش پروفایل',
+    'dashboard.selectStudent': 'انتخاب',
     'dashboard.studentSubtitle':
         'نمای دانش‌آموزی · نظرسنجی‌ها و شاخص‌های مربوط به خودتان',
     'seeAll': 'دیدن همه',
@@ -1454,6 +1455,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.activity.general': 'Activity participation',
     'dashboard.surveyParticipation': 'Survey participation',
     'dashboard.viewProfile': 'View profile',
+    'dashboard.selectStudent': 'Select',
     'dashboard.studentSubtitle':
         'Student view · surveys and metrics related to you',
     'seeAll': 'See all',
@@ -2155,6 +2157,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.activity.general': '活动参与',
     'dashboard.surveyParticipation': '调查参与',
     'dashboard.viewProfile': '查看档案',
+    'dashboard.selectStudent': '选择',
     'dashboard.studentSubtitle': '学生视图 · 与你相关的调查和指标',
     'seeAll': '查看全部',
     'dashboard.newSurvey': '新调查',

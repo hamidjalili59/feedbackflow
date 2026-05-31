@@ -58,10 +58,14 @@ class _ExperienceDashboard extends ConsumerStatefulWidget {
 
 class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
   String _period = 'this_month';
+  String? _selectedChildId;
   int _userListVersion = 0;
 
-  DashboardQueryInput get _query =>
-      DashboardQueryInput(period: _period, compare: 'previous_period');
+  DashboardQueryInput get _query => DashboardQueryInput(
+    period: _period,
+    compare: 'previous_period',
+    childId: _selectedChildId,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +99,13 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                   ),
                   const SizedBox(height: 16),
                   if (role == UserRole.parent) ...[
-                    _ParentChildrenHero(dashboard: dashboard),
+                    _ParentChildrenHero(
+                      dashboard: dashboard,
+                      selectedChildId:
+                          dashboard.selectedChildId ?? _selectedChildId,
+                      onChildSelected: (childId) =>
+                          setState(() => _selectedChildId = childId),
+                    ),
                     const SizedBox(height: 16),
                     _ParentSurveyArea(dashboard: dashboard),
                   ] else if (role == UserRole.student) ...[
@@ -289,9 +299,15 @@ class _PeriodDropdown extends StatelessWidget {
 }
 
 class _ParentChildrenHero extends StatelessWidget {
-  const _ParentChildrenHero({required this.dashboard});
+  const _ParentChildrenHero({
+    required this.dashboard,
+    required this.selectedChildId,
+    required this.onChildSelected,
+  });
 
   final DashboardResponseDto2 dashboard;
+  final String? selectedChildId;
+  final ValueChanged<String> onChildSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +322,11 @@ class _ParentChildrenHero extends StatelessWidget {
             _EmptyTiny(message: context.l10n.t('dashboard.noChildrenForParent'))
           else
             for (final child in dashboard.children) ...[
-              _ChildCard(child: child),
+              _ChildCard(
+                child: child,
+                selected: child.id == selectedChildId,
+                onTap: () => onChildSelected(child.id),
+              ),
               if (child != dashboard.children.last) const SizedBox(height: 10),
             ],
         ],
@@ -409,60 +429,81 @@ class _ManagementHero extends StatelessWidget {
 }
 
 class _ChildCard extends StatelessWidget {
-  const _ChildCard({required this.child});
+  const _ChildCard({
+    required this.child,
+    required this.selected,
+    required this.onTap,
+  });
 
   final ChildProfileDto2 child;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 27,
-            backgroundColor: const Color(0xFFFFE2C1),
-            backgroundImage: child.avatarUrl == null
-                ? null
-                : NetworkImage(child.avatarUrl!),
-            child: child.avatarUrl == null
-                ? const Text('👧', style: TextStyle(fontSize: 28))
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  child.displayName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    child.gradeLabel,
-                    child.className,
-                  ].whereType<String>().where((e) => e.isNotEmpty).join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    final borderColor = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outlineVariant.withValues(alpha: 0.35);
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: selected ? 1.6 : 1),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 27,
+              backgroundColor: const Color(0xFFFFE2C1),
+              backgroundImage: child.avatarUrl == null
+                  ? null
+                  : NetworkImage(child.avatarUrl!),
+              child: child.avatarUrl == null
+                  ? const Text('👧', style: TextStyle(fontSize: 28))
+                  : null,
             ),
-          ),
-          TextButton(
-            onPressed: () => context.go('/profile'),
-            child: Text(context.l10n.t('dashboard.viewProfile')),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    child.displayName,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [child.gradeLabel, child.className]
+                        .whereType<String>()
+                        .where((e) => e.isNotEmpty)
+                        .join(' · '),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: theme.colorScheme.primary,
+                size: 22,
+              )
+            else
+              TextButton(
+                onPressed: onTap,
+                child: Text(context.l10n.t('dashboard.selectStudent')),
+              ),
+          ],
+        ),
       ),
     );
   }
