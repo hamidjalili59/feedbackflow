@@ -128,7 +128,7 @@ extension FormWorkspaceSectionX on FormWorkspaceSection {
   };
 
   String label(BuildContext context) => this == FormWorkspaceSection.assignments
-      ? 'تخصیص'
+      ? context.l10n.t('form.assignments')
       : context.l10n.t(labelKey);
 
   IconData get icon => switch (this) {
@@ -236,7 +236,8 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
 
     final accessAsync = ref.watch(formAnswerAccessProvider(form.id));
     return accessAsync.when(
-      loading: () => LoadingPanel(message: 'در حال بررسی دسترسی پاسخ‌دهی...'),
+      loading: () =>
+          LoadingPanel(message: context.l10n.t('form.checkingAnswerAccess')),
       error: (error, stackTrace) => ErrorPanel(
         error: error,
         onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),
@@ -345,7 +346,7 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                 Icon(Icons.lock_person_rounded, size: 62, color: scheme.error),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'دسترسی پاسخ‌دهی ندارید',
+                  context.l10n.t('form.noAnswerAccessTitle'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
@@ -353,8 +354,7 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  access.reason ??
-                      'این فرم برای پاسخ‌دهی به حساب شما تخصیص داده نشده است.',
+                  access.reason ?? context.l10n.t('form.noAnswerAccessMessage'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
@@ -376,14 +376,14 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                       FilledButton.icon(
                         onPressed: () => context.go('/public/$publicToken'),
                         icon: const Icon(Icons.public_rounded),
-                        label: const Text('باز کردن لینک عمومی'),
+                        label: Text(context.l10n.t('form.openPublicLink')),
                       ),
                     if (access.canEditWorkspace)
                       FilledButton.tonalIcon(
                         onPressed: () =>
                             context.go('/forms/${form.id}/settings'),
                         icon: const Icon(Icons.tune_rounded),
-                        label: const Text('مدیریت فرم'),
+                        label: Text(context.l10n.t('form.manageForm')),
                       ),
                   ],
                 ),
@@ -1639,21 +1639,19 @@ class _AssignmentsSection extends ConsumerWidget {
         children: [
           _SectionHeader(
             icon: Icons.group_add_rounded,
-            title: 'تخصیص فرم',
-            message:
-                'لیست مخاطب‌هایی که از سرور برای مشاهده یا پاسخ‌دادن به این فرم تعریف شده‌اند.',
+            title: context.l10n.t('form.assignmentsTitle'),
+            message: context.l10n.t('form.assignmentsDescription'),
             trailing: IconButton.filledTonal(
-              tooltip: 'به‌روزرسانی',
+              tooltip: context.l10n.t('refresh'),
               onPressed: () => ref.invalidate(formAssignmentsProvider(form.id)),
               icon: const Icon(Icons.refresh_rounded),
             ),
           ),
           AppSpacing.gapLg,
-          const _InlineNotice(
+          _InlineNotice(
             icon: Icons.info_outline_rounded,
-            title: 'مدل جدید تخصیص',
-            message:
-                'فرم می‌تواند به کاربر خاص، نقش، گروه، کل سازمان یا سگمنت‌های داینامیک مثل شرکت‌کنندگان اردو تخصیص داده شود.',
+            title: context.l10n.t('form.assignmentModelTitle'),
+            message: context.l10n.t('form.assignmentModelDescription'),
           ),
           AppSpacing.gapMd,
           assignmentsAsync.when(
@@ -1663,16 +1661,15 @@ class _AssignmentsSection extends ConsumerWidget {
             ),
             error: (error, stackTrace) => _InlineNotice(
               icon: Icons.error_outline_rounded,
-              title: 'خطا در دریافت تخصیص‌ها',
+              title: context.l10n.t('form.assignmentLoadError'),
               message: FriendlyApiErrorMessage.from(error, context: context),
             ),
             data: (assignments) {
               if (assignments.isEmpty) {
-                return const _EmptyStateMessage(
+                return _EmptyStateMessage(
                   icon: Icons.group_off_rounded,
-                  title: 'هنوز تخصیصی ثبت نشده است',
-                  message:
-                      'بعد از ساخت تخصیص در سرور، مخاطب‌های این فرم اینجا نمایش داده می‌شوند.',
+                  title: context.l10n.t('form.noAssignmentsTitle'),
+                  message: context.l10n.t('form.noAssignmentsDescription'),
                 );
               }
               return Column(
@@ -1753,14 +1750,14 @@ class _AssignmentTile extends StatelessWidget {
             spacing: 6,
             children: [
               _TinyStatusChip(
-                label: 'مشاهده',
+                label: context.l10n.t('form.canView'),
                 active: canSee,
                 icon: canSee
                     ? Icons.visibility_rounded
                     : Icons.visibility_off_rounded,
               ),
               _TinyStatusChip(
-                label: 'پاسخ',
+                label: context.l10n.t('form.canRespond'),
                 active: canAnswer,
                 icon: canAnswer ? Icons.edit_rounded : Icons.block_rounded,
               ),
@@ -1834,18 +1831,20 @@ String _assignmentAudienceTitle(
 ) {
   switch (assignment.audienceType) {
     case 'user':
-      return 'کاربر خاص';
+      return context.l10n.t('assignment.user');
     case 'role':
       final role = assignment.audienceRole;
       return role == null
-          ? 'نقش خاص'
-          : 'نقش ${context.l10n.enumLabel(role.toJson())}';
+          ? context.l10n.t('assignment.roleSpecific')
+          : context.l10n
+                .t('assignment.roleValue')
+                .replaceAll('{role}', context.l10n.enumLabel(role.toJson()));
     case 'group':
-      return 'گروه یا کلاس';
+      return context.l10n.t('assignment.group');
     case 'organization':
-      return 'کل سازمان';
+      return context.l10n.t('assignment.organization');
     case 'segment':
-      return 'سگمنت داینامیک';
+      return context.l10n.t('assignment.segment');
     default:
       return assignment.audienceType;
   }
@@ -1858,25 +1857,35 @@ String _assignmentAudienceSubtitle(
   switch (assignment.audienceType) {
     case 'user':
       return assignment.audienceUserId == null
-          ? 'مخاطب کاربری'
-          : 'شناسه کاربر: ${_shortId(assignment.audienceUserId!)}';
+          ? context.l10n.t('assignment.userAudience')
+          : context.l10n
+                .t('assignment.userId')
+                .replaceAll('{id}', _shortId(assignment.audienceUserId!));
     case 'role':
       final role = assignment.audienceRole;
       return role == null
-          ? 'همه کاربران یک نقش'
-          : 'همه کاربران با نقش ${context.l10n.enumLabel(role.toJson())}';
+          ? context.l10n.t('assignment.allRoleUsers')
+          : context.l10n
+                .t('assignment.allRoleUsersValue')
+                .replaceAll('{role}', context.l10n.enumLabel(role.toJson()));
     case 'group':
       return assignment.audienceGroupId == null
-          ? 'مخاطبان یک گروه یا کلاس'
-          : 'شناسه گروه: ${_shortId(assignment.audienceGroupId!)}';
+          ? context.l10n.t('assignment.groupAudience')
+          : context.l10n
+                .t('assignment.groupId')
+                .replaceAll('{id}', _shortId(assignment.audienceGroupId!));
     case 'organization':
-      return 'همه افراد قابل دسترس در سازمان';
+      return context.l10n.t('assignment.organizationAudience');
     case 'segment':
       return assignment.audienceSegmentId == null
-          ? 'مخاطبان یک سگمنت پویا'
-          : 'شناسه سگمنت: ${_shortId(assignment.audienceSegmentId!)}';
+          ? context.l10n.t('assignment.segmentAudience')
+          : context.l10n
+                .t('assignment.segmentId')
+                .replaceAll('{id}', _shortId(assignment.audienceSegmentId!));
     default:
-      return 'نوع مخاطب: ${assignment.audienceType}';
+      return context.l10n
+          .t('assignment.type')
+          .replaceAll('{type}', assignment.audienceType);
   }
 }
 
@@ -3054,7 +3063,7 @@ String _formatAnswerValue(Object? value) {
   if (value is bool) return value ? '✓' : '✗';
   if (value is List) {
     if (value.isEmpty) return '—';
-    return value.map((e) => e.toString()).join('، ');
+    return value.map((e) => e.toString()).join(', ');
   }
   return value.toString();
 }

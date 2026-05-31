@@ -25,9 +25,9 @@ class DashboardScreen extends ConsumerWidget {
     return AppShell(
       selected: AppDestination.dashboard,
       appBar: AdaptiveAppBar(
-        title: const Text('داشبورد'),
+        title: Text(context.l10n.t('dashboard')),
         primaryAction: IconButton.filledTonal(
-          tooltip: 'فرم‌ها',
+          tooltip: context.l10n.t('dashboard.formsTooltip'),
           onPressed: () => context.go('/forms'),
           icon: const Icon(Icons.article_outlined),
         ),
@@ -171,11 +171,19 @@ class _DashboardTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
+    final roleLabel = _roleLabel(context, dashboard.role);
     final title = dashboard.role == UserRole.parent
-        ? 'پیشرفت ${dashboard.children.isNotEmpty ? dashboard.children.first.displayName : 'فرزند'}'
+        ? context.l10n
+              .t('dashboard.childProgress')
+              .replaceAll(
+                '{name}',
+                dashboard.children.isNotEmpty
+                    ? dashboard.children.first.displayName
+                    : context.l10n.t('dashboard.childFallback'),
+              )
         : dashboard.role == UserRole.student
-        ? 'داشبورد دانش‌آموز'
-        : 'داشبورد ${_roleLabel(dashboard.role)}';
+        ? context.l10n.t('dashboard.studentTitle')
+        : context.l10n.t('dashboard.roleTitle').replaceAll('{role}', roleLabel);
     return Row(
       children: [
         IconButton.filled(
@@ -207,7 +215,7 @@ class _DashboardTopBar extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${user.displayName} · ${_roleLabel(user.primaryRole)}',
+                '${user.displayName} · ${_roleLabel(context, user.primaryRole)}',
                 style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
             ],
@@ -248,11 +256,23 @@ class _PeriodDropdown extends StatelessWidget {
             fontWeight: FontWeight.w800,
             color: const Color(0xFF747A9A),
           ),
-          items: const [
-            DropdownMenuItem(value: 'this_month', child: Text('ماه جاری')),
-            DropdownMenuItem(value: 'last_month', child: Text('ماه گذشته')),
-            DropdownMenuItem(value: 'last_3_months', child: Text('۳ ماهه')),
-            DropdownMenuItem(value: 'this_year', child: Text('سال جاری')),
+          items: [
+            DropdownMenuItem(
+              value: 'this_month',
+              child: Text(context.l10n.t('period.this_month')),
+            ),
+            DropdownMenuItem(
+              value: 'last_month',
+              child: Text(context.l10n.t('period.last_month')),
+            ),
+            DropdownMenuItem(
+              value: 'last_3_months',
+              child: Text(context.l10n.t('period.last_3_months')),
+            ),
+            DropdownMenuItem(
+              value: 'this_year',
+              child: Text(context.l10n.t('period.this_year')),
+            ),
           ],
           onChanged: (value) {
             if (value != null) onChanged(value);
@@ -286,8 +306,8 @@ class _FamilyHero extends StatelessWidget {
           const SizedBox(height: 18),
           _SectionTitle(
             title: dashboard.role == UserRole.student
-                ? 'مشارکت من در فعالیت‌ها'
-                : 'مشارکت در فعالیت‌ها',
+                ? context.l10n.t('dashboard.activity.student')
+                : context.l10n.t('dashboard.activity.general'),
             trailing: _ChartLegend(),
           ),
           const SizedBox(height: 12),
@@ -318,7 +338,10 @@ class _ManagementHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionTitle(title: 'مشارکت در نظرسنجی', trailing: _ChartLegend()),
+          _SectionTitle(
+            title: context.l10n.t('dashboard.surveyParticipation'),
+            trailing: _ChartLegend(),
+          ),
           const SizedBox(height: 14),
           SizedBox(
             height: 210,
@@ -382,7 +405,7 @@ class _ChildCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => context.go('/profile'),
-            child: const Text('نمایش پروفایل'),
+            child: Text(context.l10n.t('dashboard.viewProfile')),
           ),
         ],
       ),
@@ -424,7 +447,7 @@ class _StudentProfileCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'نمای دانش‌آموزی · نظرسنجی‌ها و شاخص‌های مربوط به خودتان',
+                  context.l10n.t('dashboard.studentSubtitle'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -434,7 +457,7 @@ class _StudentProfileCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => context.go('/profile'),
-            child: const Text('نمایش پروفایل'),
+            child: Text(context.l10n.t('dashboard.viewProfile')),
           ),
         ],
       ),
@@ -475,15 +498,15 @@ class _NewSurveyCard extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => context.go('/forms'),
-                child: const Text('دیدن همه'),
+                child: Text(context.l10n.t('seeAll')),
               ),
               const Spacer(),
-              const _SectionTitle(title: 'نظرسنجی جدید'),
+              _SectionTitle(title: context.l10n.t('dashboard.newSurvey')),
             ],
           ),
           const SizedBox(height: 12),
           if (fresh.isEmpty)
-            const _EmptyTiny(message: 'نظرسنجی جدیدی برای شما وجود ندارد')
+            _EmptyTiny(message: context.l10n.t('dashboard.noNewSurveys'))
           else
             for (final survey in fresh) ...[
               _SurveyTile(survey: survey, primary: true),
@@ -506,13 +529,13 @@ class _SurveySummaryCards extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _SectionTitle(title: 'نمای کلی نظرسنجی'),
+          _SectionTitle(title: context.l10n.t('dashboard.surveyOverview')),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _StatusMini(
-                  label: 'تمام شده',
+                  label: context.l10n.t('status.completed'),
                   value: summary.completed,
                   color: AppTheme.primary,
                 ),
@@ -520,7 +543,7 @@ class _SurveySummaryCards extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _StatusMini(
-                  label: 'در حال انجام',
+                  label: context.l10n.t('status.inProgress'),
                   value: summary.inProgress,
                   color: AppTheme.warning,
                 ),
@@ -528,7 +551,7 @@ class _SurveySummaryCards extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _StatusMini(
-                  label: 'در انتظار',
+                  label: context.l10n.t('status.pending'),
                   value: summary.pending + summary.newItems,
                   color: const Color(0xFF8C90A9),
                 ),
@@ -600,9 +623,9 @@ class _OperationalCards extends StatelessWidget {
     return _ResponsiveTwoColumn(
       left: _SoftPanel(
         child: _BigNumberTile(
-          title: 'تعداد مشارکت',
+          title: context.l10n.t('dashboard.participationCount'),
           value: '$total',
-          subtitle: 'بر اساس نقش و assignmentهای جدید',
+          subtitle: context.l10n.t('dashboard.participationSubtitle'),
           trend: dashboard.metrics.isNotEmpty
               ? dashboard.metrics.first.trend
               : null,
@@ -612,10 +635,10 @@ class _OperationalCards extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SectionTitle(title: 'هشدارها و موارد نیازمند توجه'),
+            _SectionTitle(title: context.l10n.t('dashboard.alerts')),
             const SizedBox(height: 10),
             if (dashboard.activities.isEmpty)
-              const _EmptyTiny(message: 'مورد جدیدی ثبت نشده است')
+              _EmptyTiny(message: context.l10n.t('dashboard.noAlerts'))
             else
               for (final item in dashboard.activities.take(2))
                 _ActivityRow(item: item),
@@ -698,11 +721,8 @@ class _DynamicMetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (metrics.isEmpty) {
-      return const _SoftPanel(
-        child: _EmptyTiny(
-          message:
-              'هنوز شاخصی برای این داشبورد تعریف نشده است. مدیر یا CEO می‌تواند شاخص‌های داینامیک را در سرور تعریف و به فیلدهای فرم متصل کند.',
-        ),
+      return _SoftPanel(
+        child: _EmptyTiny(message: context.l10n.t('dashboard.noMetrics')),
       );
     }
     final visible = metrics;
@@ -772,7 +792,7 @@ class _MetricCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                _statusLabel(status),
+                _statusLabel(context, status),
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: statusColor,
                   fontWeight: FontWeight.w900,
@@ -800,10 +820,12 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
         children: [
           calendar.when(
             loading: () => Row(
-              children: const [
-                _SectionTitle(title: 'تقویم نظرسنجی‌ها'),
-                Spacer(),
-                SizedBox.square(
+              children: [
+                _SectionTitle(
+                  title: context.l10n.t('dashboard.surveyCalendar'),
+                ),
+                const Spacer(),
+                const SizedBox.square(
                   dimension: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
@@ -811,10 +833,12 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
             ),
             error: (error, _) => Row(
               children: [
-                const _SectionTitle(title: 'تقویم نظرسنجی‌ها'),
+                _SectionTitle(
+                  title: context.l10n.t('dashboard.surveyCalendar'),
+                ),
                 const Spacer(),
                 IconButton(
-                  tooltip: 'تلاش مجدد',
+                  tooltip: context.l10n.t('tryAgain'),
                   onPressed: () =>
                       ref.invalidate(surveyCalendarProvider(dashboard.period)),
                   icon: const Icon(Icons.refresh_rounded),
@@ -823,13 +847,15 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
             ),
             data: (value) => Row(
               children: [
-                const _SectionTitle(title: 'تقویم نظرسنجی‌ها'),
+                _SectionTitle(
+                  title: context.l10n.t('dashboard.surveyCalendar'),
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: value.days.isEmpty
                       ? null
                       : () => _showCalendarSheet(context, value),
-                  child: const Text('دیدن همه'),
+                  child: Text(context.l10n.t('seeAll')),
                 ),
               ],
             ),
@@ -852,8 +878,8 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
                   ? value.days.take(14).toList()
                   : visibleDays;
               if (days.isEmpty)
-                return const _EmptyTiny(
-                  message: 'برای این بازه زمانی نظرسنجی زمان‌بندی نشده است.',
+                return _EmptyTiny(
+                  message: context.l10n.t('dashboard.noScheduledSurveys'),
                 );
               return _CalendarStrip(
                 days: days,
@@ -960,7 +986,7 @@ void _showCalendarSheet(BuildContext context, CalendarResponseDto2 calendar) {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'همه روزهای تقویم نظرسنجی',
+                  context.l10n.t('dashboard.calendarAllDays'),
                   textAlign: TextAlign.right,
                   style: Theme.of(
                     context,
@@ -1006,7 +1032,7 @@ void _showCalendarDaySheet(BuildContext context, CalendarDayDto2 day) {
             ),
             const SizedBox(height: 12),
             if (day.surveys.isEmpty)
-              const _EmptyTiny(message: 'در این روز نظرسنجی فعالی وجود ندارد.')
+              _EmptyTiny(message: context.l10n.t('dashboard.noSurveysOnDay'))
             else
               for (final survey in day.surveys) ...[
                 _CalendarSurveyRow(survey: survey),
@@ -1042,7 +1068,7 @@ class _CalendarDayRow extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              '${day.count} مورد',
+              context.l10n.t('itemCount').replaceAll('{count}', '${day.count}'),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: day.count > 0
                     ? AppTheme.primary
@@ -1136,7 +1162,7 @@ class _StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        _surveyStatusLabel(status),
+        _surveyStatusLabel(context, status),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w900,
@@ -1161,15 +1187,15 @@ class _LatestSurveysCard extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => context.go('/forms'),
-                child: const Text('دیدن همه'),
+                child: Text(context.l10n.t('seeAll')),
               ),
               const Spacer(),
-              const _SectionTitle(title: 'آخرین نظرسنجی‌ها'),
+              _SectionTitle(title: context.l10n.t('dashboard.latestSurveys')),
             ],
           ),
           const SizedBox(height: 12),
           if (surveys.isEmpty)
-            const _EmptyTiny(message: 'هنوز نظرسنجی در دسترس نیست')
+            _EmptyTiny(message: context.l10n.t('dashboard.noSurveysAvailable'))
           else
             for (final survey in surveys.take(4)) ...[
               _SurveyTile(survey: survey),
@@ -1206,12 +1232,15 @@ class _SurveyTile extends StatelessWidget {
                 width: 96,
                 child: FilledButton(
                   onPressed: () => context.go('/forms/${survey.formId}'),
-                  child: const Text('شروع'),
+                  child: Text(context.l10n.t('start')),
                 ),
               )
             else
               Text(
-                survey.dateLabel ?? '${survey.questionCount} پرسش',
+                survey.dateLabel ??
+                    context.l10n
+                        .t('questionCount')
+                        .replaceAll('{count}', '${survey.questionCount}'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1259,10 +1288,10 @@ class _ActivitiesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _SectionTitle(title: 'آخرین فعالیت‌ها'),
+          _SectionTitle(title: context.l10n.t('dashboard.latestActivities')),
           const SizedBox(height: 12),
           if (items.isEmpty)
-            const _EmptyTiny(message: 'فعلاً فعالیت جدیدی وجود ندارد')
+            _EmptyTiny(message: context.l10n.t('dashboard.noActivities'))
           else
             for (final item in items.take(5)) _ActivityRow(item: item),
         ],
@@ -1345,11 +1374,11 @@ class _RankingsAndAlerts extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SectionTitle(title: 'بیشترین رضایت'),
+            _SectionTitle(title: context.l10n.t('dashboard.topSatisfaction')),
             const SizedBox(height: 12),
             if (dashboard.rankings.isEmpty ||
                 dashboard.rankings.first.items.isEmpty)
-              const _EmptyTiny(message: 'رتبه‌بندی آماده نیست')
+              _EmptyTiny(message: context.l10n.t('dashboard.rankingNotReady'))
             else
               for (final item in dashboard.rankings.first.items.take(5))
                 _RankingRow(item: item),
@@ -1360,16 +1389,22 @@ class _RankingsAndAlerts extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SectionTitle(title: 'بیشترین نارضایتی'),
+            _SectionTitle(
+              title: context.l10n.t('dashboard.lowestSatisfaction'),
+            ),
             const SizedBox(height: 12),
             alerts.when(
               loading: () => const SizedBox(
                 height: 80,
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (_, _) => const _EmptyTiny(message: 'هشداری ثبت نشده است'),
+              error: (_, _) => _EmptyTiny(
+                message: context.l10n.t('dashboard.noAlertRecorded'),
+              ),
               data: (value) => value.items.isEmpty
-                  ? const _EmptyTiny(message: 'هشداری ثبت نشده است')
+                  ? _EmptyTiny(
+                      message: context.l10n.t('dashboard.noAlertRecorded'),
+                    )
                   : Column(
                       children: [
                         for (final item in value.items.take(5))
@@ -1505,11 +1540,13 @@ class _ManagementConfigurationRow extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.insights_rounded, color: AppTheme.primary),
-                SizedBox(width: 8),
-                _SectionTitle(title: 'شاخص‌های داینامیک'),
+                const Icon(Icons.insights_rounded, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                _SectionTitle(
+                  title: context.l10n.t('dashboard.dynamicMetrics'),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -1521,21 +1558,21 @@ class _ManagementConfigurationRow extends ConsumerWidget {
               error: (error, _) =>
                   Text(FriendlyApiErrorMessage.from(error, context: context)),
               data: (value) => _ManagementList(
-                empty: 'هنوز شاخصی تعریف نشده است',
+                empty: context.l10n.t('dashboard.noMetricsDefined'),
                 items: [
                   for (final metric
                       in value.data ?? const <MetricDefinitionDto2>[])
                     _ManagementListItem(
                       title: metric.title,
                       subtitle: '${metric.key} · ${metric.metricType}',
-                      trailing: '${metric.mappingCount} مپ',
+                      trailing: 'map: ${metric.mappingCount}',
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 10),
             Text(
-              'مدیر و CEO می‌توانند شاخص‌ها را در سرور تعریف/ویرایش/حذف کنند؛ این لیست مستقیم از /metrics خوانده می‌شود.',
+              context.l10n.t('dashboard.metricListHint'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -1547,11 +1584,13 @@ class _ManagementConfigurationRow extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.groups_2_rounded, color: AppTheme.primary),
-                SizedBox(width: 8),
-                _SectionTitle(title: 'گروه‌های هدف و Segmentها'),
+                const Icon(Icons.groups_2_rounded, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                _SectionTitle(
+                  title: context.l10n.t('dashboard.targetSegments'),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -1563,21 +1602,23 @@ class _ManagementConfigurationRow extends ConsumerWidget {
               error: (error, _) =>
                   Text(FriendlyApiErrorMessage.from(error, context: context)),
               data: (value) => _ManagementList(
-                empty: 'هنوز segment تعریف نشده است',
+                empty: context.l10n.t('dashboard.noSegmentsDefined'),
                 items: [
                   for (final segment
                       in value.data ?? const <AudienceSegmentDto2>[])
                     _ManagementListItem(
                       title: segment.name,
                       subtitle: '${segment.slug} · ${segment.segmentType}',
-                      trailing: '${segment.memberCount} نفر',
+                      trailing: context.l10n
+                          .t('dashboard.segmentMemberCount')
+                          .replaceAll('{count}', '${segment.memberCount}'),
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 10),
             Text(
-              'برای مواردی مثل «شرکت‌کنندگان اردوی ۲۷ام»، فرم‌ها از assignment جدید به این Segmentها متصل می‌شوند.',
+              context.l10n.t('dashboard.segmentListHint'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -1755,7 +1796,7 @@ class _MetricMenuDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      tooltip: 'عملیات شاخص',
+      tooltip: context.l10n.t('dashboard.metricActions'),
       icon: const Icon(
         Icons.more_vert_rounded,
         size: 22,
@@ -1771,9 +1812,15 @@ class _MetricMenuDot extends StatelessWidget {
             break;
         }
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'details', child: Text('جزئیات شاخص')),
-        PopupMenuItem(value: 'chart', child: Text('نحوه محاسبه و نمودار')),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'details',
+          child: Text(context.l10n.t('dashboard.metricDetails')),
+        ),
+        PopupMenuItem(
+          value: 'chart',
+          child: Text(context.l10n.t('dashboard.metricChartAndFormula')),
+        ),
       ],
     );
   }
@@ -1807,24 +1854,31 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
               Text(
                 description?.isNotEmpty == true
                     ? description!
-                    : 'این شاخص از endpoint داشبورد سرور خوانده می‌شود و مقدار آن بر اساس mappingهای تعریف‌شده برای شاخص محاسبه شده است.',
+                    : context.l10n.t('dashboard.metricDefaultDescription'),
                 textAlign: TextAlign.right,
               ),
               const SizedBox(height: 14),
-              _MetricInfoRow(label: 'کلید شاخص', value: metric.key),
-              _MetricInfoRow(label: 'مقدار فعلی', value: metric.displayValue),
               _MetricInfoRow(
-                label: 'واحد',
+                label: context.l10n.t('metric.key'),
+                value: metric.key,
+              ),
+              _MetricInfoRow(
+                label: context.l10n.t('metric.currentValue'),
+                value: metric.displayValue,
+              ),
+              _MetricInfoRow(
+                label: context.l10n.t('metric.unit'),
                 value: unit?.isNotEmpty == true ? unit! : '-',
               ),
               _MetricInfoRow(
-                label: 'وضعیت',
+                label: context.l10n.t('metric.status'),
                 value: _statusLabel(
+                  context,
                   metric.status ?? _statusFor(metric.value, metric.scaleMax),
                 ),
               ),
               _MetricInfoRow(
-                label: 'منبع',
+                label: context.l10n.t('metric.source'),
                 value: source?.isNotEmpty == true
                     ? source!
                     : 'metric_definitions + metric_mappings',
@@ -1853,7 +1907,9 @@ void _showMetricChartInfo(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'نمودار ${metric.title}',
+              context.l10n
+                  .t('metric.chartTitle')
+                  .replaceAll('{title}', metric.title),
               textAlign: TextAlign.right,
               style: Theme.of(
                 context,
@@ -1861,7 +1917,9 @@ void _showMetricChartInfo(
             ),
             const SizedBox(height: 10),
             Text(
-              'این نمودار از /api/v1/analytics/timeseries با metric=${metric.key} خوانده می‌شود.',
+              context.l10n
+                  .t('metric.chartDescription')
+                  .replaceAll('{key}', metric.key),
               textAlign: TextAlign.right,
             ),
             const SizedBox(height: 14),
@@ -1889,7 +1947,7 @@ void _showMetricChartInfo(
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.check_rounded),
-              label: const Text('بستن'),
+              label: Text(context.l10n.t('close')),
             ),
           ],
         ),
@@ -1974,12 +2032,18 @@ class _TrendBadge extends StatelessWidget {
 class _ChartLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _LegendItem(color: Color(0xFF3ACB82), label: 'نیمه دوم سال'),
-        SizedBox(width: 10),
-        _LegendItem(color: Color(0xFF23A7FF), label: 'نیمه اول سال'),
+        _LegendItem(
+          color: const Color(0xFF3ACB82),
+          label: context.l10n.t('chart.legend.current'),
+        ),
+        const SizedBox(width: 10),
+        _LegendItem(
+          color: const Color(0xFF23A7FF),
+          label: context.l10n.t('chart.legend.previous'),
+        ),
       ],
     );
   }
@@ -2026,11 +2090,7 @@ class _DashboardLineChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final series = chart?.series ?? const <TimeseriesSeriesDto2>[];
     if (series.isEmpty || series.every((item) => item.points.isEmpty)) {
-      return const Center(
-        child: _EmptyTiny(
-          message: 'داده نمودار برای این بازه هنوز وجود ندارد.',
-        ),
-      );
+      return Center(child: _EmptyTiny(message: context.l10n.t('chart.noData')));
     }
     return CustomPaint(
       painter: _LineChartPainter(
@@ -2205,8 +2265,8 @@ class _DashboardLoadFallback extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _SectionTitle(
-                    title: 'داشبورد جدید هنوز از سرور دریافت نشد',
+                  _SectionTitle(
+                    title: context.l10n.t('dashboard.newNotLoaded'),
                   ),
                   const SizedBox(height: 10),
                   Text(FriendlyApiErrorMessage.from(error, context: context)),
@@ -2214,7 +2274,7 @@ class _DashboardLoadFallback extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: onRetry,
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('تلاش مجدد'),
+                    label: Text(context.l10n.t('tryAgain')),
                   ),
                 ],
               ),
@@ -2228,26 +2288,28 @@ class _DashboardLoadFallback extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _SectionTitle(title: 'آمار فعلی'),
+                    _SectionTitle(
+                      title: context.l10n.t('dashboard.currentStats'),
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: [
                         _LegacyStat(
-                          label: 'فرم‌ها',
+                          label: context.l10n.t('dashboard.forms'),
                           value: '${value.totalForms}',
                         ),
                         _LegacyStat(
-                          label: 'منتشر شده',
+                          label: context.l10n.t('dashboard.published'),
                           value: '${value.publishedForms}',
                         ),
                         _LegacyStat(
-                          label: 'کاربران',
+                          label: context.l10n.t('dashboard.users'),
                           value: '${value.totalUsers}',
                         ),
                         _LegacyStat(
-                          label: 'پاسخ‌ها',
+                          label: context.l10n.t('dashboard.responses'),
                           value: '${value.totalSubmissions}',
                         ),
                       ],
@@ -2291,24 +2353,25 @@ class _LegacyStat extends StatelessWidget {
   }
 }
 
-String _surveyStatusLabel(String status) => switch (status) {
-  'completed' => 'تکمیل شده',
-  'in_progress' => 'در حال انجام',
-  'pending' => 'در انتظار',
-  'closed' => 'بسته شده',
-  'new' => 'جدید',
-  _ => 'فعال',
-};
+String _surveyStatusLabel(BuildContext context, String status) =>
+    switch (status) {
+      'completed' => context.l10n.t('status.completed'),
+      'in_progress' => context.l10n.t('status.inProgress'),
+      'pending' => context.l10n.t('status.pending'),
+      'closed' => context.l10n.t('status.closed'),
+      'new' => context.l10n.t('status.new'),
+      _ => context.l10n.t('status.active'),
+    };
 
-String _roleLabel(UserRole role) => switch (role) {
-  UserRole.parent => 'والد',
-  UserRole.student => 'دانش‌آموز',
-  UserRole.teacher => 'معلم',
-  UserRole.manager => 'مدیر',
-  UserRole.ceo => 'مدیر عامل',
-  UserRole.admin => 'ادمین',
-  UserRole.superAdmin => 'سوپر ادمین',
-  _ => 'کاربر',
+String _roleLabel(BuildContext context, UserRole role) => switch (role) {
+  UserRole.parent => context.l10n.enumLabel('parent'),
+  UserRole.student => context.l10n.enumLabel('student'),
+  UserRole.teacher => context.l10n.enumLabel('teacher'),
+  UserRole.manager => context.l10n.enumLabel('manager'),
+  UserRole.ceo => context.l10n.enumLabel('ceo'),
+  UserRole.admin => context.l10n.enumLabel('admin'),
+  UserRole.superAdmin => context.l10n.enumLabel('super_admin'),
+  _ => context.l10n.t('role.user'),
 };
 
 String _statusFor(double? value, double? max) {
@@ -2327,11 +2390,11 @@ Color _statusColor(String status) => switch (status) {
   _ => AppTheme.primary,
 };
 
-String _statusLabel(String status) => switch (status) {
-  'excellent' || 'great' => 'عالی',
-  'good' => 'خوب',
-  'warning' || 'normal' => 'معمولی',
-  'danger' || 'bad' => 'نیازمند توجه',
+String _statusLabel(BuildContext context, String status) => switch (status) {
+  'excellent' || 'great' => context.l10n.t('metric.status.excellent'),
+  'good' => context.l10n.t('metric.status.good'),
+  'warning' || 'normal' => context.l10n.t('metric.status.warning'),
+  'danger' || 'bad' => context.l10n.t('metric.status.danger'),
   _ => status,
 };
 
@@ -2461,11 +2524,7 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
     final normalizedPhone = PhoneNumberNormalizer.normalize(_phone.text);
     if (!PhoneNumberNormalizer.isLikelyValid(normalizedPhone)) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'شماره موبایل معتبر نیست. شماره را مثل 09123456789 وارد کنید.',
-          ),
-        ),
+        SnackBar(content: Text(context.l10n.t('dashboard.invalidPhone'))),
       );
       return;
     }

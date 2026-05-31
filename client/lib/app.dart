@@ -19,8 +19,8 @@ class FeedbackFlowApp extends ConsumerWidget {
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(locale),
+      darkTheme: AppTheme.dark(locale),
       themeMode: ref.watch(themeControllerProvider),
       routerConfig: ref.watch(routerProvider),
       builder: (context, child) {

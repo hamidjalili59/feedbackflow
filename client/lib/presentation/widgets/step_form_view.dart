@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/dto/dto.dart';
+import '../../l10n/app_localizations.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_theme.dart';
 import 'field_renderer.dart';
@@ -67,7 +68,7 @@ class _StepFormViewState extends State<StepFormView> {
   @override
   Widget build(BuildContext context) {
     if (_answerableFields.isEmpty)
-      return const Center(child: Text('هنوز پرسشی تعریف نشده است.'));
+      return Center(child: Text(context.l10n.t('step.noQuestions')));
     return Column(
       children: [
         SafeArea(
@@ -87,7 +88,13 @@ class _StepFormViewState extends State<StepFormView> {
                     ),
                     Expanded(
                       child: Text(
-                        'پرسش ${_currentPage + 1} از ${_answerableFields.length}',
+                        context.l10n
+                            .t('step.questionOfTotal')
+                            .replaceAll('{current}', '${_currentPage + 1}')
+                            .replaceAll(
+                              '{total}',
+                              '${_answerableFields.length}',
+                            ),
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: const Color(0xFF737B9A),
@@ -162,14 +169,18 @@ class _StepFormViewState extends State<StepFormView> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(_isLastPage ? 'ثبت پاسخ' : 'بعدی'),
+                          : Text(
+                              _isLastPage
+                                  ? context.l10n.t('submitResponse')
+                                  : context.l10n.t('next'),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 18),
                   TextButton(
                     onPressed: _currentPage > 0 ? _goBack : null,
                     child: Text(
-                      'قبلی',
+                      context.l10n.t('previous'),
                       style: TextStyle(
                         color: _currentPage > 0
                             ? const Color(0xFF9AA1B8)

@@ -451,7 +451,7 @@ class _SingleChoiceInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final options = _options(field);
     return _ChoiceListFrame(
-      helper: 'فقط یک گزینه را انتخاب کنید.',
+      helper: context.l10n.t('field.singleSelectHelper'),
       children: [
         for (var index = 0; index < options.length; index++)
           Builder(
@@ -499,7 +499,7 @@ class _MultiChoiceInput extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         _ChoiceListFrame(
-          helper: 'می‌توانید چند گزینه را انتخاب کنید.',
+          helper: context.l10n.t('field.multiSelectHelper'),
           children: [
             for (var index = 0; index < options.length; index++)
               Builder(
@@ -686,8 +686,8 @@ class _ChoiceCard extends StatelessWidget {
                       description?.trim().isNotEmpty == true
                           ? description!.trim()
                           : selected
-                          ? 'انتخاب شده'
-                          : 'برای انتخاب لمس کنید',
+                          ? context.l10n.t('field.selected')
+                          : context.l10n.t('field.tapToSelect'),
                       textAlign: TextAlign.right,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -801,7 +801,10 @@ class _ChoiceCounterBadge extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              '$selectedCount از $totalCount انتخاب شده',
+              context.l10n
+                  .t('field.selectedOfTotal')
+                  .replaceAll('{selected}', '$selectedCount')
+                  .replaceAll('{total}', '$totalCount'),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: scheme.onSecondaryContainer,
                 fontWeight: FontWeight.w900,
@@ -1014,7 +1017,7 @@ class _FaceScaleInput extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           value == null
-              ? 'یک گزینه را انتخاب کنید'
+              ? context.l10n.t('field.chooseOptionPrompt')
               : _selectedFaceLabel(context, value, options),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -1627,8 +1630,11 @@ String _localizedOptionLabel(BuildContext context, FieldOptionDto option) {
   if (id == 'yes') return context.l10n.t('yes');
   if (id == 'no') return context.l10n.t('no');
   if (id == 'love') return context.l10n.t('loveIt');
-  if (id == 'happy') return context.l10n.t('good');
-  if (id == 'neutral') return context.l10n.t('neutral');
+  if (id == 'very_bad') return context.l10n.t('face.veryBad');
+  if (id == 'bad') return context.l10n.t('face.bad');
+  if (id == 'happy') return context.l10n.t('face.happy');
+  if (id == 'very_happy') return context.l10n.t('face.veryHappy');
+  if (id == 'neutral') return context.l10n.t('face.neutral');
   if (id == 'sad') return context.l10n.t('notGreat');
   if (id == 'strongly_disagree') return context.l10n.t('stronglyDisagree');
   if (id == 'disagree') return context.l10n.t('disagree');
@@ -1656,21 +1662,21 @@ bool _sameOption(Object? value, FieldOptionDto option) =>
 const _faceLikertOptions = <FieldOptionDto>[
   FieldOptionDto(
     id: 'very_bad',
-    label: 'خیلی ناراضی',
+    label: 'Very dissatisfied',
     value: 'very_bad',
     orderIndex: 0,
   ),
-  FieldOptionDto(id: 'bad', label: 'ناراضی', value: 'bad', orderIndex: 1),
+  FieldOptionDto(id: 'bad', label: 'Dissatisfied', value: 'bad', orderIndex: 1),
   FieldOptionDto(
     id: 'neutral',
-    label: 'معمولی',
+    label: 'Neutral',
     value: 'neutral',
     orderIndex: 2,
   ),
-  FieldOptionDto(id: 'happy', label: 'خوشحال', value: 'happy', orderIndex: 3),
+  FieldOptionDto(id: 'happy', label: 'Happy', value: 'happy', orderIndex: 3),
   FieldOptionDto(
     id: 'very_happy',
-    label: 'خیلی خوشحال',
+    label: 'Very happy',
     value: 'very_happy',
     orderIndex: 4,
   ),

@@ -240,8 +240,406 @@ class FormTemplateCatalog {
     ),
   ];
 
-  static FormTemplatePreset byType(FormTemplateType type) =>
-      presets.firstWhere((preset) => preset.type == type);
+  static List<FormTemplatePreset> presetsForLanguage(String languageCode) {
+    return switch (languageCode) {
+      'en' => _englishPresets,
+      'zh' => _chinesePresets,
+      _ => presets,
+    };
+  }
+
+  static FormTemplatePreset byType(
+    FormTemplateType type, {
+    String languageCode = 'fa',
+  }) => presetsForLanguage(
+    languageCode,
+  ).firstWhere((preset) => preset.type == type);
+
+  static List<FormTemplatePreset> get _englishPresets => <FormTemplatePreset>[
+    const FormTemplatePreset(
+      type: FormTemplateType.blank,
+      name: 'Blank form',
+      subtitle: 'Start from scratch with your own fields.',
+      defaultTitle: 'Untitled form',
+      defaultDescription: '',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.private,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.feedbackSurvey,
+      name: 'Feedback survey',
+      subtitle: 'NPS, rating, and open feedback fields.',
+      defaultTitle: 'Feedback survey',
+      defaultDescription:
+          'Help us understand what works well and what needs improvement.',
+      scoringMode: ScoringMode.satisfaction,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: true,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.nps,
+          label: 'How likely are you to recommend us?',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.ratingStars,
+          label: 'Your overall experience',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: 'What should we improve?',
+          placeholder: 'Write your ideas...',
+          isRequired: false,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.quiz,
+      name: 'Quiz',
+      subtitle: 'Question fields with option scoring enabled.',
+      defaultTitle: 'Knowledge check',
+      defaultDescription: 'Answer each question and submit your score.',
+      scoringMode: ScoringMode.quiz,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.shortText,
+          label: 'Student name',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.singleChoice,
+          label: 'Which answer is correct?',
+          isRequired: true,
+          options: <String>['Option A', 'Option B', 'Option C'],
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: 'Explain your answer',
+          isRequired: false,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.registration,
+      name: 'Registration',
+      subtitle: 'Collect contact details and preferences.',
+      defaultTitle: 'Registration form',
+      defaultDescription: 'Tell us how we can contact you.',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.publicLink,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: true,
+      guestsCanAnswer: true,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.shortText,
+          label: 'Full name',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.email,
+          label: 'Email address',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.phone,
+          label: 'Phone number',
+          isRequired: false,
+        ),
+        DraftFormField.seed(
+          type: FieldType.dropdown,
+          label: 'Preferred session',
+          options: <String>['Morning', 'Afternoon', 'Evening'],
+          isRequired: true,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.consent,
+      name: 'Consent',
+      subtitle: 'Terms, consent checkbox, and signature.',
+      defaultTitle: 'Consent form',
+      defaultDescription: 'Please read and confirm your consent.',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.private,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.descriptionBlock,
+          label: 'Please read the terms before continuing.',
+          isRequired: false,
+        ),
+        DraftFormField.seed(
+          type: FieldType.termsAcceptance,
+          label: 'I accept the terms and conditions',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.consentCheckbox,
+          label: 'I agree to the processing of my response',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.signature,
+          label: 'Signature',
+          isRequired: true,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.riskAssessment,
+      name: 'Risk assessment',
+      subtitle: 'Weighted sliders and yes/no checks.',
+      defaultTitle: 'Risk assessment',
+      defaultDescription:
+          'Record risk indicators and calculate a weighted score.',
+      scoringMode: ScoringMode.riskAssessment,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: true,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.yesNo,
+          label: 'Is there an immediate safety risk?',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.slider,
+          label: 'Impact level',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.multipleChoice,
+          label: 'Observed risk factors',
+          options: <String>['Process', 'People', 'Technology', 'Environment'],
+          isRequired: false,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: 'Risk mitigation notes',
+          isRequired: false,
+        ),
+      ],
+    ),
+  ];
+
+  static List<FormTemplatePreset> get _chinesePresets => <FormTemplatePreset>[
+    const FormTemplatePreset(
+      type: FormTemplateType.blank,
+      name: '空白表单',
+      subtitle: '从零开始添加自己的字段。',
+      defaultTitle: '未命名表单',
+      defaultDescription: '',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.private,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.feedbackSurvey,
+      name: '反馈调查',
+      subtitle: 'NPS、评分和开放反馈字段。',
+      defaultTitle: '反馈调查',
+      defaultDescription: '帮助我们了解哪些方面表现良好，哪些方面需要改进。',
+      scoringMode: ScoringMode.satisfaction,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: true,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.nps,
+          label: '你有多大可能推荐我们？',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.ratingStars,
+          label: '你的整体体验',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: '我们应该改进什么？',
+          placeholder: '写下你的想法...',
+          isRequired: false,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.quiz,
+      name: '测验',
+      subtitle: '启用选项评分的问题字段。',
+      defaultTitle: '知识测验',
+      defaultDescription: '回答每个问题并提交你的分数。',
+      scoringMode: ScoringMode.quiz,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.shortText,
+          label: '学生姓名',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.singleChoice,
+          label: '哪个答案是正确的？',
+          isRequired: true,
+          options: <String>['选项 A', '选项 B', '选项 C'],
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: '说明你的答案',
+          isRequired: false,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.registration,
+      name: '注册',
+      subtitle: '收集联系方式和偏好。',
+      defaultTitle: '注册表单',
+      defaultDescription: '告诉我们如何联系你。',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.publicLink,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: true,
+      guestsCanAnswer: true,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.shortText,
+          label: '姓名',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.email,
+          label: '邮箱地址',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.phone,
+          label: '电话号码',
+          isRequired: false,
+        ),
+        DraftFormField.seed(
+          type: FieldType.dropdown,
+          label: '首选场次',
+          options: <String>['上午', '下午', '晚上'],
+          isRequired: true,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.consent,
+      name: '同意书',
+      subtitle: '条款、同意勾选和签名。',
+      defaultTitle: '同意书表单',
+      defaultDescription: '请阅读并确认你的同意。',
+      scoringMode: ScoringMode.none,
+      visibilityMode: VisibilityMode.private,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: true,
+      answersEditableAfterSubmission: false,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.descriptionBlock,
+          label: '继续前请阅读条款。',
+          isRequired: false,
+        ),
+        DraftFormField.seed(
+          type: FieldType.termsAcceptance,
+          label: '我接受条款和条件',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.consentCheckbox,
+          label: '我同意处理我的回答',
+          isRequired: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.signature,
+          label: '签名',
+          isRequired: true,
+        ),
+      ],
+    ),
+    FormTemplatePreset(
+      type: FormTemplateType.riskAssessment,
+      name: '风险评估',
+      subtitle: '加权滑块和是/否检查。',
+      defaultTitle: '风险评估',
+      defaultDescription: '记录风险指标并计算加权分数。',
+      scoringMode: ScoringMode.riskAssessment,
+      visibilityMode: VisibilityMode.organization,
+      allowAnonymousAnswers: false,
+      oneSubmissionPerUser: false,
+      answersEditableAfterSubmission: true,
+      guestsCanAnswer: false,
+      fields: <DraftFormField>[
+        DraftFormField.seed(
+          type: FieldType.yesNo,
+          label: '是否存在即时安全风险？',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.slider,
+          label: '影响程度',
+          isRequired: true,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.multipleChoice,
+          label: '观察到的风险因素',
+          options: <String>['流程', '人员', '技术', '环境'],
+          isRequired: false,
+          scoringEnabled: true,
+        ),
+        DraftFormField.seed(
+          type: FieldType.longText,
+          label: '风险缓解备注',
+          isRequired: false,
+        ),
+      ],
+    ),
+  ];
 }
 
 class DraftFormField {

@@ -18,11 +18,33 @@ class AppTheme {
   /// AbarFaNum keeps Persian and Latin digits visually aligned with the mockups.
   static const String primaryFontFamily = 'AbarFaNum';
 
-  static ThemeData light() => _build(Brightness.light);
-  static ThemeData dark() => _build(Brightness.dark);
+  /// Chinese glyphs should not use the Persian UI font. We intentionally use
+  /// common system CJK font families first so Flutter Web/Desktop can render
+  /// Chinese with the platform's native typeface without bundling a large font.
+  static const String chineseFontFamily = 'Noto Sans SC';
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData light([Locale? locale]) =>
+      _build(Brightness.light, locale: locale);
+  static ThemeData dark([Locale? locale]) =>
+      _build(Brightness.dark, locale: locale);
+
+  static ThemeData _build(Brightness brightness, {Locale? locale}) {
     final dark = brightness == Brightness.dark;
+    final useChineseFont = locale?.languageCode == 'zh';
+    final fontFamily = useChineseFont ? chineseFontFamily : primaryFontFamily;
+    final fallbackFonts = useChineseFont
+        ? const [
+            'Noto Sans CJK SC',
+            'Microsoft YaHei',
+            'PingFang SC',
+            'Heiti SC',
+            'SimHei',
+            'Noto Sans',
+            'Roboto',
+            'Arial',
+          ]
+        : const ['Abar', 'AbarNoEn', 'Noto Sans Arabic', 'Noto Sans', 'Roboto'];
+
     final colorScheme =
         ColorScheme.fromSeed(
           seedColor: primary,
@@ -55,19 +77,13 @@ class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      fontFamily: primaryFontFamily,
-      fontFamilyFallback: const [
-        'Abar',
-        'AbarNoEn',
-        'Noto Sans Arabic',
-        'Noto Sans',
-        'Roboto',
-      ],
+      fontFamily: fontFamily,
+      fontFamilyFallback: fallbackFonts,
     );
 
     final textTheme = base.textTheme
         .apply(
-          fontFamily: primaryFontFamily,
+          fontFamily: fontFamily,
           bodyColor: colorScheme.onSurface,
           displayColor: colorScheme.onSurface,
         )

@@ -391,12 +391,21 @@ Future<SubmissionDetailDto> submissionDetail(Ref ref, String submissionId) {
 @Riverpod(keepAlive: true)
 class CreateFormController extends _$CreateFormController {
   @override
-  CreateFormState build() => CreateFormState.initial();
+  CreateFormState build() => CreateFormState.initial(
+    languageCode: ref.watch(localeControllerProvider).languageCode,
+  );
 
-  void reset() => state = CreateFormState.initial();
+  void reset() => state = CreateFormState.initial(
+    languageCode: ref.read(localeControllerProvider).languageCode,
+  );
 
   void selectTemplate(FormTemplateType type) {
-    state = CreateFormState.fromTemplate(FormTemplateCatalog.byType(type));
+    state = CreateFormState.fromTemplate(
+      FormTemplateCatalog.byType(
+        type,
+        languageCode: ref.read(localeControllerProvider).languageCode,
+      ),
+    );
   }
 
   void changeTitle(String title) {
@@ -616,9 +625,10 @@ class CreateFormState {
     this.partialCreate = false,
   });
 
-  factory CreateFormState.initial() {
+  factory CreateFormState.initial({String languageCode = 'fa'}) {
     final template = FormTemplateCatalog.byType(
       FormTemplateType.feedbackSurvey,
+      languageCode: languageCode,
     );
     return CreateFormState.fromTemplate(template);
   }
