@@ -17,7 +17,9 @@ import '../../../presentation/widgets/app_shell.dart';
 import '../../../presentation/widgets/directional_value_text.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.initialChildId});
+
+  final String? initialChildId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +41,11 @@ class DashboardScreen extends ConsumerWidget {
         data: (session) {
           if (session == null)
             return _DashboardError(onLogin: () => context.go('/login'));
-          return _ExperienceDashboard(session: session);
+          return _ExperienceDashboard(
+            key: ValueKey('${session.user.id}:${initialChildId ?? ''}'),
+            session: session,
+            initialChildId: initialChildId,
+          );
         },
       ),
     );
@@ -47,9 +53,14 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _ExperienceDashboard extends ConsumerStatefulWidget {
-  const _ExperienceDashboard({required this.session});
+  const _ExperienceDashboard({
+    required this.session,
+    this.initialChildId,
+    super.key,
+  });
 
   final AuthSession session;
+  final String? initialChildId;
 
   @override
   ConsumerState<_ExperienceDashboard> createState() =>
@@ -58,13 +69,14 @@ class _ExperienceDashboard extends ConsumerStatefulWidget {
 
 class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
   String _period = 'this_month';
-  String? _selectedChildId;
+  late String? _selectedChildId = widget.initialChildId;
   int _userListVersion = 0;
 
   DashboardQueryInput get _query => DashboardQueryInput(
     period: _period,
     compare: 'previous_period',
     childId: _selectedChildId,
+    cacheUserId: widget.session.user.id,
   );
 
   @override
@@ -103,8 +115,12 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                       dashboard: dashboard,
                       selectedChildId:
                           dashboard.selectedChildId ?? _selectedChildId,
-                      onChildSelected: (childId) =>
-                          setState(() => _selectedChildId = childId),
+                      onChildSelected: (childId) {
+                        setState(() => _selectedChildId = childId);
+                        context.go(
+                          '/dashboard?child_id=${Uri.encodeComponent(childId)}',
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     _ParentSurveyArea(dashboard: dashboard),
@@ -127,7 +143,10 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                   const SizedBox(height: 16),
                   _ResponsiveTwoColumn(
                     left: _DynamicMetricsGrid(metrics: dashboard.metrics),
-                    right: _SurveyStatusAndCalendar(dashboard: dashboard),
+                    right: _SurveyStatusAndCalendar(
+                      dashboard: dashboard,
+                      cacheUserId: widget.session.user.id,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _ResponsiveTwoColumn(
@@ -464,7 +483,10 @@ class _ChildCard extends StatelessWidget {
                   ? null
                   : NetworkImage(child.avatarUrl!),
               child: child.avatarUrl == null
-                  ? const Text('👧', style: TextStyle(fontSize: 28))
+                  ? Text(
+                      _initials(child.displayName),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    )
                   : null,
             ),
             const SizedBox(width: 12),
@@ -906,13 +928,22 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _SurveyStatusAndCalendar extends ConsumerWidget {
-  const _SurveyStatusAndCalendar({required this.dashboard});
+  const _SurveyStatusAndCalendar({
+    required this.dashboard,
+    required this.cacheUserId,
+  });
 
   final DashboardResponseDto2 dashboard;
+  final String cacheUserId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final calendar = ref.watch(surveyCalendarProvider(dashboard.period));
+    final calendarQuery = CalendarQueryInput(
+      period: dashboard.period,
+      childId: dashboard.selectedChildId,
+      cacheUserId: cacheUserId,
+    );
+    final calendar = ref.watch(surveyCalendarProvider(calendarQuery));
     return _SoftPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -939,7 +970,7 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
                 IconButton(
                   tooltip: context.l10n.t('tryAgain'),
                   onPressed: () =>
-                      ref.invalidate(surveyCalendarProvider(dashboard.period)),
+                      ref.invalidate(surveyCalendarProvider(calendarQuery)),
                   icon: const Icon(Icons.refresh_rounded),
                 ),
               ],
@@ -1210,7 +1241,7 @@ class _CalendarSurveyRow extends StatelessWidget {
     return InkWell(
       onTap: survey.formId.isEmpty
           ? null
-          : () => context.go('/forms/${survey.formId}'),
+          : () => context.push('/forms/${survey.formId}'),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -1317,7 +1348,7 @@ class _SurveyTile extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => context.go('/forms/${survey.formId}'),
+      onTap: () => context.push('/forms/${survey.formId}'),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -1330,7 +1361,7 @@ class _SurveyTile extends StatelessWidget {
               SizedBox(
                 width: 96,
                 child: FilledButton(
-                  onPressed: () => context.go('/forms/${survey.formId}'),
+                  onPressed: () => context.push('/forms/${survey.formId}'),
                   child: Text(context.l10n.t('start')),
                 ),
               )
@@ -1486,7 +1517,12 @@ class _RankingsAndAlerts extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final alerts = ref.watch(rpAlertsProvider(dashboard.period));
+    final bestRanking = dashboard.rankings.isNotEmpty
+        ? dashboard.rankings.first
+        : null;
+    final worstRanking = dashboard.rankings.length > 1
+        ? dashboard.rankings[1]
+        : null;
     return _ResponsiveTwoColumn(
       left: _SoftPanel(
         child: Column(
@@ -1494,11 +1530,10 @@ class _RankingsAndAlerts extends ConsumerWidget {
           children: [
             _SectionTitle(title: context.l10n.t('dashboard.topSatisfaction')),
             const SizedBox(height: 12),
-            if (dashboard.rankings.isEmpty ||
-                dashboard.rankings.first.items.isEmpty)
+            if (bestRanking == null || bestRanking.items.isEmpty)
               _EmptyTiny(message: context.l10n.t('dashboard.rankingNotReady'))
             else
-              for (final item in dashboard.rankings.first.items.take(5))
+              for (final item in bestRanking.items.take(5))
                 _RankingRow(item: item),
           ],
         ),
@@ -1511,38 +1546,17 @@ class _RankingsAndAlerts extends ConsumerWidget {
               title: context.l10n.t('dashboard.lowestSatisfaction'),
             ),
             const SizedBox(height: 12),
-            alerts.when(
-              loading: () => const SizedBox(
-                height: 80,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (_, _) => _EmptyTiny(
-                message: context.l10n.t('dashboard.noAlertRecorded'),
-              ),
-              data: (value) => value.items.isEmpty
-                  ? _EmptyTiny(
-                      message: context.l10n.t('dashboard.noAlertRecorded'),
-                    )
-                  : Column(
-                      children: [
-                        for (final item in value.items.take(5))
-                          _AlertRow(item: item),
-                      ],
-                    ),
-            ),
+            if (worstRanking == null || worstRanking.items.isEmpty)
+              _EmptyTiny(message: context.l10n.t('dashboard.rankingNotReady'))
+            else
+              for (final item in worstRanking.items.take(5))
+                _RankingRow(item: item),
           ],
         ),
       ),
     );
   }
 }
-
-final rpAlertsProvider =
-    FutureProvider.family<AnalyticsAlertsResponseDto2, String>((ref, period) {
-      return ref
-          .watch(analyticsRepositoryProvider)
-          .getAnalyticsAlerts(period: period, limit: 10);
-    });
 
 class _RankingRow extends StatelessWidget {
   const _RankingRow({required this.item});
@@ -1592,50 +1606,6 @@ class _RankingRow extends StatelessWidget {
                 color: AppTheme.primary,
                 fontWeight: FontWeight.w900,
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AlertRow extends StatelessWidget {
-  const _AlertRow({required this.item});
-
-  final AnalyticsAlertDto2 item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if ((item.description ?? '').isNotEmpty)
-                  Text(
-                    item.description!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
             ),
           ),
         ],
@@ -2914,6 +2884,7 @@ class _EditUserDialogState extends State<_EditUserDialog> {
   late UserRole _role = widget.user.primaryRole;
   late String _status = widget.user.status;
   late String? _gender = widget.user.gender;
+  bool _banAvatar = false;
 
   @override
   void initState() {
@@ -3006,6 +2977,15 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                   if (value != null) setState(() => _status = value);
                 },
               ),
+              const SizedBox(height: AppSpacing.xs),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _banAvatar,
+                onChanged: (value) =>
+                    setState(() => _banAvatar = value ?? false),
+                title: Text(context.l10n.t('banAvatar')),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
             ],
           ),
         ),
@@ -3026,6 +3006,12 @@ class _EditUserDialogState extends State<_EditUserDialog> {
                 primaryRole: _role,
                 gender: _gender,
                 status: _status,
+                profile: _banAvatar
+                    ? const UserProfileDto(
+                        avatarUrl: null,
+                        metadata: <String, Object?>{'avatar_banned': true},
+                      )
+                    : null,
               ),
             );
           },
@@ -3715,3 +3701,15 @@ bool _isManagementRole(UserRole role) => switch (role) {
   UserRole.superAdmin => true,
   _ => false,
 };
+
+String _initials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return '?';
+  final first = parts.first.characters.first;
+  final second = parts.length > 1 ? parts.last.characters.first : '';
+  return (first + second).toUpperCase();
+}

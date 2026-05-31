@@ -17,6 +17,7 @@ abstract class AnalyticsRepository {
   });
   Future<CalendarResponseDto2> getSurveyCalendar({
     String? period,
+    String? childId,
     String? startDate,
     String? endDate,
     String? scope,
@@ -106,6 +107,7 @@ class DioAnalyticsRepository implements AnalyticsRepository {
   @override
   Future<CalendarResponseDto2> getSurveyCalendar({
     String? period,
+    String? childId,
     String? startDate,
     String? endDate,
     String? scope,
@@ -114,6 +116,7 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     return EnvelopeGuard.data(
       await _api.getSurveyCalendar(
         period: period,
+        childId: childId,
         startDate: startDate,
         endDate: endDate,
         scope: scope,

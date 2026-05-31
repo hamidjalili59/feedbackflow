@@ -100,6 +100,18 @@ pub async fn dashboard_me(
                 },
             )
             .await?,
+            rankings(
+                state,
+                auth,
+                RankingQuery {
+                    metric: Some("satisfaction".to_owned()),
+                    dimension: Some("teacher".to_owned()),
+                    period: Some(period.clone()),
+                    order: Some("worst".to_owned()),
+                    limit: 5,
+                },
+            )
+            .await?,
         ]
     } else {
         vec![]
@@ -158,10 +170,7 @@ pub async fn children_for_parent(
             Ok(ChildProfileDto {
                 id: row.try_get("id")?,
                 display_name: row.try_get("display_name")?,
-                avatar_url: profile
-                    .get("avatar_url")
-                    .and_then(|v| v.as_str())
-                    .map(str::to_owned),
+                avatar_url: visible_avatar_url(&profile),
                 grade_label: profile
                     .get("metadata")
                     .and_then(|m| m.get("grade_label").or_else(|| m.get("grade")))
@@ -401,7 +410,7 @@ pub async fn survey_calendar(
         MySurveysQuery {
             status: None,
             period: Some(period.clone()),
-            child_id: None,
+            child_id: q.child_id,
             limit: 500,
         },
     )
@@ -494,15 +503,37 @@ pub async fn timeseries(
     } else {
         metric_timeseries(state, org_id, &metric, start, end, &granularity).await?
     };
+    let mut series = vec![TimeseriesSeriesDto {
+        key: "current".to_owned(),
+        label: "Current".to_owned(),
+        points,
+    }];
+    if q.compare.as_deref() == Some("previous_period") {
+        let (previous_start, previous_end) = previous_period_range(start, end);
+        let previous_points = if metric == "participation" || metric == "submissions" {
+            submission_timeseries(state, org_id, previous_start, previous_end, &granularity).await?
+        } else {
+            metric_timeseries(
+                state,
+                org_id,
+                &metric,
+                previous_start,
+                previous_end,
+                &granularity,
+            )
+            .await?
+        };
+        series.push(TimeseriesSeriesDto {
+            key: "previous".to_owned(),
+            label: "Previous period".to_owned(),
+            points: previous_points,
+        });
+    }
     Ok(TimeseriesResponseDto {
         metric,
         period,
         granularity,
-        series: vec![TimeseriesSeriesDto {
-            key: "current".to_owned(),
-            label: "Current".to_owned(),
-            points,
-        }],
+        series,
     })
 }
 
@@ -531,7 +562,8 @@ pub async fn rankings(
     let limit = q.limit.clamp(1, 50);
     let rows = if dimension == "teacher" {
         let sql = format!(
-            "select u.id entity_id, u.display_name title, coalesce(u.profile->>'avatar_url','') avatar_url, \
+            "select u.id entity_id, u.display_name title, \
+                    case when coalesce((u.profile->'metadata'->>'avatar_banned')::boolean,false) then '' else coalesce(u.profile->>'avatar_url','') end avatar_url, \
                     coalesce(avg(s.percentage_score),0) score, count(s.id) count \
              from users u \
              left join forms f on f.creator_id=u.id and f.deleted_at is null \
@@ -1122,6 +1154,14 @@ fn period_range(period: &str) -> (DateTime<Utc>, DateTime<Utc>) {
     }
 }
 
+fn previous_period_range(
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+) -> (DateTime<Utc>, DateTime<Utc>) {
+    let duration = end - start;
+    (start - duration, start)
+}
+
 fn bucket_sql(granularity: &str, column: &str) -> String {
     match granularity {
         "month" => format!("date_trunc('month', {column})"),
@@ -1132,6 +1172,21 @@ fn bucket_sql(granularity: &str, column: &str) -> String {
 
 fn date_label(date: Option<DateTime<Utc>>) -> Option<String> {
     date.map(|dt| dt.format("%Y-%m-%d").to_string())
+}
+
+fn visible_avatar_url(profile: &Value) -> Option<String> {
+    if profile
+        .get("metadata")
+        .and_then(|metadata| metadata.get("avatar_banned"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+    {
+        return None;
+    }
+    profile
+        .get("avatar_url")
+        .and_then(|value| value.as_str())
+        .map(str::to_owned)
 }
 
 fn time_ago(date: DateTime<Utc>) -> String {

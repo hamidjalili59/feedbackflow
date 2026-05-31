@@ -28,6 +28,7 @@ pub struct MySurveysQuery {
 #[derive(Debug, Clone, Deserialize, IntoParams)]
 pub struct CalendarQuery {
     pub period: Option<String>,
+    pub child_id: Option<Uuid>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
     pub scope: Option<String>,

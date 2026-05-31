@@ -40,6 +40,7 @@ class DashboardQueryInput {
     this.period = 'this_month',
     this.compare,
     this.childId,
+    this.cacheUserId,
     this.classId,
     this.branchId,
     this.scope,
@@ -49,6 +50,7 @@ class DashboardQueryInput {
   final String period;
   final String? compare;
   final String? childId;
+  final String? cacheUserId;
   final String? classId;
   final String? branchId;
   final String? scope;
@@ -70,6 +72,7 @@ class DashboardQueryInput {
         period == other.period &&
         compare == other.compare &&
         childId == other.childId &&
+        cacheUserId == other.cacheUserId &&
         classId == other.classId &&
         branchId == other.branchId &&
         scope == other.scope &&
@@ -77,8 +80,39 @@ class DashboardQueryInput {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(period, compare, childId, classId, branchId, scope, scopeId);
+  int get hashCode => Object.hash(
+    period,
+    compare,
+    childId,
+    cacheUserId,
+    classId,
+    branchId,
+    scope,
+    scopeId,
+  );
+}
+
+class CalendarQueryInput {
+  const CalendarQueryInput({
+    required this.period,
+    this.childId,
+    this.cacheUserId,
+  });
+
+  final String period;
+  final String? childId;
+  final String? cacheUserId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is CalendarQueryInput &&
+        period == other.period &&
+        childId == other.childId &&
+        cacheUserId == other.cacheUserId;
+  }
+
+  @override
+  int get hashCode => Object.hash(period, childId, cacheUserId);
 }
 
 class ChildProfileDto2 {

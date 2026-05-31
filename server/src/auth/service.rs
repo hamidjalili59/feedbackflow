@@ -387,13 +387,22 @@ pub fn row_to_user_detail(row: &sqlx::postgres::PgRow) -> Result<UserDetailDto, 
     let role: UserRole =
         enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Parent);
     let profile_value: Value = row.try_get("profile").unwrap_or_else(|_| json!({}));
-    let profile: UserProfileDto = serde_json::from_value(profile_value).unwrap_or(UserProfileDto {
-        phone: None,
-        avatar_url: None,
-        locale: None,
-        timezone: None,
-        metadata: json!({}),
-    });
+    let mut profile: UserProfileDto =
+        serde_json::from_value(profile_value).unwrap_or(UserProfileDto {
+            phone: None,
+            avatar_url: None,
+            locale: None,
+            timezone: None,
+            metadata: json!({}),
+        });
+    if profile
+        .metadata
+        .get("avatar_banned")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+    {
+        profile.avatar_url = None;
+    }
     Ok(UserDetailDto {
         id: row.try_get("id")?,
         organization_id: row.try_get("organization_id")?,

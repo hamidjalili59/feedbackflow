@@ -49,7 +49,7 @@ class FormDetailScreen extends ConsumerWidget {
         error: (error, stackTrace) => ErrorPanel(
           error: error,
           onRetry: () => ref.invalidate(formDetailProvider(formId)),
-          onBack: () => context.go('/forms'),
+          onBack: () => _returnToPreviousOrForms(context),
           onSignIn: () => context.go('/login'),
         ),
         data: (form) {
@@ -197,7 +197,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
-                onPressed: () => context.go('/forms'),
+                onPressed: () => _returnToPreviousOrForms(context),
                 icon: const Icon(Icons.arrow_back_rounded),
                 label: Text(context.l10n.t('back')),
               ),
@@ -224,7 +224,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(
-                onPressed: () => context.go('/forms'),
+                onPressed: () => _returnToPreviousOrForms(context),
                 icon: const Icon(Icons.list_rounded),
                 label: Text(context.l10n.t('forms')),
               ),
@@ -241,7 +241,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       error: (error, stackTrace) => ErrorPanel(
         error: error,
         onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),
-        onBack: () => context.go('/forms'),
+        onBack: () => _returnToPreviousOrForms(context),
       ),
       data: (access) {
         if (!access.allowed) {
@@ -368,7 +368,7 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                   alignment: WrapAlignment.center,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => context.go('/forms'),
+                      onPressed: () => _returnToPreviousOrForms(context),
                       icon: const Icon(Icons.list_rounded),
                       label: Text(context.l10n.t('forms')),
                     ),
@@ -459,8 +459,6 @@ class _FormWorkspaceView extends StatelessWidget {
                     const SizedBox(height: 16),
                     _WorkspaceNav(formId: form.id, selected: section),
                     const SizedBox(height: 16),
-                    _ProgressChecklist(form: form, selected: section),
-                    const SizedBox(height: 16),
                     _SectionBody(form: form, section: section),
                   ],
                 ),
@@ -512,156 +510,6 @@ class _WorkspaceNav extends StatelessWidget {
                       context.go('/forms/$formId/${section.wire}'),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProgressChecklist extends StatelessWidget {
-  const _ProgressChecklist({required this.form, required this.selected});
-
-  final FormDetailDto form;
-  final FormWorkspaceSection selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _ChecklistItem(
-        label: context.l10n.t('addFields'),
-        done: form.fields.isNotEmpty,
-        target: FormWorkspaceSection.builder,
-        message: form.fields.isEmpty
-            ? context.l10n.t('addFieldsBeforePublish')
-            : '${context.l10n.countFields(form.fields.length)} ${context.l10n.t('fieldsReady')}',
-      ),
-      _ChecklistItem(
-        label: context.l10n.t('preview'),
-        done: form.fields.isNotEmpty,
-        target: FormWorkspaceSection.preview,
-        message: context.l10n.t('reviewRespondentExperience'),
-      ),
-      _ChecklistItem(
-        label: context.l10n.t('configureAccess'),
-        done:
-            form.visibility.metadata != null || form.settings.metadata != null,
-        target: FormWorkspaceSection.settings,
-        message: context.l10n.enumLabel(form.visibilityMode.toJson()),
-      ),
-      _ChecklistItem(
-        label: _isPublished(form)
-            ? context.l10n.t('enum.published')
-            : context.l10n.t('publishOrSubmit'),
-        done: _isPublished(form),
-        target: FormWorkspaceSection.publish,
-        message: _publishMessage(context, form),
-      ),
-    ];
-
-    return SoftCard(
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: 12,
-        children: [
-          for (final item in items)
-            _ChecklistChip(
-              item: item,
-              selected: selected == item.target,
-              onTap: () => context.go('/forms/${form.id}/${item.target.wire}'),
-            ),
-        ],
-      ),
-    );
-  }
-
-  String _publishMessage(BuildContext context, FormDetailDto form) {
-    return switch (form.status) {
-      FormStatus.published => context.l10n.t('collectingResponses'),
-      FormStatus.pendingReview => context.l10n.t('waitingForApproval'),
-      FormStatus.closed => context.l10n.t('closedToResponses'),
-      FormStatus.archived => context.l10n.t('enum.archived'),
-      _ => context.l10n.t('draftWorkflow'),
-    };
-  }
-}
-
-class _ChecklistItem {
-  const _ChecklistItem({
-    required this.label,
-    required this.done,
-    required this.target,
-    required this.message,
-  });
-
-  final String label;
-  final bool done;
-  final FormWorkspaceSection target;
-  final String message;
-}
-
-class _ChecklistChip extends StatelessWidget {
-  const _ChecklistChip({
-    required this.item,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _ChecklistItem item;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 250,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest.withValues(alpha: 0.36),
-          border: Border.all(
-            color: item.done
-                ? scheme.primary.withValues(alpha: 0.48)
-                : scheme.outlineVariant,
-          ),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              item.done
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: item.done ? scheme.primary : scheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.label,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.message,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -3620,9 +3468,6 @@ FormVisibilityDto _safeVisibility(FormVisibilityDto visibility) {
   );
 }
 
-bool _isPublished(FormDetailDto form) =>
-    form.status == FormStatus.published || form.publishedAt != null;
-
 bool _fieldSubmitsAnswer(FieldType type) {
   return switch (type) {
     FieldType.sectionTitle ||
@@ -3636,4 +3481,13 @@ bool _fieldSubmitsAnswer(FieldType type) {
     FieldType.unknown => false,
     _ => true,
   };
+}
+
+void _returnToPreviousOrForms(BuildContext context) {
+  final navigator = Navigator.of(context);
+  if (navigator.canPop()) {
+    navigator.maybePop();
+    return;
+  }
+  context.go('/forms');
 }

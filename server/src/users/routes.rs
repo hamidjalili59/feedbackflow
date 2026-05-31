@@ -305,10 +305,21 @@ pub async fn update_my_profile(
     .bind(auth.user_id)
     .fetch_one(&state.db)
     .await?;
-    let profile = payload
+    let current_profile: serde_json::Value =
+        current.try_get("profile").unwrap_or_else(|_| json!({}));
+    let mut profile = payload
         .profile
         .map(|p| json!(p))
-        .unwrap_or_else(|| current.try_get("profile").unwrap_or_else(|_| json!({})));
+        .unwrap_or_else(|| current_profile.clone());
+    if current_profile
+        .get("metadata")
+        .and_then(|metadata| metadata.get("avatar_banned"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+    {
+        profile["avatar_url"] = serde_json::Value::Null;
+        profile["metadata"]["avatar_banned"] = json!(true);
+    }
     let display_name = payload
         .display_name
         .unwrap_or_else(|| current.try_get("display_name").unwrap_or_default());

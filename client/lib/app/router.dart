@@ -48,7 +48,9 @@ Raw<GoRouter> router(Ref ref) {
       ),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
+        builder: (context, state) => DashboardScreen(
+          initialChildId: state.uri.queryParameters['child_id'],
+        ),
       ),
       GoRoute(
         path: '/forms',

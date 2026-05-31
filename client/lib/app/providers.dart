@@ -155,6 +155,7 @@ class AuthController extends _$AuthController {
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           );
+      _invalidateSessionScopedProviders();
       return AuthSession(user: response.user);
     });
   }
@@ -183,6 +184,7 @@ class AuthController extends _$AuthController {
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
           );
+      _invalidateSessionScopedProviders();
       return AuthSession(user: response.user);
     });
   }
@@ -200,7 +202,33 @@ class AuthController extends _$AuthController {
       }
     }
     await tokenStore.clear();
+    _invalidateSessionScopedProviders();
     state = const AsyncValue.data(null);
+  }
+
+  Future<void> updateProfile(UpdateUserProfileRequest request) async {
+    final current = state.asData?.value;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard<AuthSession?>(() async {
+      final user = await ref
+          .read(usersRepositoryProvider)
+          .updateMyProfile(request: request);
+      ref.invalidate(dashboardExperienceProvider);
+      return AuthSession(
+        user: user,
+        effectivePermissions: current?.effectivePermissions,
+      );
+    });
+  }
+
+  void _invalidateSessionScopedProviders() {
+    ref.invalidate(dashboardExperienceProvider);
+    ref.invalidate(mySurveysProvider);
+    ref.invalidate(surveyCalendarProvider);
+    ref.invalidate(metricTimeseriesProvider);
+    ref.invalidate(dashboardAnalyticsProvider);
+    ref.invalidate(activitiesProvider);
+    ref.invalidate(effectivePermissionsProvider);
   }
 }
 
@@ -287,10 +315,13 @@ final dashboardExperienceProvider =
     });
 
 final surveyCalendarProvider =
-    rp.FutureProvider.family<CalendarResponseDto2, String>((ref, period) {
+    rp.FutureProvider.family<CalendarResponseDto2, CalendarQueryInput>((
+      ref,
+      query,
+    ) {
       return ref
           .watch(analyticsRepositoryProvider)
-          .getSurveyCalendar(period: period);
+          .getSurveyCalendar(period: query.period, childId: query.childId);
     });
 
 final mySurveysProvider =

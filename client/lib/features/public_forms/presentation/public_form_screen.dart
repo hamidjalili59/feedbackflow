@@ -723,7 +723,12 @@ class _SubmittedView extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: () {
                         if (authenticated) {
-                          context.go('/forms');
+                          final navigator = Navigator.of(context);
+                          if (navigator.canPop()) {
+                            navigator.maybePop();
+                          } else {
+                            context.go('/forms');
+                          }
                         } else {
                           context.go(
                             '/login?redirect=${Uri.encodeComponent('/forms')}&notice=guestSubmissionSuccessAuthRequired',

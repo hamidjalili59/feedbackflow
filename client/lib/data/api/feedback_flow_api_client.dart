@@ -544,6 +544,7 @@ class FeedbackFlowApiClient {
   /// Requires Bearer JWT.
   Future<ApiResponse<CalendarResponseDto2>> getSurveyCalendar({
     String? period,
+    String? childId,
     String? startDate,
     String? endDate,
     String? scope,
@@ -553,6 +554,7 @@ class FeedbackFlowApiClient {
       '/api/v1/surveys/calendar',
       queryParameters: _clean(<String, dynamic>{
         'period': period,
+        'child_id': childId,
         'start_date': startDate,
         'end_date': endDate,
         'scope': scope,
