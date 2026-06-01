@@ -83,11 +83,22 @@ class _ParentAppFrame extends StatelessWidget {
     return ColoredBox(
       color: const Color(0xFFF3F6FA),
       child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 393),
-            child: child,
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth;
+            final maxWidth = availableWidth < 480
+                ? 393.0
+                : availableWidth < AppBreakpoints.medium
+                ? 640.0
+                : 1040.0;
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: child,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -263,49 +274,169 @@ class _ParentHomeDashboard extends StatelessWidget {
         : dashboard.children.first;
     final activities = dashboard.activities.take(2).toList();
     return _ParentAppFrame(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(32, 42, 32, 42),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 760;
+          final padding = wide
+              ? const EdgeInsets.fromLTRB(36, 44, 36, 48)
+              : const EdgeInsets.fromLTRB(32, 50, 32, 42);
+          return ListView(
+            padding: padding,
+            children: wide
+                ? _buildWideLayout(context, selectedChild, surveys, activities)
+                : _buildCompactLayout(
+                    context,
+                    selectedChild,
+                    surveys,
+                    activities,
+                  ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<Widget> _buildCompactLayout(
+    BuildContext context,
+    ChildProfileDto2? selectedChild,
+    List<SurveyCardDto2> surveys,
+    List<ActivityFeedItemDto2> activities,
+  ) {
+    return [
+      _ParentHomeHeader(user: user),
+      const SizedBox(height: 22),
+      if (selectedChild != null)
+        _ParentStudentCard(
+          child: selectedChild,
+          onProfileTap: () => _openChildProgress(context, selectedChild),
+          onStudentTap: () => _openChildProgress(context, selectedChild),
+        ),
+      const SizedBox(height: 34),
+      _ParentNewSurveysSection(surveys: surveys),
+      const SizedBox(height: 38),
+      _ParentSurveyOverviewSection(summary: dashboard.surveySummary),
+      const SizedBox(height: 34),
+      _ParentActivitiesSection(activities: activities),
+    ];
+  }
+
+  List<Widget> _buildWideLayout(
+    BuildContext context,
+    ChildProfileDto2? selectedChild,
+    List<SurveyCardDto2> surveys,
+    List<ActivityFeedItemDto2> activities,
+  ) {
+    final studentCard = selectedChild == null
+        ? _ParentEmptyCard(message: context.l10n.t('dashboard.noChildrenForParent'))
+        : _ParentStudentCard(
+            child: selectedChild,
+            onProfileTap: () => _openChildProgress(context, selectedChild),
+            onStudentTap: () => _openChildProgress(context, selectedChild),
+          );
+    return [
+      Row(
+        textDirection: TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _ParentHomeHeader(user: user),
-          const SizedBox(height: 26),
-          if (selectedChild != null)
-            _ParentStudentCard(
-              child: selectedChild,
-              onProfileTap: () => context.go('/profile'),
-              onStudentTap: () =>
-                  context.go('/dashboard/children/${selectedChild.id}'),
-            ),
-          const SizedBox(height: 34),
-          _ParentSectionHeader(
-            title: context.l10n.t('dashboard.newSurvey'),
-            actionLabel: context.l10n.t('dashboard.seeAllSurveys'),
-            onAction: () => context.go('/forms'),
-          ),
-          const SizedBox(height: 18),
-          if (surveys.isEmpty)
-            _ParentEmptyCard(message: context.l10n.t('dashboard.noNewSurveys'))
-          else
-            for (final survey in surveys) ...[
-              _ParentSurveyActionCard(survey: survey),
-              const SizedBox(height: 36),
-            ],
-          const SizedBox(height: 6),
-          _ParentSectionHeader(
-            title: context.l10n.t('dashboard.surveyOverview'),
-          ),
-          const SizedBox(height: 18),
-          _ParentSurveyOverview(summary: dashboard.surveySummary),
-          const SizedBox(height: 34),
-          _ParentSectionHeader(
-            title: context.l10n.t('dashboard.latestActivities'),
-          ),
-          const SizedBox(height: 18),
-          if (activities.isEmpty)
-            _ParentEmptyCard(message: context.l10n.t('dashboard.noActivities'))
-          else
-            for (final item in activities) _ParentActivityCard(item: item),
+          Expanded(child: studentCard),
+          const SizedBox(width: 28),
+          SizedBox(width: 360, child: _ParentHomeHeader(user: user)),
         ],
       ),
+      const SizedBox(height: 34),
+      Row(
+        textDirection: TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 5, child: _ParentNewSurveysSection(surveys: surveys)),
+          const SizedBox(width: 28),
+          Expanded(
+            flex: 4,
+            child: Column(
+              children: [
+                _ParentSurveyOverviewSection(summary: dashboard.surveySummary),
+                const SizedBox(height: 34),
+                _ParentActivitiesSection(activities: activities),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  void _openChildProgress(BuildContext context, ChildProfileDto2 child) {
+    context.go('/dashboard/children/${Uri.encodeComponent(child.id)}');
+  }
+}
+
+class _ParentNewSurveysSection extends StatelessWidget {
+  const _ParentNewSurveysSection({required this.surveys});
+
+  final List<SurveyCardDto2> surveys;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ParentSectionHeader(
+          title: context.l10n.t('dashboard.newSurvey'),
+          actionLabel: context.l10n.t('dashboard.seeAllSurveys'),
+          onAction: () => context.go('/forms'),
+        ),
+        const SizedBox(height: 18),
+        if (surveys.isEmpty)
+          _ParentEmptyCard(message: context.l10n.t('dashboard.noNewSurveys'))
+        else
+          for (var i = 0; i < surveys.length; i++) ...[
+            _ParentSurveyActionCard(survey: surveys[i]),
+            if (i != surveys.length - 1) const SizedBox(height: 22),
+          ],
+      ],
+    );
+  }
+}
+
+class _ParentSurveyOverviewSection extends StatelessWidget {
+  const _ParentSurveyOverviewSection({required this.summary});
+
+  final SurveyStatusSummaryDto2 summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ParentSectionHeader(
+          title: context.l10n.t('dashboard.surveyOverview'),
+        ),
+        const SizedBox(height: 18),
+        _ParentSurveyOverview(summary: summary),
+      ],
+    );
+  }
+}
+
+class _ParentActivitiesSection extends StatelessWidget {
+  const _ParentActivitiesSection({required this.activities});
+
+  final List<ActivityFeedItemDto2> activities;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ParentSectionHeader(
+          title: context.l10n.t('dashboard.latestActivities'),
+        ),
+        const SizedBox(height: 18),
+        if (activities.isEmpty)
+          _ParentEmptyCard(message: context.l10n.t('dashboard.noActivities'))
+        else
+          for (final item in activities) _ParentActivityCard(item: item),
+      ],
     );
   }
 }
@@ -318,14 +449,14 @@ class _ParentHomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      textDirection: TextDirection.rtl,
+      textDirection: TextDirection.ltr,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         InkWell(
           customBorder: const CircleBorder(),
           onTap: () => context.go('/profile'),
           child: CircleAvatar(
-            radius: 38,
+            radius: 32,
             backgroundColor: const Color(0xFFFFD8C2),
             backgroundImage: _dashboardAvatarImageProvider(
               _visibleDashboardAvatarUrl(user.profile),
@@ -341,7 +472,7 @@ class _ParentHomeHeader extends StatelessWidget {
                 : null,
           ),
         ),
-        const SizedBox(width: 22),
+        const SizedBox(width: 20),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -383,62 +514,85 @@ class _ParentStudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ParentWhiteCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          TextButton(
-            onPressed: onProfileTap,
-            child: Text(context.l10n.t('dashboard.viewProfile')),
-          ),
-          const Spacer(),
-          InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: onStudentTap,
-            child: Row(
-              textDirection: TextDirection.rtl,
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFFE8EEFF),
-                  backgroundImage: _dashboardAvatarImageProvider(
-                    child.avatarUrl,
-                  ),
-                  child: child.avatarUrl == null || child.avatarUrl!.isEmpty
-                      ? Text(
-                          _initials(child.displayName),
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onStudentTap,
+      child: _ParentWhiteCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          textDirection: TextDirection.ltr,
+          children: [
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: onProfileTap,
+              child: Text(context.l10n.t('dashboard.viewProfile')),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.rtl,
                   children: [
-                    Text(
-                      child.displayName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: const Color(0xFFE8EEFF),
+                      backgroundImage: _dashboardAvatarImageProvider(
+                        child.avatarUrl,
                       ),
+                      child: child.avatarUrl == null || child.avatarUrl!.isEmpty
+                          ? Text(
+                              _initials(child.displayName),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            )
+                          : null,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [child.className, child.gradeLabel]
-                          .whereType<String>()
-                          .where((value) => value.trim().isNotEmpty)
-                          .join(' - '),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF747A9A),
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            child.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            [child.className, child.gradeLabel]
+                                .whereType<String>()
+                                .where((value) => value.trim().isNotEmpty)
+                                .join(' - '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF747A9A),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -458,9 +612,18 @@ class _ParentSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      textDirection: TextDirection.ltr,
       children: [
         if (actionLabel != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          TextButton(
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: onAction,
+            child: Text(actionLabel!),
+          ),
         const Spacer(),
         Text(
           title,
@@ -484,6 +647,7 @@ class _ParentSurveyActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ParentWhiteCard(
       child: Row(
+        textDirection: TextDirection.ltr,
         children: [
           SizedBox(
             width: 98,
@@ -500,29 +664,35 @@ class _ParentSurveyActionCard extends StatelessWidget {
               child: Text(context.l10n.t('start')),
             ),
           ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                survey.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.ink,
-                  fontWeight: FontWeight.w900,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  survey.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                survey.dateLabel ??
-                    context.l10n
-                        .t('questionCount')
-                        .replaceAll('{count}', '${survey.questionCount}'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF747A9A),
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 4),
+                Text(
+                  survey.dateLabel ??
+                      context.l10n
+                          .t('questionCount')
+                          .replaceAll('{count}', '${survey.questionCount}'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF747A9A),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -538,6 +708,7 @@ class _ParentSurveyOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      textDirection: TextDirection.ltr,
       children: [
         Expanded(
           child: _ParentCountCard(
@@ -610,6 +781,7 @@ class _ParentActivityCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: _ParentWhiteCard(
         child: Row(
+          textDirection: TextDirection.ltr,
           children: [
             Text(
               _localizedTimeAgo(context, item),
@@ -617,27 +789,31 @@ class _ParentActivityCard extends StatelessWidget {
                 context,
               ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8C90A9)),
             ),
-            const Spacer(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if ((item.subtitle ?? '').isNotEmpty)
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
                   Text(
-                    item.subtitle!,
+                    item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF747A9A),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-              ],
+                  if ((item.subtitle ?? '').isNotEmpty)
+                    Text(
+                      item.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF747A9A),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -670,6 +846,7 @@ class _ParentStudentProgressDashboard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(32, 34, 32, 42),
         children: [
           Row(
+            textDirection: TextDirection.ltr,
             children: [
               IconButton.filled(
                 onPressed: () => context.go('/dashboard'),
@@ -838,6 +1015,7 @@ class _ParentSurveyResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ParentWhiteCard(
       child: Row(
+        textDirection: TextDirection.ltr,
         children: [
           Text(
             survey.mySubmissionId == null
@@ -856,26 +1034,30 @@ class _ParentSurveyResultCard extends StatelessWidget {
                 context,
               ).textTheme.bodySmall?.copyWith(color: const Color(0xFF747A9A)),
             ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                survey.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.ink,
-                  fontWeight: FontWeight.w900,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  survey.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              Text(
-                survey.dateLabel ?? '',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF747A9A),
+                Text(
+                  survey.dateLabel ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF747A9A),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
