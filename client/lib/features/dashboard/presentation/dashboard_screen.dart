@@ -39,8 +39,9 @@ class DashboardScreen extends ConsumerWidget {
         error: (error, stackTrace) =>
             _DashboardError(onLogin: () => context.go('/login')),
         data: (session) {
-          if (session == null)
+          if (session == null) {
             return _DashboardError(onLogin: () => context.go('/login'));
+          }
           return _ExperienceDashboard(
             key: ValueKey('${session.user.id}:${initialChildId ?? ''}'),
             session: session,
@@ -1007,10 +1008,11 @@ class _SurveyStatusAndCalendar extends ConsumerWidget {
               final days = visibleDays.isEmpty
                   ? value.days.take(14).toList()
                   : visibleDays;
-              if (days.isEmpty)
+              if (days.isEmpty) {
                 return _EmptyTiny(
                   message: context.l10n.t('dashboard.noScheduledSurveys'),
                 );
+              }
               return _CalendarStrip(
                 days: days,
                 onDayTap: (day) => _showCalendarDaySheet(context, day),
@@ -1346,14 +1348,26 @@ class _SurveyTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final completed =
+        survey.mySubmissionId != null || survey.status == 'completed';
+    final destination = completed && survey.mySubmissionId != null
+        ? '/forms/${survey.formId}?submission_id=${Uri.encodeComponent(survey.mySubmissionId!)}'
+        : '/forms/${survey.formId}';
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => context.push('/forms/${survey.formId}'),
+      onTap: () => context.push(destination),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: completed
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: completed
+              ? Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.26),
+                )
+              : null,
         ),
         child: Row(
           children: [
@@ -1361,11 +1375,25 @@ class _SurveyTile extends StatelessWidget {
               SizedBox(
                 width: 96,
                 child: FilledButton(
-                  onPressed: () => context.push('/forms/${survey.formId}'),
-                  child: Text(context.l10n.t('start')),
+                  onPressed: () => context.push(destination),
+                  child: Text(
+                    completed
+                        ? context.l10n.t('viewResult')
+                        : context.l10n.t('start'),
+                  ),
                 ),
               )
             else
+              _StatusPill(status: completed ? 'completed' : survey.status),
+            if (completed && primary) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.check_circle_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+            ] else if (!primary) ...[
+              const SizedBox(width: 8),
               Text(
                 survey.dateLabel ??
                     context.l10n
@@ -1375,6 +1403,7 @@ class _SurveyTile extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+            ],
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1390,7 +1419,9 @@ class _SurveyTile extends StatelessWidget {
                   ),
                   if ((survey.dateLabel ?? survey.description ?? '').isNotEmpty)
                     Text(
-                      survey.dateLabel ?? survey.description!,
+                      completed
+                          ? context.l10n.t('submittedReviewMessage')
+                          : survey.dateLabel ?? survey.description!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -1624,7 +1655,9 @@ class _ManagementConfigurationRow extends ConsumerWidget {
     final metrics = ref.watch(metricDefinitionsProvider);
     final segments = ref.watch(audienceSegmentsProvider);
     return _ResponsiveTwoColumn(
-      left: _SoftPanel(
+      left: _MetricManagementPanel(metrics: metrics),
+      /*
+      _SoftPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1670,6 +1703,7 @@ class _ManagementConfigurationRow extends ConsumerWidget {
           ],
         ),
       ),
+      */
       right: _SoftPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1718,6 +1752,291 @@ class _ManagementConfigurationRow extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _MetricManagementPanel extends ConsumerStatefulWidget {
+  const _MetricManagementPanel({required this.metrics});
+
+  final AsyncValue<ListResponse<MetricDefinitionDto2>> metrics;
+
+  @override
+  ConsumerState<_MetricManagementPanel> createState() =>
+      _MetricManagementPanelState();
+}
+
+class _MetricManagementPanelState
+    extends ConsumerState<_MetricManagementPanel> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_rounded, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              _SectionTitle(title: context.l10n.t('dashboard.dynamicMetrics')),
+              const Spacer(),
+              IconButton.filledTonal(
+                tooltip: context.l10n.t('addMetric'),
+                onPressed: _busy ? null : _createMetric,
+                icon: const Icon(Icons.add_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          widget.metrics.when(
+            loading: () => const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) =>
+                Text(FriendlyApiErrorMessage.from(error, context: context)),
+            data: (value) {
+              final items = value.data ?? const <MetricDefinitionDto2>[];
+              if (items.isEmpty) {
+                return _EmptyTiny(
+                  message: context.l10n.t('dashboard.noMetricsDefined'),
+                );
+              }
+              return Column(
+                children: [
+                  for (final metric in items.take(8))
+                    _MetricManagementTile(
+                      metric: metric,
+                      busy: _busy,
+                      onEdit: () => _editMetric(metric),
+                      onToggle: (enabled) => _updateMetric(
+                        metric,
+                        <String, dynamic>{'enabled': enabled},
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.l10n.t('dashboard.metricPanelHint'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createMetric() async {
+    final result = await _showMetricDialog(context);
+    if (result == null) return;
+    await _runMetricAction(
+      () => ref.read(analyticsRepositoryProvider).createMetric(request: result),
+    );
+  }
+
+  Future<void> _editMetric(MetricDefinitionDto2 metric) async {
+    final result = await _showMetricDialog(context, metric: metric);
+    if (result == null) return;
+    await _updateMetric(metric, result);
+  }
+
+  Future<void> _updateMetric(
+    MetricDefinitionDto2 metric,
+    Map<String, dynamic> request,
+  ) async {
+    await _runMetricAction(
+      () => ref
+          .read(analyticsRepositoryProvider)
+          .updateMetric(id: metric.id, request: request),
+    );
+  }
+
+  Future<void> _runMetricAction(Future<Object?> Function() action) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await action();
+      ref.invalidate(metricDefinitionsProvider);
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _MetricManagementTile extends StatelessWidget {
+  const _MetricManagementTile({
+    required this.metric,
+    required this.busy,
+    required this.onEdit,
+    required this.onToggle,
+  });
+
+  final MetricDefinitionDto2 metric;
+  final bool busy;
+  final VoidCallback onEdit;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Switch(value: metric.enabled, onChanged: busy ? null : onToggle),
+          IconButton(
+            tooltip: context.l10n.t('edit'),
+            onPressed: busy ? null : onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                metric.title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                '${metric.key} - ${metric.metricType}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<Map<String, dynamic>?> _showMetricDialog(
+  BuildContext context, {
+  MetricDefinitionDto2? metric,
+}) {
+  final keyController = TextEditingController(text: metric?.key ?? '');
+  final titleController = TextEditingController(text: metric?.title ?? '');
+  final descriptionController = TextEditingController(
+    text: metric?.description ?? '',
+  );
+  var type = metric?.metricType ?? 'score';
+  var enabled = metric?.enabled ?? true;
+  return showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text(
+          metric == null
+              ? context.l10n.t('addMetric')
+              : context.l10n.t('editMetric'),
+        ),
+        content: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(280.0, 460.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: keyController,
+                enabled: metric == null,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('metricKey'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: context.l10n.t('title')),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('description'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                decoration: InputDecoration(
+                  labelText: context.l10n.t('metricType'),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'score', child: Text('score')),
+                  DropdownMenuItem(
+                    value: 'percentage',
+                    child: Text('percentage'),
+                  ),
+                  DropdownMenuItem(value: 'rating', child: Text('rating')),
+                  DropdownMenuItem(value: 'count', child: Text('count')),
+                  DropdownMenuItem(value: 'label', child: Text('label')),
+                  DropdownMenuItem(value: 'custom', child: Text('custom')),
+                ],
+                onChanged: metric == null
+                    ? (value) => setState(() => type = value ?? type)
+                    : null,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(context.l10n.t('enabled')),
+                value: enabled,
+                onChanged: (value) => setState(() => enabled = value),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              final key = keyController.text.trim();
+              final title = titleController.text.trim();
+              if (key.isEmpty || title.isEmpty) return;
+              Navigator.pop(context, <String, dynamic>{
+                if (metric == null) 'key': key,
+                'title': title,
+                'description': descriptionController.text.trim().isEmpty
+                    ? null
+                    : descriptionController.text.trim(),
+                if (metric == null) 'metric_type': type,
+                'enabled': enabled,
+              });
+            },
+            child: Text(context.l10n.t('save')),
+          ),
+        ],
+      ),
+    ),
+  ).whenComplete(() {
+    keyController.dispose();
+    titleController.dispose();
+    descriptionController.dispose();
+  });
 }
 
 class _ManagementList extends StatelessWidget {
@@ -1829,11 +2148,12 @@ class _SectionTitle extends StatelessWidget {
         color: AppTheme.ink,
       ),
     );
-    if (trailing == null)
+    if (trailing == null) {
       return Align(
         alignment: AlignmentDirectional.centerEnd,
         child: titleWidget,
       );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [trailing!, const SizedBox(width: 8), titleWidget],

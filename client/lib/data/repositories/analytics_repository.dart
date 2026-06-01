@@ -50,6 +50,14 @@ abstract class AnalyticsRepository {
     String? search,
     bool? enabled,
   });
+  Future<MetricDefinitionDto2> createMetric({
+    required Map<String, dynamic> request,
+  });
+  Future<MetricDefinitionDto2> updateMetric({
+    required String id,
+    required Map<String, dynamic> request,
+  });
+  Future<DeleteResultDto> deleteMetric({required String id});
   Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({
     int page = 1,
     int pageSize = 20,
@@ -197,6 +205,28 @@ class DioAnalyticsRepository implements AnalyticsRepository {
         enabled: enabled,
       ),
     );
+  }
+
+  @override
+  Future<MetricDefinitionDto2> createMetric({
+    required Map<String, dynamic> request,
+  }) async {
+    return EnvelopeGuard.data(await _api.createMetric(request: request));
+  }
+
+  @override
+  Future<MetricDefinitionDto2> updateMetric({
+    required String id,
+    required Map<String, dynamic> request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.updateMetric(id: id, request: request),
+    );
+  }
+
+  @override
+  Future<DeleteResultDto> deleteMetric({required String id}) async {
+    return EnvelopeGuard.data(await _api.deleteMetric(id: id));
   }
 
   @override

@@ -927,46 +927,57 @@ class _FieldDefaults {
 }
 
 _FieldDefaults _defaultsForFieldType(FieldType type) {
-  if (type == FieldType.shortText)
+  if (type == FieldType.shortText) {
     return const _FieldDefaults(
       options: <String>[],
       placeholder: 'پاسخ کوتاه',
       maxLength: 255,
     );
-  if (type == FieldType.longText)
+  }
+  if (type == FieldType.longText) {
     return const _FieldDefaults(
       options: <String>[],
       placeholder: 'پاسخ بلند',
       maxLength: 2000,
     );
-  if (type == FieldType.email)
+  }
+  if (type == FieldType.email) {
     return const _FieldDefaults(
       options: <String>[],
       placeholder: 'name@example.com',
     );
-  if (type == FieldType.phone)
+  }
+  if (type == FieldType.phone) {
     return const _FieldDefaults(options: <String>[], placeholder: '+49 ...');
-  if (type == FieldType.number || type == FieldType.decimal)
+  }
+  if (type == FieldType.number || type == FieldType.decimal) {
     return const _FieldDefaults(options: <String>[], min: 0, max: 100, step: 1);
-  if (type == FieldType.ratingStars || type == FieldType.numericRating)
+  }
+  if (type == FieldType.ratingStars || type == FieldType.numericRating) {
     return const _FieldDefaults(options: <String>[], min: 1, max: 5, step: 1);
-  if (type == FieldType.nps)
+  }
+  if (type == FieldType.nps) {
     return const _FieldDefaults(options: <String>[], min: 0, max: 10, step: 1);
-  if (type == FieldType.slider)
+  }
+  if (type == FieldType.slider) {
     return const _FieldDefaults(options: <String>[], min: 0, max: 100, step: 1);
-  if (type == FieldType.emojiReaction)
+  }
+  if (type == FieldType.emojiReaction) {
     return const _FieldDefaults(
       options: <String>['😡', '😕', '😐', '🙂', '😍'],
     );
-  if (fieldTypeUsesOptions(type))
+  }
+  if (fieldTypeUsesOptions(type)) {
     return const _FieldDefaults(
       options: <String>['گزینه ۱', 'گزینه ۲', 'گزینه ۳'],
     );
-  if (type == FieldType.fileUpload || type == FieldType.imageUpload)
+  }
+  if (type == FieldType.fileUpload || type == FieldType.imageUpload) {
     return const _FieldDefaults(
       options: <String>[],
       placeholder: 'یک فایل بارگذاری کنید',
     );
+  }
   return const _FieldDefaults(options: <String>[]);
 }
 

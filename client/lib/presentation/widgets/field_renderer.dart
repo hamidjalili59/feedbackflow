@@ -1689,30 +1689,35 @@ int _moodIndexForOption(int index, int total, FieldOptionDto option) {
   if (text.contains('😡') ||
       text.contains('angry') ||
       text.contains('very_bad') ||
-      text.contains('خیلی ناراضی'))
+      text.contains('خیلی ناراضی')) {
     return 0;
+  }
   if (text.contains('🙁') ||
       text.contains('sad') ||
       text.contains('bad') ||
-      text.contains('ناراضی'))
+      text.contains('ناراضی')) {
     return 1;
+  }
   if (text.contains('😐') ||
       text.contains('neutral') ||
       text.contains('معمولی') ||
-      text.contains('متوسط'))
+      text.contains('متوسط')) {
     return 2;
+  }
   if (text.contains('🙂') ||
       text.contains('excellent') ||
       text.contains('very_happy') ||
       text.contains('عالی') ||
-      text.contains('خیلی خوشحال'))
+      text.contains('خیلی خوشحال')) {
     return 4;
+  }
   if (text.contains('😊') ||
       text.contains('happy') ||
       text.contains('good') ||
       text.contains('خوب') ||
-      text.contains('خوشحال'))
+      text.contains('خوشحال')) {
     return 3;
+  }
   if (total <= 1) return 2;
   final mapped = (index * 4 / (total - 1)).round();
   return mapped < 0
@@ -1728,8 +1733,9 @@ String _selectedFaceLabel(
   List<FieldOptionDto> options,
 ) {
   for (final option in options) {
-    if (_sameOption(value, option))
+    if (_sameOption(value, option)) {
       return _localizedOptionLabel(context, option);
+    }
   }
   return value?.toString() ?? '';
 }

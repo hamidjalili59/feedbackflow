@@ -69,6 +69,7 @@ Raw<GoRouter> router(Ref ref) {
         builder: (context, state) => FormDetailScreen(
           formId: state.pathParameters['id']!,
           initialSection: FormWorkspaceSection.builder,
+          reviewSubmissionId: state.uri.queryParameters['submission_id'],
         ),
       ),
       GoRoute(
@@ -78,6 +79,7 @@ Raw<GoRouter> router(Ref ref) {
           initialSection: formWorkspaceSectionFromWire(
             state.pathParameters['section'],
           ),
+          reviewSubmissionId: state.uri.queryParameters['submission_id'],
         ),
       ),
       GoRoute(

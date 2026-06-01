@@ -67,8 +67,9 @@ class _StepFormViewState extends State<StepFormView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_answerableFields.isEmpty)
+    if (_answerableFields.isEmpty) {
       return Center(child: Text(context.l10n.t('step.noQuestions')));
+    }
     return Column(
       children: [
         SafeArea(

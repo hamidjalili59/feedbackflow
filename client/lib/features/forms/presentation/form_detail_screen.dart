@@ -21,10 +21,12 @@ class FormDetailScreen extends ConsumerWidget {
     super.key,
     required this.formId,
     this.initialSection = FormWorkspaceSection.builder,
+    this.reviewSubmissionId,
   });
 
   final String formId;
   final FormWorkspaceSection initialSection;
+  final String? reviewSubmissionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,6 +58,13 @@ class FormDetailScreen extends ConsumerWidget {
           final session = authAsync.asData?.value;
           final isCreator =
               session != null && form.creatorId == session.user.id;
+          final reviewSubmissionId = this.reviewSubmissionId;
+          if (reviewSubmissionId != null && reviewSubmissionId.isNotEmpty) {
+            return _SubmissionReviewView(
+              form: form,
+              submissionId: reviewSubmissionId,
+            );
+          }
 
           // Creator always sees workspace from the forms list.
           if (isCreator) {
@@ -152,9 +161,14 @@ FormWorkspaceSection formWorkspaceSectionFromWire(String? value) {
 /// View shown to regular respondents (non-managers). If the form is published,
 /// they see the step-by-step answer flow. Otherwise they see a "not available" message.
 class _RespondentFormView extends ConsumerStatefulWidget {
-  const _RespondentFormView({required this.form});
+  const _RespondentFormView({
+    super.key,
+    required this.form,
+    this.editSubmission,
+  });
 
   final FormDetailDto form;
+  final SubmissionDetailDto? editSubmission;
 
   @override
   ConsumerState<_RespondentFormView> createState() =>
@@ -165,6 +179,17 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
   final Map<String, Object?> _answers = {};
   bool _submitting = false;
   bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final editSubmission = widget.editSubmission;
+    if (editSubmission != null) {
+      for (final answer in editSubmission.answers) {
+        _answers[answer.fieldId] = answer.value;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,18 +303,30 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
     setState(() => _submitting = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(submissionsRepositoryProvider)
-          .createSubmission(
-            id: widget.form.id,
-            request: CreateSubmissionRequest(
-              answers: _answers.entries
-                  .where((e) => e.value != null)
-                  .map((e) => AnswerInputDto(fieldId: e.key, value: e.value))
-                  .toList(),
-              anonymous: false,
-            ),
-          );
+      final answers = _answers.entries
+          .where((e) => e.value != null)
+          .map((e) => AnswerInputDto(fieldId: e.key, value: e.value))
+          .toList();
+      final editSubmission = widget.editSubmission;
+      if (editSubmission == null) {
+        await ref
+            .read(submissionsRepositoryProvider)
+            .createSubmission(
+              id: widget.form.id,
+              request: CreateSubmissionRequest(
+                answers: answers,
+                anonymous: false,
+              ),
+            );
+      } else {
+        await ref
+            .read(submissionsRepositoryProvider)
+            .updateSubmission(
+              id: editSubmission.id,
+              request: UpdateSubmissionRequest(answers: answers),
+            );
+        ref.invalidate(submissionDetailProvider(editSubmission.id));
+      }
       if (mounted) setState(() => _submitted = true);
     } catch (error) {
       if (mounted) {
@@ -392,6 +429,79 @@ class _AnswerAccessBlockedView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SubmissionReviewView extends ConsumerStatefulWidget {
+  const _SubmissionReviewView({required this.form, required this.submissionId});
+
+  final FormDetailDto form;
+  final String submissionId;
+
+  @override
+  ConsumerState<_SubmissionReviewView> createState() =>
+      _SubmissionReviewViewState();
+}
+
+class _SubmissionReviewViewState extends ConsumerState<_SubmissionReviewView> {
+  bool _editing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = ref.watch(submissionDetailProvider(widget.submissionId));
+    return detail.when(
+      loading: () =>
+          LoadingPanel(message: context.l10n.t('loadingSubmissionDetail')),
+      error: (error, stackTrace) => ErrorPanel(
+        error: error,
+        onRetry: () =>
+            ref.invalidate(submissionDetailProvider(widget.submissionId)),
+        onBack: () => _returnToPreviousOrForms(context),
+        onSignIn: () => context.go('/login'),
+      ),
+      data: (submission) {
+        if (_editing) {
+          return _RespondentFormView(
+            key: ValueKey('edit-${submission.id}-${submission.updatedAt}'),
+            form: widget.form,
+            editSubmission: submission,
+          );
+        }
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: SoftCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SectionHeader(
+                      icon: Icons.fact_check_rounded,
+                      title: context.l10n.t('submittedReviewTitle'),
+                      message: context.l10n.t('submittedReviewMessage'),
+                      trailing:
+                          widget.form.settings.answersEditableAfterSubmission
+                          ? FilledButton.tonalIcon(
+                              onPressed: () => setState(() => _editing = true),
+                              icon: const Icon(Icons.edit_rounded),
+                              label: Text(context.l10n.t('editResponse')),
+                            )
+                          : null,
+                    ),
+                    AppSpacing.gapLg,
+                    _SubmissionDetailContent(
+                      form: widget.form,
+                      submission: submission,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

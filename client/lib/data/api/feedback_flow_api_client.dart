@@ -665,6 +665,45 @@ class FeedbackFlowApiClient {
     );
   }
 
+  Future<ApiResponse<MetricDefinitionDto2>> createMetric({
+    required Map<String, dynamic> request,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/metrics',
+      data: _body(request),
+    );
+    return _parseApiResponse<MetricDefinitionDto2>(
+      response.data,
+      (json) => MetricDefinitionDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<MetricDefinitionDto2>> updateMetric({
+    required String id,
+    required Map<String, dynamic> request,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      _path('/api/v1/metrics/{id}', <String, String>{'id': id.toString()}),
+      data: _body(request),
+    );
+    return _parseApiResponse<MetricDefinitionDto2>(
+      response.data,
+      (json) => MetricDefinitionDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<DeleteResultDto>> deleteMetric({
+    required String id,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path('/api/v1/metrics/{id}', <String, String>{'id': id.toString()}),
+    );
+    return _parseApiResponse<DeleteResultDto>(
+      response.data,
+      (json) => DeleteResultDto.fromJson(_jsonObject(json)),
+    );
+  }
+
   /// GET /api/v1/audience-segments
   /// Requires Bearer JWT.
   Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({

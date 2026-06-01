@@ -53,8 +53,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (session != null) {
         HapticFeedback.mediumImpact();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted)
+          if (context.mounted) {
             context.go(_safeRedirectLocation(widget.redirectLocation));
+          }
         });
       }
       if (next.hasError && previous?.error != next.error) {
@@ -563,8 +564,9 @@ class _GuestOrganizationSheetState extends State<_GuestOrganizationSheet> {
                 prefixIcon: const Icon(Icons.apartment_rounded),
               ),
               validator: (value) {
-                if ((value ?? '').trim().isEmpty)
+                if ((value ?? '').trim().isEmpty) {
                   return context.l10n.t('guest.organizationRequired');
+                }
                 return null;
               },
             ),

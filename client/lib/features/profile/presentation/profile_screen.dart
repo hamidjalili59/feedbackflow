@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -218,23 +221,21 @@ class _EditProfileDialog extends StatefulWidget {
 class _EditProfileDialogState extends State<_EditProfileDialog> {
   late final TextEditingController _name;
   late final TextEditingController _email;
-  late final TextEditingController _avatarUrl;
+  String? _avatarDataUrl;
+  bool _pickingAvatar = false;
 
   @override
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.user.displayName);
     _email = TextEditingController(text: widget.user.email ?? '');
-    _avatarUrl = TextEditingController(
-      text: widget.user.profile.avatarUrl ?? '',
-    );
+    _avatarDataUrl = widget.user.profile.avatarUrl;
   }
 
   @override
   void dispose() {
     _name.dispose();
     _email.dispose();
-    _avatarUrl.dispose();
     super.dispose();
   }
 
@@ -261,12 +262,50 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               decoration: InputDecoration(labelText: context.l10n.t('email')),
             ),
             const SizedBox(height: AppSpacing.xs),
-            TextField(
-              controller: _avatarUrl,
-              keyboardType: TextInputType.url,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                labelText: context.l10n.t('avatarUrl'),
+            Row(
+              children: [
+                _ProfileAvatar(
+                  displayName: widget.user.displayName,
+                  avatarUrl: _avatarDataUrl,
+                  radius: 28,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: _pickingAvatar ? null : _pickAvatar,
+                        icon: _pickingAvatar
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.upload_rounded),
+                        label: Text(context.l10n.t('avatarUpload')),
+                      ),
+                      if (_avatarDataUrl != null &&
+                          _avatarDataUrl!.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxs),
+                        TextButton.icon(
+                          onPressed: () =>
+                              setState(() => _avatarDataUrl = null),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: Text(context.l10n.t('removeAvatar')),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(
+              context.l10n.t('avatarUploadHint'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -287,9 +326,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 email: _email.text.trim().isEmpty ? null : _email.text.trim(),
                 profile: UserProfileDto(
                   phone: current.phone,
-                  avatarUrl: _avatarUrl.text.trim().isEmpty
-                      ? null
-                      : _avatarUrl.text.trim(),
+                  avatarUrl: _avatarDataUrl,
                   locale: current.locale,
                   timezone: current.timezone,
                   metadata: current.metadata,
@@ -301,6 +338,33 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _pickAvatar() async {
+    setState(() => _pickingAvatar = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      final file = result?.files.single;
+      final bytes = file?.bytes;
+      if (bytes == null || bytes.isEmpty) return;
+      if (bytes.length > 1024 * 1024) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.t('avatarTooLarge'))),
+        );
+        return;
+      }
+      final mime = _avatarMimeType(file?.extension);
+      setState(
+        () => _avatarDataUrl = 'data:$mime;base64,${base64Encode(bytes)}',
+      );
+    } finally {
+      if (mounted) setState(() => _pickingAvatar = false);
+    }
   }
 }
 
@@ -320,15 +384,37 @@ class _ProfileAvatar extends StatelessWidget {
     final initials = _initials(displayName);
     return CircleAvatar(
       radius: radius,
-      backgroundImage: avatarUrl == null || avatarUrl!.isEmpty
-          ? null
-          : NetworkImage(avatarUrl!),
+      backgroundImage: _avatarImageProvider(avatarUrl),
       child: avatarUrl == null || avatarUrl!.isEmpty
           ? Text(initials, style: const TextStyle(fontWeight: FontWeight.w900))
           : null,
     );
   }
 }
+
+ImageProvider<Object>? _avatarImageProvider(String? avatarUrl) {
+  if (avatarUrl == null || avatarUrl.isEmpty) return null;
+  final bytes = _decodeDataUrl(avatarUrl);
+  if (bytes != null) return MemoryImage(bytes);
+  return NetworkImage(avatarUrl);
+}
+
+Uint8List? _decodeDataUrl(String value) {
+  final match = RegExp(r'^data:image/[^;]+;base64,(.+)$').firstMatch(value);
+  if (match == null) return null;
+  try {
+    return base64Decode(match.group(1)!);
+  } catch (_) {
+    return null;
+  }
+}
+
+String _avatarMimeType(String? extension) => switch (extension?.toLowerCase()) {
+  'jpg' || 'jpeg' => 'image/jpeg',
+  'webp' => 'image/webp',
+  'gif' => 'image/gif',
+  _ => 'image/png',
+};
 
 String? _visibleAvatarUrl(UserProfileDto profile) {
   final metadata = profile.metadata;
