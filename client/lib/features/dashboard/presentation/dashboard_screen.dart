@@ -1,4 +1,6 @@
 import 'dart:math' as math;
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,37 +19,76 @@ import '../../../presentation/widgets/app_shell.dart';
 import '../../../presentation/widgets/directional_value_text.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key, this.initialChildId});
+  const DashboardScreen({super.key, this.initialChildId, this.childProgressId});
 
   final String? initialChildId;
+  final String? childProgressId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    return AppShell(
-      selected: AppDestination.dashboard,
-      appBar: AdaptiveAppBar(
-        title: Text(context.l10n.t('dashboard')),
-        primaryAction: IconButton.filledTonal(
-          tooltip: context.l10n.t('dashboard.formsTooltip'),
-          onPressed: () => context.go('/forms'),
-          icon: const Icon(Icons.article_outlined),
-        ),
+    return auth.when(
+      loading: () => const GradientScaffold(
+        body: Center(child: CircularProgressIndicator()),
       ),
-      body: auth.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) =>
-            _DashboardError(onLogin: () => context.go('/login')),
-        data: (session) {
-          if (session == null) {
-            return _DashboardError(onLogin: () => context.go('/login'));
-          }
-          return _ExperienceDashboard(
+      error: (error, stackTrace) => GradientScaffold(
+        body: _DashboardError(onLogin: () => context.go('/login')),
+      ),
+      data: (session) {
+        if (session == null) {
+          return GradientScaffold(
+            body: _DashboardError(onLogin: () => context.go('/login')),
+          );
+        }
+        if (session.user.primaryRole == UserRole.parent) {
+          return GradientScaffold(
+            body: _ExperienceDashboard(
+              key: ValueKey(
+                '${session.user.id}:${childProgressId ?? initialChildId ?? ''}',
+              ),
+              session: session,
+              initialChildId: childProgressId ?? initialChildId,
+              parentProgressMode: childProgressId != null,
+            ),
+          );
+        }
+        return AppShell(
+          selected: AppDestination.dashboard,
+          appBar: AdaptiveAppBar(
+            title: Text(context.l10n.t('dashboard')),
+            primaryAction: IconButton.filledTonal(
+              tooltip: context.l10n.t('dashboard.formsTooltip'),
+              onPressed: () => context.go('/forms'),
+              icon: const Icon(Icons.article_outlined),
+            ),
+          ),
+          body: _ExperienceDashboard(
             key: ValueKey('${session.user.id}:${initialChildId ?? ''}'),
             session: session,
             initialChildId: initialChildId,
-          );
-        },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ParentAppFrame extends StatelessWidget {
+  const _ParentAppFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFFF3F6FA),
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 393),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -57,11 +98,13 @@ class _ExperienceDashboard extends ConsumerStatefulWidget {
   const _ExperienceDashboard({
     required this.session,
     this.initialChildId,
+    this.parentProgressMode = false,
     super.key,
   });
 
   final AuthSession session;
   final String? initialChildId;
+  final bool parentProgressMode;
 
   @override
   ConsumerState<_ExperienceDashboard> createState() =>
@@ -94,6 +137,18 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
         final role = dashboard.role == UserRole.unknown
             ? widget.session.user.primaryRole
             : dashboard.role;
+        if (role == UserRole.parent) {
+          return widget.parentProgressMode
+              ? _ParentStudentProgressDashboard(
+                  dashboard: dashboard,
+                  period: _period,
+                  onPeriodChanged: (value) => setState(() => _period = value),
+                )
+              : _ParentHomeDashboard(
+                  user: widget.session.user,
+                  dashboard: dashboard,
+                );
+        }
         final management = _isManagementRole(role);
         return RefreshIndicator(
           onRefresh: () async =>
@@ -187,6 +242,742 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ParentHomeDashboard extends StatelessWidget {
+  const _ParentHomeDashboard({required this.user, required this.dashboard});
+
+  final UserDetailDto user;
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final surveys = dashboard.latestSurveys
+        .where((survey) => survey.mySubmissionId == null)
+        .take(2)
+        .toList();
+    final selectedChild = dashboard.children.isEmpty
+        ? null
+        : dashboard.children.first;
+    final activities = dashboard.activities.take(2).toList();
+    return _ParentAppFrame(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(32, 42, 32, 42),
+        children: [
+          _ParentHomeHeader(user: user),
+          const SizedBox(height: 26),
+          if (selectedChild != null)
+            _ParentStudentCard(
+              child: selectedChild,
+              onProfileTap: () => context.go('/profile'),
+              onStudentTap: () =>
+                  context.go('/dashboard/children/${selectedChild.id}'),
+            ),
+          const SizedBox(height: 34),
+          _ParentSectionHeader(
+            title: context.l10n.t('dashboard.newSurvey'),
+            actionLabel: context.l10n.t('dashboard.seeAllSurveys'),
+            onAction: () => context.go('/forms'),
+          ),
+          const SizedBox(height: 18),
+          if (surveys.isEmpty)
+            _ParentEmptyCard(message: context.l10n.t('dashboard.noNewSurveys'))
+          else
+            for (final survey in surveys) ...[
+              _ParentSurveyActionCard(survey: survey),
+              const SizedBox(height: 36),
+            ],
+          const SizedBox(height: 6),
+          _ParentSectionHeader(
+            title: context.l10n.t('dashboard.surveyOverview'),
+          ),
+          const SizedBox(height: 18),
+          _ParentSurveyOverview(summary: dashboard.surveySummary),
+          const SizedBox(height: 34),
+          _ParentSectionHeader(
+            title: context.l10n.t('dashboard.latestActivities'),
+          ),
+          const SizedBox(height: 18),
+          if (activities.isEmpty)
+            _ParentEmptyCard(message: context.l10n.t('dashboard.noActivities'))
+          else
+            for (final item in activities) _ParentActivityCard(item: item),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentHomeHeader extends StatelessWidget {
+  const _ParentHomeHeader({required this.user});
+
+  final UserDetailDto user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      textDirection: TextDirection.rtl,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => context.go('/profile'),
+          child: CircleAvatar(
+            radius: 38,
+            backgroundColor: const Color(0xFFFFD8C2),
+            backgroundImage: _dashboardAvatarImageProvider(
+              _visibleDashboardAvatarUrl(user.profile),
+            ),
+            child: _visibleDashboardAvatarUrl(user.profile) == null
+                ? Text(
+                    _initials(user.displayName),
+                    style: const TextStyle(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(width: 22),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                context.l10n.t('dashboard.parentGreeting'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF747A9A),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                user.displayName,
+                textAlign: TextAlign.end,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ParentStudentCard extends StatelessWidget {
+  const _ParentStudentCard({
+    required this.child,
+    required this.onProfileTap,
+    required this.onStudentTap,
+  });
+
+  final ChildProfileDto2 child;
+  final VoidCallback onProfileTap;
+  final VoidCallback onStudentTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParentWhiteCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          TextButton(
+            onPressed: onProfileTap,
+            child: Text(context.l10n.t('dashboard.viewProfile')),
+          ),
+          const Spacer(),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onStudentTap,
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFFE8EEFF),
+                  backgroundImage: _dashboardAvatarImageProvider(
+                    child.avatarUrl,
+                  ),
+                  child: child.avatarUrl == null || child.avatarUrl!.isEmpty
+                      ? Text(
+                          _initials(child.displayName),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      child.displayName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [child.className, child.gradeLabel]
+                          .whereType<String>()
+                          .where((value) => value.trim().isNotEmpty)
+                          .join(' - '),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF747A9A),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentSectionHeader extends StatelessWidget {
+  const _ParentSectionHeader({
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (actionLabel != null)
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+        const Spacer(),
+        Text(
+          title,
+          textAlign: TextAlign.end,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppTheme.ink,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ParentSurveyActionCard extends StatelessWidget {
+  const _ParentSurveyActionCard({required this.survey});
+
+  final SurveyCardDto2 survey;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParentWhiteCard(
+      child: Row(
+        children: [
+          SizedBox(
+            width: 98,
+            height: 42,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF436BFF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () => context.push('/forms/${survey.formId}'),
+              child: Text(context.l10n.t('start')),
+            ),
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                survey.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                survey.dateLabel ??
+                    context.l10n
+                        .t('questionCount')
+                        .replaceAll('{count}', '${survey.questionCount}'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF747A9A),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentSurveyOverview extends StatelessWidget {
+  const _ParentSurveyOverview({required this.summary});
+
+  final SurveyStatusSummaryDto2 summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ParentCountCard(
+            label: context.l10n.t('status.pending'),
+            value: summary.pending + summary.newItems,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ParentCountCard(
+            label: context.l10n.t('status.inProgress'),
+            value: summary.inProgress,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ParentCountCard(
+            label: context.l10n.t('status.completed'),
+            value: summary.completed,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ParentCountCard extends StatelessWidget {
+  const _ParentCountCard({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParentWhiteCard(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      child: Column(
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF747A9A),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$value',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentActivityCard extends StatelessWidget {
+  const _ParentActivityCard({required this.item});
+
+  final ActivityFeedItemDto2 item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _ParentWhiteCard(
+        child: Row(
+          children: [
+            Text(
+              _localizedTimeAgo(context, item),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8C90A9)),
+            ),
+            const Spacer(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  item.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if ((item.subtitle ?? '').isNotEmpty)
+                  Text(
+                    item.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF747A9A),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ParentStudentProgressDashboard extends StatelessWidget {
+  const _ParentStudentProgressDashboard({
+    required this.dashboard,
+    required this.period,
+    required this.onPeriodChanged,
+  });
+
+  final DashboardResponseDto2 dashboard;
+  final String period;
+  final ValueChanged<String> onPeriodChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = dashboard.children.firstWhere(
+      (item) => item.id == dashboard.selectedChildId,
+      orElse: () => dashboard.children.isEmpty
+          ? const ChildProfileDto2(id: '', displayName: '')
+          : dashboard.children.first,
+    );
+    return _ParentAppFrame(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(32, 34, 32, 42),
+        children: [
+          Row(
+            children: [
+              IconButton.filled(
+                onPressed: () => context.go('/dashboard'),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppTheme.ink,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              const Spacer(),
+              _ParentPeriodPill(value: period, onChanged: onPeriodChanged),
+              const SizedBox(width: 18),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  context.l10n
+                      .t('dashboard.studentProgressTitle')
+                      .replaceAll('{name}', child.displayName),
+                  textAlign: TextAlign.end,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: const Color(0xFF696D91),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          _ParentWhiteCard(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.t('dashboard.activityParticipation'),
+                  textAlign: TextAlign.end,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 190,
+                  child: _DashboardLineChart(
+                    chart: dashboard.charts.isNotEmpty
+                        ? dashboard.charts.first
+                        : null,
+                    prominent: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          _ParentMetricGrid(metrics: dashboard.metrics),
+          const SizedBox(height: 32),
+          _ParentSectionHeader(
+            title: context.l10n.t('dashboard.latestSurveys'),
+          ),
+          const SizedBox(height: 18),
+          for (final survey in dashboard.latestSurveys.take(3)) ...[
+            _ParentSurveyResultCard(survey: survey),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentMetricGrid extends StatelessWidget {
+  const _ParentMetricGrid({required this.metrics});
+
+  final List<DashboardMetricValueDto2> metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = metrics.take(4).toList();
+    if (visible.isEmpty) {
+      return _ParentEmptyCard(message: context.l10n.t('dashboard.noMetrics'));
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 22) / 2;
+        return Wrap(
+          spacing: 22,
+          runSpacing: 22,
+          children: [
+            for (final metric in visible)
+              SizedBox(
+                width: width,
+                height: 124,
+                child: _ParentMetricCard(metric: metric),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ParentMetricCard extends StatelessWidget {
+  const _ParentMetricCard({required this.metric});
+
+  final DashboardMetricValueDto2 metric;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = metric.status ?? _statusFor(metric.value, metric.scaleMax);
+    final color = _statusColor(status);
+    return _ParentWhiteCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            metric.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            metric.displayValue,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const Spacer(),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _statusLabel(context, status),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentSurveyResultCard extends StatelessWidget {
+  const _ParentSurveyResultCard({required this.survey});
+
+  final SurveyCardDto2 survey;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParentWhiteCard(
+      child: Row(
+        children: [
+          Text(
+            survey.mySubmissionId == null
+                ? context.l10n.t('start')
+                : survey.progress.toStringAsFixed(0),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 4),
+          if (survey.mySubmissionId != null)
+            Text(
+              context.l10n.t('dashboard.responses'),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF747A9A)),
+            ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                survey.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                survey.dateLabel ?? '',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF747A9A),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentPeriodPill extends StatelessWidget {
+  const _ParentPeriodPill({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          icon: const Icon(Icons.expand_more_rounded, size: 18),
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: const Color(0xFF747A9A),
+            fontWeight: FontWeight.w800,
+          ),
+          items: [
+            DropdownMenuItem(
+              value: 'this_month',
+              child: Text(context.l10n.t('period.this_month')),
+            ),
+            DropdownMenuItem(
+              value: 'last_month',
+              child: Text(context.l10n.t('period.last_month')),
+            ),
+            DropdownMenuItem(
+              value: 'last_3_months',
+              child: Text(context.l10n.t('period.last_3_months')),
+            ),
+            DropdownMenuItem(
+              value: 'this_year',
+              child: Text(context.l10n.t('period.this_year')),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ParentWhiteCard extends StatelessWidget {
+  const _ParentWhiteCard({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: 0.035),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ParentEmptyCard extends StatelessWidget {
+  const _ParentEmptyCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParentWhiteCard(
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: const Color(0xFF747A9A),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -1656,54 +2447,6 @@ class _ManagementConfigurationRow extends ConsumerWidget {
     final segments = ref.watch(audienceSegmentsProvider);
     return _ResponsiveTwoColumn(
       left: _MetricManagementPanel(metrics: metrics),
-      /*
-      _SoftPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.insights_rounded, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                _SectionTitle(
-                  title: context.l10n.t('dashboard.dynamicMetrics'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            metrics.when(
-              loading: () => const SizedBox(
-                height: 80,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, _) =>
-                  Text(FriendlyApiErrorMessage.from(error, context: context)),
-              data: (value) => _ManagementList(
-                empty: context.l10n.t('dashboard.noMetricsDefined'),
-                items: [
-                  for (final metric
-                      in value.data ?? const <MetricDefinitionDto2>[])
-                    _ManagementListItem(
-                      title: metric.title,
-                      subtitle: '${metric.key} · ${metric.metricType}',
-                      trailing: context.l10n
-                          .t('dashboard.mappingCount')
-                          .replaceAll('{count}', '${metric.mappingCount}'),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              context.l10n.t('dashboard.metricListHint'),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-      */
       right: _SoftPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4032,4 +4775,28 @@ String _initials(String name) {
   final first = parts.first.characters.first;
   final second = parts.length > 1 ? parts.last.characters.first : '';
   return (first + second).toUpperCase();
+}
+
+String? _visibleDashboardAvatarUrl(UserProfileDto profile) {
+  final metadata = profile.metadata;
+  if (metadata is Map && metadata['avatar_banned'] == true) return null;
+  final avatar = profile.avatarUrl;
+  return avatar == null || avatar.isEmpty ? null : avatar;
+}
+
+ImageProvider<Object>? _dashboardAvatarImageProvider(String? avatarUrl) {
+  if (avatarUrl == null || avatarUrl.isEmpty) return null;
+  final bytes = _decodeDashboardDataUrl(avatarUrl);
+  if (bytes != null) return MemoryImage(bytes);
+  return NetworkImage(avatarUrl);
+}
+
+Uint8List? _decodeDashboardDataUrl(String value) {
+  final match = RegExp(r'^data:image/[^;]+;base64,(.+)$').firstMatch(value);
+  if (match == null) return null;
+  try {
+    return base64Decode(match.group(1)!);
+  } catch (_) {
+    return null;
+  }
 }

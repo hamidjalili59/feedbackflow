@@ -53,6 +53,11 @@ Raw<GoRouter> router(Ref ref) {
         ),
       ),
       GoRoute(
+        path: '/dashboard/children/:id',
+        builder: (context, state) =>
+            DashboardScreen(childProgressId: state.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/forms',
         builder: (context, state) => const FormsListScreen(),
       ),
