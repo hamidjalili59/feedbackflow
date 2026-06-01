@@ -831,27 +831,31 @@ class _EditableFieldTile extends ConsumerWidget {
           subtitle: Text(
             '${context.l10n.fieldType(field.type.toJson())}${field.isRequired ? ' • ${context.l10n.t('required')}' : ''}',
           ),
-          trailing: Wrap(
-            spacing: 4,
-            children: [
-              IconButton(
-                tooltip: context.l10n.t('editField'),
-                icon: const Icon(Icons.edit_rounded),
-                onPressed: () => _editField(context, ref),
-              ),
-              IconButton(
-                tooltip: context.l10n.t('deleteField'),
-                icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: () => _deleteField(context, ref),
-              ),
-              ReorderableDragStartListener(
-                index: index,
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Icon(Icons.drag_handle_rounded),
+          trailing: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 4,
+              children: [
+                IconButton(
+                  tooltip: context.l10n.t('editField'),
+                  icon: const Icon(Icons.edit_rounded),
+                  onPressed: () => _editField(context, ref),
                 ),
-              ),
-            ],
+                IconButton(
+                  tooltip: context.l10n.t('deleteField'),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  onPressed: () => _deleteField(context, ref),
+                ),
+                const SizedBox(width: 24),
+                // ReorderableDragStartListener(
+                //   index: index,
+                //   child: const Padding(
+                //     padding: EdgeInsets.all(12),
+                //     child: Icon(Icons.drag_handle_rounded),
+                //   ),
+                // ),
+              ],
+            ),
           ),
         ),
       ),

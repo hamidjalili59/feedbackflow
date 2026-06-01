@@ -44,17 +44,20 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
       appBar: AdaptiveAppBar(
         title: Text(context.l10n.t('forms')),
         primaryAction: canCreate
-            ? compact
-                  ? IconButton.filledTonal(
-                      tooltip: context.l10n.t('newForm'),
-                      onPressed: () => context.push('/forms/new'),
-                      icon: const Icon(Icons.add_rounded),
-                    )
-                  : FilledButton.icon(
-                      onPressed: () => context.push('/forms/new'),
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(context.l10n.t('newForm')),
-                    )
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4,bottom: 4),
+                child: compact
+                    ? IconButton.filledTonal(
+                        tooltip: context.l10n.t('newForm'),
+                        onPressed: () => context.push('/forms/new'),
+                        icon: const Icon(Icons.add_rounded),
+                      )
+                    : FilledButton.icon(
+                        onPressed: () => context.push('/forms/new'),
+                        icon: const Icon(Icons.add_rounded),
+                        label: Text(context.l10n.t('newForm')),
+                      ),
+              )
             : null,
       ),
       floatingActionButton: compact && canCreate
