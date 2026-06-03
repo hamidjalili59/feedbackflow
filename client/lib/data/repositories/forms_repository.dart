@@ -12,6 +12,7 @@ abstract class FormsRepository {
     String? filters,
     String? category,
     String? tags,
+    String? status,
   });
   Future<List<String>> listFormTags({String? search});
   Future<FormDetailDto> createForm({required CreateFormRequest request});
@@ -80,6 +81,7 @@ class DioFormsRepository implements FormsRepository {
     String? filters,
     String? category,
     String? tags,
+    String? status,
   }) async {
     return EnvelopeGuard.list(
       await _api.listForms(
@@ -91,6 +93,7 @@ class DioFormsRepository implements FormsRepository {
         filters: filters,
         category: category,
         tags: tags,
+        status: status,
       ),
     );
   }

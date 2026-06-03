@@ -106,6 +106,8 @@ pub struct ListQuery {
     pub filters: Option<String>,
     pub category: Option<String>,
     pub tags: Option<String>,
+    /// Optional direct status filter for screens such as pending approval.
+    pub status: Option<String>,
 }
 
 impl ListQuery {

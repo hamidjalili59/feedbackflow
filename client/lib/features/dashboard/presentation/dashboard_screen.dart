@@ -2031,14 +2031,39 @@ class _MetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
-            metric.displayValue,
-            textAlign: TextAlign.start,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: AppTheme.ink,
+            _metricSubtitle(context, metric),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  metric.displayValue,
+                  textAlign: TextAlign.start,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.ink,
+                  ),
+                ),
+              ),
+              Text(
+                metric.key,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
           if (status != null && statusColor != null) ...[
             const SizedBox(height: 10),
@@ -3291,6 +3316,32 @@ class _SoftPanel extends StatelessWidget {
   }
 }
 
+String _metricSubtitle(BuildContext context, DashboardMetricValueDto2 metric) {
+  final description = metric.display['description']?.toString().trim();
+  if (description != null && description.isNotEmpty) return description;
+  final source = _friendlyMetricSource(context, metric);
+  return source.isEmpty
+      ? context.l10n.t('dashboard.metricDefaultDescription')
+      : source;
+}
+
+String _friendlyMetricSource(
+  BuildContext context,
+  DashboardMetricValueDto2 metric,
+) {
+  final raw = metric.display['source']?.toString().trim();
+  if (raw == null ||
+      raw.isEmpty ||
+      raw == 'metric_definitions + metric_mappings') {
+    return context.l10n.t('metric.source.dynamicMappings');
+  }
+  if (raw == 'submission_count')
+    return context.l10n.t('metric.source.submissionCount');
+  if (raw == 'field_answer')
+    return context.l10n.t('metric.source.fieldAnswers');
+  return raw;
+}
+
 class _MetricMenuDot extends StatelessWidget {
   const _MetricMenuDot({required this.metric});
 
@@ -3331,7 +3382,6 @@ class _MetricMenuDot extends StatelessWidget {
 
 void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
   final display = metric.display;
-  final source = display['source']?.toString();
   final description = display['description']?.toString();
   final unit = metric.unit ?? display['unit']?.toString();
   showModalBottomSheet<void>(
@@ -3381,9 +3431,7 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
               ),
               _MetricInfoRow(
                 label: context.l10n.t('metric.source'),
-                value: source?.isNotEmpty == true
-                    ? source!
-                    : 'metric_definitions + metric_mappings',
+                value: _friendlyMetricSource(context, metric),
               ),
             ],
           ),
@@ -5462,33 +5510,53 @@ class _FamilyLinkTile extends StatelessWidget {
   }
 }
 
-class _PendingApprovalCard extends ConsumerWidget {
+class _PendingApprovalCard extends ConsumerStatefulWidget {
   const _PendingApprovalCard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final future = ref
-        .watch(formsRepositoryProvider)
+  ConsumerState<_PendingApprovalCard> createState() =>
+      _PendingApprovalCardState();
+}
+
+class _PendingApprovalCardState extends ConsumerState<_PendingApprovalCard> {
+  late Future<ListResponse<FormSummaryDto>> _future = _load();
+  bool _busy = false;
+
+  Future<ListResponse<FormSummaryDto>> _load() {
+    return ref
+        .read(formsRepositoryProvider)
         .listForms(
           page: 1,
-          pageSize: 50,
+          pageSize: 100,
           sortBy: 'updated_at',
           sortOrder: SortOrder.desc,
+          status: FormStatus.pendingReview.toJson(),
         );
+  }
+
+  void _refresh() {
+    setState(() => _future = _load());
+    ref.invalidate(dashboardExperienceProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SoftCard(
       child: FutureBuilder<ListResponse<FormSummaryDto>>(
-        future: future,
+        future: _future,
         builder: (context, snapshot) {
-          final allForms = snapshot.data?.data ?? const <FormSummaryDto>[];
-          final pending = allForms
-              .where((f) => f.status == FormStatus.pendingReview)
-              .toList();
+          final pending = snapshot.data?.data ?? const <FormSummaryDto>[];
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _CardHeader(
                 icon: Icons.pending_actions_rounded,
                 title: context.l10n.t('pendingApprovalForms'),
+                action: IconButton.filledTonal(
+                  tooltip: context.l10n.t('refresh'),
+                  onPressed: _busy ? null : _refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               if (snapshot.connectionState == ConnectionState.waiting)
@@ -5496,6 +5564,19 @@ class _PendingApprovalCard extends ConsumerWidget {
                   child: Padding(
                     padding: EdgeInsets.all(AppSpacing.md),
                     child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (snapshot.hasError)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Text(
+                    FriendlyApiErrorMessage.from(
+                      snapshot.error!,
+                      context: context,
+                    ),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 )
               else if (pending.isEmpty)
@@ -5509,7 +5590,7 @@ class _PendingApprovalCard extends ConsumerWidget {
                   ),
                 )
               else
-                for (final form in pending)
+                for (final form in pending) ...[
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.hourglass_top_rounded),
@@ -5524,19 +5605,60 @@ class _PendingApprovalCard extends ConsumerWidget {
                       spacing: 4,
                       children: [
                         FilledButton.tonal(
-                          onPressed: () =>
-                              context.go('/forms/${form.id}/publish'),
+                          onPressed: _busy ? null : () => _approve(form),
                           child: Text(context.l10n.t('approve')),
+                        ),
+                        IconButton(
+                          tooltip: context.l10n.t('settings'),
+                          onPressed: _busy
+                              ? null
+                              : () => context.go('/forms/${form.id}/publish'),
+                          icon: const Icon(Icons.tune_rounded),
                         ),
                       ],
                     ),
                     onTap: () => context.go('/forms/${form.id}'),
                   ),
+                  if (form != pending.last) const Divider(height: 8),
+                ],
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _approve(FormSummaryDto form) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(formsRepositoryProvider)
+          .approveForm(
+            id: form.id,
+            request: const ApproveFormRequest(publishAfterApproval: false),
+          );
+      ref.invalidate(formsControllerProvider);
+      ref.invalidate(dashboardExperienceProvider);
+      _refresh();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('settingsSaved'))),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 
@@ -5682,7 +5804,7 @@ class _CardHeader extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
-        ?action,
+        if (action != null) action!,
       ],
     );
   }

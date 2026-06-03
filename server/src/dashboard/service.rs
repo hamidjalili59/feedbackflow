@@ -54,6 +54,10 @@ pub async fn dashboard_me(
         vec![]
     };
     let selected_child_id = selected_child_id_for_parent(auth, q.child_id, &children)?;
+    let management = matches!(
+        auth.role,
+        UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
+    );
     let latest_surveys = my_surveys(
         state,
         auth,
@@ -65,7 +69,11 @@ pub async fn dashboard_me(
         },
     )
     .await?;
-    let survey_summary = summarize_surveys(&latest_surveys);
+    let survey_summary = if management {
+        management_survey_summary(state, auth).await?
+    } else {
+        summarize_surveys(&latest_surveys)
+    };
     let selected_child_auth = child_auth_for_query(state, auth, selected_child_id).await?;
     let respondent_scope = selected_child_auth
         .as_ref()
@@ -98,11 +106,12 @@ pub async fn dashboard_me(
         )
         .await?,
     ];
-    let activities = activity_feed(state, auth, 10).await?;
-    let rankings = if matches!(
-        auth.role,
-        UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
-    ) {
+    let activities = if management {
+        attention_and_activity_feed(state, auth, &metrics, &period, 10).await?
+    } else {
+        activity_feed(state, auth, 10).await?
+    };
+    let rankings = if management {
         vec![
             rankings(
                 state,
@@ -1084,6 +1093,125 @@ async fn activity_feed(
             })
         })
         .collect()
+}
+
+
+async fn attention_and_activity_feed(
+    state: &AppState,
+    auth: &AuthUser,
+    metrics: &[DashboardMetricValueDto],
+    period: &str,
+    limit: i64,
+) -> Result<Vec<ActivityFeedItemDto>, AppError> {
+    let org_id = auth
+        .organization_id
+        .ok_or_else(|| AppError::forbidden("Attention items require an organization"))?;
+    let limit = limit.clamp(1, 50) as usize;
+    let now = Utc::now();
+    let mut items = Vec::new();
+
+    let pending_approvals: i64 = sqlx::query_scalar(
+        "select count(*) from forms where organization_id=$1 and deleted_at is null and status='pending_review'",
+    )
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+    if pending_approvals > 0 {
+        items.push(ActivityFeedItemDto {
+            id: Uuid::new_v4(),
+            activity_type: "approval_attention".to_owned(),
+            title: format!("{} فرم در انتظار تأیید", pending_approvals),
+            subtitle: Some("برای تأیید یا رد کردن، بخش فرم‌های در انتظار تأیید را باز کنید.".to_owned()),
+            status: "warning".to_owned(),
+            time_ago: Some("اکنون".to_owned()),
+            created_at: now,
+            target_url: Some("/dashboard".to_owned()),
+            icon: Some("pending_actions".to_owned()),
+            metadata: json!({"count": pending_approvals, "period": period}),
+        });
+    }
+
+    for metric in metrics {
+        if items.len() >= limit {
+            break;
+        }
+        let raw_status = metric.status.as_deref().unwrap_or_default();
+        let attention_status = if matches!(raw_status, "danger" | "warning" | "bad") {
+            raw_status.to_owned()
+        } else if raw_status.is_empty() && metric.value.map(|value| value < 50.0).unwrap_or(false) {
+            "warning".to_owned()
+        } else {
+            continue;
+        };
+        let value = metric
+            .label
+            .clone()
+            .or_else(|| metric.value.map(|value| format!("{:.1}", value)))
+            .unwrap_or_else(|| "-".to_owned());
+        items.push(ActivityFeedItemDto {
+            id: Uuid::new_v4(),
+            activity_type: "metric_attention".to_owned(),
+            title: format!("{} نیازمند توجه", metric.title),
+            subtitle: Some(format!("مقدار فعلی: {}", value)),
+            status: attention_status,
+            time_ago: Some("اکنون".to_owned()),
+            created_at: now,
+            target_url: None,
+            icon: Some("insights".to_owned()),
+            metadata: json!({
+                "metric_key": metric.key.clone(),
+                "metric_id": metric.metric_id,
+                "value": metric.value,
+                "display": metric.display.clone(),
+                "period": period,
+            }),
+        });
+    }
+
+    if items.len() < limit {
+        let remaining = (limit - items.len()) as i64;
+        items.extend(activity_feed(state, auth, remaining).await?);
+    }
+    Ok(items)
+}
+
+async fn management_survey_summary(
+    state: &AppState,
+    auth: &AuthUser,
+) -> Result<SurveyStatusSummaryDto, AppError> {
+    let org_id = auth
+        .organization_id
+        .ok_or_else(|| AppError::forbidden("Dashboard summary requires an organization"))?;
+    let completed: i64 = sqlx::query_scalar(
+        "select count(*) from form_submissions s \
+         join forms f on f.id=s.form_id \
+         where f.organization_id=$1 and f.deleted_at is null and s.deleted_at is null",
+    )
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+    let pending_review: i64 = sqlx::query_scalar(
+        "select count(*) from forms where organization_id=$1 and deleted_at is null and status='pending_review'",
+    )
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+    let active_forms: i64 = sqlx::query_scalar(
+        "select count(*) from forms where organization_id=$1 and deleted_at is null and status in ('published','scheduled')",
+    )
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+    Ok(SurveyStatusSummaryDto {
+        completed,
+        in_progress: pending_review,
+        pending: active_forms,
+        new_items: pending_review,
+    })
 }
 
 async fn role_distribution(

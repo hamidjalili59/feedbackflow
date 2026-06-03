@@ -802,6 +802,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.unit': 'واحد',
     'metric.status': 'وضعیت',
     'metric.source': 'منبع',
+    'metric.source.dynamicMappings':
+        'محاسبه‌شده از پاسخ‌ها و نگاشت‌های شاخص در سرور',
+    'metric.source.submissionCount': 'تعداد کل پاسخ‌های ثبت‌شده',
+    'metric.source.fieldAnswers': 'محاسبه‌شده از پاسخ فیلدهای فرم',
     'metric.chartTitle': 'نمودار {title}',
     'metric.chartDescription':
         'این نمودار از /api/v1/analytics/timeseries با metric={key} خوانده می‌شود.',
@@ -866,6 +870,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.openPublicLink': 'باز کردن لینک عمومی',
     'form.manageForm': 'مدیریت فرم',
     'form.assignmentsTitle': 'تخصیص فرم',
+    'form.assignmentDialogTitle': 'تنظیم تخصیص فرم',
+    'form.assignmentDialogHintTitle': 'تخصیص تمیزتر',
+    'form.assignmentDialogHint':
+        'نوع مخاطب، هدف و دسترسی‌ها را اینجا تنظیم کنید؛ در لیست فقط کارت خلاصه نمایش داده می‌شود.',
     'form.assignmentsDescription':
         'لیست مخاطب‌هایی که از سرور برای مشاهده یا پاسخ‌دادن به این فرم تعریف شده‌اند.',
     'form.assignmentModelTitle': 'مدل جدید تخصیص',
@@ -1600,6 +1608,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.unit': 'Unit',
     'metric.status': 'Status',
     'metric.source': 'Source',
+    'metric.source.dynamicMappings':
+        'Calculated from server metric mappings and responses',
+    'metric.source.submissionCount': 'Total submitted responses',
+    'metric.source.fieldAnswers': 'Calculated from form field answers',
     'metric.chartTitle': '{title} chart',
     'metric.chartDescription':
         'This chart is loaded from /api/v1/analytics/timeseries with metric={key}.',
@@ -1665,6 +1677,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.openPublicLink': 'Open public link',
     'form.manageForm': 'Manage form',
     'form.assignmentsTitle': 'Form assignments',
+    'form.assignmentDialogTitle': 'Configure form assignment',
+    'form.assignmentDialogHintTitle': 'Cleaner assignment setup',
+    'form.assignmentDialogHint':
+        'Set the audience type, target and permissions here; the list only shows summary tiles.',
     'form.assignmentsDescription':
         'Audience entries defined on the server for viewing or answering this form.',
     'form.assignmentModelTitle': 'New assignment model',
@@ -2346,6 +2362,9 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.unit': '单位',
     'metric.status': '状态',
     'metric.source': '来源',
+    'metric.source.dynamicMappings': '根据服务器指标映射和回答计算',
+    'metric.source.submissionCount': '已提交回答总数',
+    'metric.source.fieldAnswers': '根据表单字段回答计算',
     'metric.chartTitle': '{title}图表',
     'metric.chartDescription':
         '该图表通过 /api/v1/analytics/timeseries 加载，metric={key}。',
@@ -2405,6 +2424,9 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.openPublicLink': '打开公开链接',
     'form.manageForm': '管理表单',
     'form.assignmentsTitle': '表单分配',
+    'form.assignmentDialogTitle': '配置表单分配',
+    'form.assignmentDialogHintTitle': '更清晰的分配设置',
+    'form.assignmentDialogHint': '在这里设置受众类型、目标和权限；列表只显示摘要卡片。',
     'form.assignmentsDescription': '服务器上定义的可查看或回答此表单的受众列表。',
     'form.assignmentModelTitle': '新的分配模型',
     'form.assignmentModelDescription':

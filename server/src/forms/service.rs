@@ -76,23 +76,42 @@ pub async fn list_forms(
     let category = q.category.clone().unwrap_or_default();
     let tags = parse_tag_filter(q.tags.as_deref());
     let tags_empty = tags.is_empty();
+    let requested_status = q
+        .status
+        .as_deref()
+        .or_else(|| status_from_filters(q.filters.as_deref()))
+        .unwrap_or_default()
+        .trim()
+        .to_owned();
+    if !requested_status.is_empty()
+        && enum_from_str::<FormStatus>(&requested_status).is_err()
+    {
+        return Err(AppError::validation("Invalid form status filter", json!({"status": requested_status})));
+    }
     let order_by = form_sort_column(q.sort_by.as_deref());
     let direction = match q.sort_order.unwrap_or(SortOrder::Desc) {
         SortOrder::Asc => "asc",
         SortOrder::Desc => "desc",
     };
-    // Non-management roles only see published forms (+ their own drafts).
     let restrict_non_management = !matches!(
         auth.role,
         UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
     );
-    let status_filter = if restrict_non_management {
-        " and (f.status='published' or f.creator_id=$9)"
-    } else {
-        "" // see all statuses
-    };
+
     let rows = if matches!(auth.role, UserRole::Ceo | UserRole::SuperAdmin) && org_id.is_none() {
-        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$7 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id from forms f where f.deleted_at is null and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) and ($2='' or lower(coalesce(f.category,''))=lower($2)) and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) order by {order_by} {direction}, f.id asc limit $5 offset $6");
+        let sql = format!(
+            "select f.*, \
+                    (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, \
+                    (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, \
+                    (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$7 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id \
+             from forms f \
+             where f.deleted_at is null \
+               and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) \
+               and ($2='' or lower(coalesce(f.category,''))=lower($2)) \
+               and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) \
+               and ($8='' or f.status=$8) \
+             order by {order_by} {direction}, f.id asc limit $5 offset $6"
+        );
         sqlx::query(&sql)
             .bind(&search)
             .bind(&category)
@@ -101,11 +120,25 @@ pub async fn list_forms(
             .bind(q.limit())
             .bind(q.offset())
             .bind(auth.user_id)
+            .bind(&requested_status)
             .fetch_all(&state.db)
             .await?
     } else {
-        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$8 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))){status_filter} order by {order_by} {direction}, f.id asc limit $6 offset $7");
-        let mut query = sqlx::query(&sql)
+        let sql = format!(
+            "select f.*, \
+                    (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, \
+                    (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, \
+                    (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$8 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id \
+             from forms f \
+             where f.deleted_at is null and f.organization_id=$1 \
+               and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) \
+               and ($3='' or lower(coalesce(f.category,''))=lower($3)) \
+               and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))) \
+               and ($9=false or f.status='published' or f.creator_id=$8) \
+               and ($10='' or f.status=$10) \
+             order by {order_by} {direction}, f.id asc limit $6 offset $7"
+        );
+        sqlx::query(&sql)
             .bind(org_id)
             .bind(&search)
             .bind(&category)
@@ -113,17 +146,53 @@ pub async fn list_forms(
             .bind(&tags)
             .bind(q.limit())
             .bind(q.offset())
-            .bind(auth.user_id);
-        if restrict_non_management {
-            query = query.bind(auth.user_id);
-        }
-        query.fetch_all(&state.db).await?
+            .bind(auth.user_id)
+            .bind(restrict_non_management)
+            .bind(&requested_status)
+            .fetch_all(&state.db)
+            .await?
     };
+
     let total: i64 = if let Some(org_id) = org_id {
-        sqlx::query_scalar("select count(*) from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5)))").bind(org_id).bind(&search).bind(&category).bind(tags_empty).bind(&tags).fetch_one(&state.db).await.unwrap_or(0)
+        sqlx::query_scalar(
+            "select count(*) from forms f \
+             where f.deleted_at is null and f.organization_id=$1 \
+               and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) \
+               and ($3='' or lower(coalesce(f.category,''))=lower($3)) \
+               and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))) \
+               and ($6='' or f.status=$6) \
+               and ($7=false or f.status='published' or f.creator_id=$8)",
+        )
+        .bind(org_id)
+        .bind(&search)
+        .bind(&category)
+        .bind(tags_empty)
+        .bind(&tags)
+        .bind(&requested_status)
+        .bind(restrict_non_management)
+        .bind(auth.user_id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0)
     } else {
-        sqlx::query_scalar("select count(*) from forms f where f.deleted_at is null and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) and ($2='' or lower(coalesce(f.category,''))=lower($2)) and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4)))").bind(&search).bind(&category).bind(tags_empty).bind(&tags).fetch_one(&state.db).await.unwrap_or(0)
+        sqlx::query_scalar(
+            "select count(*) from forms f \
+             where f.deleted_at is null \
+               and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) \
+               and ($2='' or lower(coalesce(f.category,''))=lower($2)) \
+               and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) \
+               and ($5='' or f.status=$5)",
+        )
+        .bind(&search)
+        .bind(&category)
+        .bind(tags_empty)
+        .bind(&tags)
+        .bind(&requested_status)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0)
     };
+
     let mut data = vec![];
     for row in rows {
         if !row_visible_to_user(state, auth, &row).await? {
@@ -132,6 +201,20 @@ pub async fn list_forms(
         data.push(row_to_form_summary(&row)?);
     }
     Ok((data, PaginationMeta::new(q.page, q.limit(), total)))
+}
+
+fn status_from_filters(filters: Option<&str>) -> Option<&str> {
+    let filters = filters?;
+    for part in filters.split(&[',', '&', ';'][..]) {
+        let trimmed = part.trim();
+        if let Some(value) = trimmed.strip_prefix("status=") {
+            return Some(value.trim());
+        }
+        if let Some(value) = trimmed.strip_prefix("status:") {
+            return Some(value.trim());
+        }
+    }
+    None
 }
 
 pub async fn get_form(

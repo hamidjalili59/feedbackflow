@@ -299,6 +299,7 @@ class FeedbackFlowApiClient {
     String? filters,
     String? category,
     String? tags,
+    String? status,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/forms',
@@ -311,6 +312,7 @@ class FeedbackFlowApiClient {
         'filters': filters,
         'category': category,
         'tags': tags,
+        'status': status,
       }),
     );
     return _parseListResponse<FormSummaryDto>(

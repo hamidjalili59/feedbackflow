@@ -357,7 +357,11 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
         ref.invalidate(submissionDetailProvider(editSubmission.id));
       }
       ref.invalidate(formAnswerAccessProvider(widget.form.id));
+      ref.invalidate(formDetailProvider(widget.form.id));
       ref.invalidate(formsControllerProvider);
+      ref.invalidate(dashboardExperienceProvider);
+      ref.invalidate(mySurveysProvider);
+      ref.invalidate(surveyCalendarProvider);
       if (mounted) {
         setState(() {
           _submittedSubmission = savedSubmission;
@@ -1753,11 +1757,9 @@ class _AssignmentsSectionState extends ConsumerState<_AssignmentsSection> {
                 children: [
                   if (canManage)
                     for (var i = 0; i < _drafts.length; i++) ...[
-                      _AssignmentEditorCard(
-                        key: ValueKey(_drafts[i].id),
+                      _AssignmentDraftTile(
                         draft: _drafts[i],
-                        onChanged: (draft) =>
-                            setState(() => _drafts[i] = draft),
+                        onEdit: () => _openAssignmentDialog(index: i),
                         onDelete: () => setState(() => _drafts.removeAt(i)),
                       ),
                       if (i != _drafts.length - 1) AppSpacing.gapSm,
@@ -1796,18 +1798,34 @@ class _AssignmentsSectionState extends ConsumerState<_AssignmentsSection> {
       ..addAll(assignments.map(_AssignmentDraft.fromDto));
   }
 
-  void _addDraft() {
-    setState(() {
-      _drafts.add(
-        _AssignmentDraft(
-          id: 'new-${DateTime.now().microsecondsSinceEpoch}',
-          audienceType: 'role',
-          audienceRole: UserRole.teacher,
-          canSee: true,
-          canAnswer: true,
-        ),
-      );
-    });
+  Future<void> _addDraft() async {
+    final draft = _AssignmentDraft(
+      id: 'new-${DateTime.now().microsecondsSinceEpoch}',
+      audienceType: 'role',
+      audienceRole: UserRole.teacher,
+      canSee: true,
+      canAnswer: true,
+    );
+    final result = await _openAssignmentDialog(initial: draft);
+    if (result != null && mounted) {
+      setState(() => _drafts.add(result));
+    }
+  }
+
+  Future<_AssignmentDraft?> _openAssignmentDialog({
+    int? index,
+    _AssignmentDraft? initial,
+  }) async {
+    final source = initial ?? (index == null ? null : _drafts[index]);
+    if (source == null) return null;
+    final result = await showDialog<_AssignmentDraft>(
+      context: context,
+      builder: (context) => _AssignmentEditorDialog(initial: source),
+    );
+    if (result != null && index != null && mounted) {
+      setState(() => _drafts[index] = result);
+    }
+    return result;
   }
 
   Future<void> _save() async {
@@ -1828,6 +1846,8 @@ class _AssignmentsSectionState extends ConsumerState<_AssignmentsSection> {
             ),
           );
       ref.invalidate(formAssignmentsProvider(widget.form.id));
+      ref.invalidate(dashboardExperienceProvider);
+      ref.invalidate(formsControllerProvider);
       if (!mounted) return;
       setState(() {
         _loadedSignature = null;
@@ -1975,17 +1995,252 @@ class _AssignmentDraft {
   }
 }
 
+class _AssignmentDraftTile extends StatelessWidget {
+  const _AssignmentDraftTile({
+    required this.draft,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final _AssignmentDraft draft;
+  final VoidCallback onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.56),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              _assignmentDraftIcon(draft),
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _assignmentDraftTitle(context, draft),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _assignmentDraftSubtitle(context, draft),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _TinyStatusChip(
+                      label: context.l10n.t('form.canView'),
+                      active: draft.canSee,
+                      icon: draft.canSee
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                    ),
+                    _TinyStatusChip(
+                      label: context.l10n.t('form.canRespond'),
+                      active: draft.canAnswer,
+                      icon: draft.canAnswer
+                          ? Icons.edit_rounded
+                          : Icons.block_rounded,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Wrap(
+            spacing: 4,
+            children: [
+              IconButton.filledTonal(
+                tooltip: context.l10n.t('edit'),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_rounded),
+              ),
+              IconButton(
+                tooltip: context.l10n.t('delete'),
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssignmentEditorDialog extends StatefulWidget {
+  const _AssignmentEditorDialog({required this.initial});
+
+  final _AssignmentDraft initial;
+
+  @override
+  State<_AssignmentEditorDialog> createState() =>
+      _AssignmentEditorDialogState();
+}
+
+class _AssignmentEditorDialogState extends State<_AssignmentEditorDialog> {
+  late _AssignmentDraft _draft = widget.initial;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(
+      context,
+    ).width.clamp(320.0, 680.0).toDouble();
+    return AlertDialog(
+      clipBehavior: Clip.antiAlias,
+      title: Row(
+        children: [
+          const Icon(Icons.group_add_rounded),
+          const SizedBox(width: 10),
+          Expanded(child: Text(context.l10n.t('form.assignmentDialogTitle'))),
+        ],
+      ),
+      content: SizedBox(
+        width: width,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _InlineNotice(
+                icon: Icons.info_outline_rounded,
+                title: context.l10n.t('form.assignmentDialogHintTitle'),
+                message: context.l10n.t('form.assignmentDialogHint'),
+              ),
+              AppSpacing.gapMd,
+              _AssignmentEditorCard(
+                draft: _draft,
+                onChanged: (draft) => setState(() => _draft = draft),
+                showDelete: false,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(context, _draft),
+          icon: const Icon(Icons.check_rounded),
+          label: Text(context.l10n.t('save')),
+        ),
+      ],
+    );
+  }
+}
+
+IconData _assignmentDraftIcon(_AssignmentDraft draft) {
+  return switch (draft.audienceType) {
+    'user' => Icons.person_rounded,
+    'role' => Icons.badge_rounded,
+    'group' || 'class' || 'department' => Icons.groups_rounded,
+    'organization' => Icons.apartment_rounded,
+    'segment' => Icons.filter_alt_rounded,
+    _ => Icons.group_add_rounded,
+  };
+}
+
+String _assignmentDraftTitle(BuildContext context, _AssignmentDraft draft) {
+  final label = draft.label?.trim();
+  if (label != null && label.isNotEmpty) return label;
+  if (draft.audienceType == 'role' && draft.audienceRole != null) {
+    return context.l10n
+        .t('assignment.roleValue')
+        .replaceAll(
+          '{role}',
+          context.l10n.enumLabel(draft.audienceRole!.toJson()),
+        );
+  }
+  return _assignmentTypeLabel(context, draft.audienceType);
+}
+
+String _assignmentDraftSubtitle(BuildContext context, _AssignmentDraft draft) {
+  switch (draft.audienceType) {
+    case 'user':
+      return draft.audienceUserId == null
+          ? context.l10n.t('assignment.userAudience')
+          : context.l10n
+                .t('assignment.userId')
+                .replaceAll('{id}', _shortId(draft.audienceUserId!));
+    case 'role':
+      final role = draft.audienceRole;
+      return role == null
+          ? context.l10n.t('assignment.allRoleUsers')
+          : context.l10n
+                .t('assignment.allRoleUsersValue')
+                .replaceAll('{role}', context.l10n.enumLabel(role.toJson()));
+    case 'group':
+    case 'class':
+    case 'department':
+      return draft.audienceGroupId == null
+          ? context.l10n.t('assignment.groupAudience')
+          : context.l10n
+                .t('assignment.groupId')
+                .replaceAll('{id}', _shortId(draft.audienceGroupId!));
+    case 'organization':
+      return context.l10n.t('assignment.organizationAudience');
+    case 'segment':
+      return draft.audienceSegmentId == null
+          ? context.l10n.t('assignment.segmentAudience')
+          : context.l10n
+                .t('assignment.segmentId')
+                .replaceAll('{id}', _shortId(draft.audienceSegmentId!));
+    default:
+      return context.l10n
+          .t('assignment.type')
+          .replaceAll('{type}', draft.audienceType);
+  }
+}
+
 class _AssignmentEditorCard extends ConsumerWidget {
   const _AssignmentEditorCard({
     required this.draft,
     required this.onChanged,
-    required this.onDelete,
+    this.onDelete,
+    this.showDelete = true,
     super.key,
   });
 
   final _AssignmentDraft draft;
   final ValueChanged<_AssignmentDraft> onChanged;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
+  final bool showDelete;
 
   static const _audienceTypes = [
     'role',
@@ -2046,12 +2301,14 @@ class _AssignmentEditorCard extends ConsumerWidget {
                   },
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              IconButton.filledTonal(
-                tooltip: context.l10n.t('delete'),
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded),
-              ),
+              if (showDelete) ...[
+                const SizedBox(width: AppSpacing.sm),
+                IconButton.filledTonal(
+                  tooltip: context.l10n.t('delete'),
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+              ],
             ],
           ),
           AppSpacing.gapSm,
@@ -2907,6 +3164,9 @@ class _PublishSectionState extends State<_PublishSection> {
       await action();
       ref.invalidate(formDetailProvider(widget.form.id));
       ref.invalidate(formsControllerProvider);
+      ref.invalidate(dashboardExperienceProvider);
+      ref.invalidate(mySurveysProvider);
+      ref.invalidate(surveyCalendarProvider);
       messenger.showSnackBar(SnackBar(content: Text(successMessage)));
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.toString())));
