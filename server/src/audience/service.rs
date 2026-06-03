@@ -342,7 +342,7 @@ pub async fn user_matches_form_assignment(
     let gate = if require_answer {
         "fa.can_answer=true"
     } else {
-        "fa.can_see=true"
+        "(fa.can_see=true or fa.can_answer=true)"
     };
     let sql = format!(
         "select exists( \

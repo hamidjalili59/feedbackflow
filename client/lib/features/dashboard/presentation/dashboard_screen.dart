@@ -681,36 +681,16 @@ class _ParentSurveyActionCard extends StatelessWidget {
       onTap: () => context.push(destination),
       child: _ParentWhiteCard(
         child: Row(
-          textDirection: TextDirection.ltr,
+          textDirection: TextDirection.rtl,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 88, minHeight: 42),
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF436BFF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () => context.push(destination),
-                child: Text(
-                  answered
-                      ? context.l10n.t('viewResult')
-                      : context.l10n.t('start'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            const Spacer(),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     survey.title,
+                    textAlign: TextAlign.end,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -724,6 +704,7 @@ class _ParentSurveyActionCard extends StatelessWidget {
                         context.l10n
                             .t('questionCount')
                             .replaceAll('{count}', '${survey.questionCount}'),
+                    textAlign: TextAlign.end,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -732,6 +713,28 @@ class _ParentSurveyActionCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 98,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF436BFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => context.push(destination),
+                child: Text(
+                  answered
+                      ? context.l10n.t('viewResult')
+                      : context.l10n.t('start'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
@@ -1869,16 +1872,11 @@ class _OperationalCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = dashboard.surveySummary;
-    final total =
-        summary.completed +
-        summary.inProgress +
-        summary.pending +
-        summary.newItems;
     return _ResponsiveTwoColumn(
       left: _SoftPanel(
         child: _BigNumberTile(
           title: context.l10n.t('dashboard.participationCount'),
-          value: '$total',
+          value: '${summary.completed}',
           subtitle: role == UserRole.teacher
               ? context.l10n.t('dashboard.teacherParticipationSubtitle')
               : context.l10n.t('dashboard.participationSubtitle'),
@@ -2519,46 +2517,9 @@ class _SurveyTile extends StatelessWidget {
               : null,
         ),
         child: Row(
+          textDirection: TextDirection.rtl,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (primary)
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 92),
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  onPressed: () => context.push(destination),
-                  child: Text(
-                    completed
-                        ? context.l10n.t('viewResult')
-                        : context.l10n.t('start'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-            else
-              _StatusPill(status: completed ? 'completed' : survey.status),
-            if (completed && primary) ...[
-              const SizedBox(width: 8),
-              Icon(
-                Icons.check_circle_rounded,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-            ] else if (!primary) ...[
-              const SizedBox(width: 8),
-              Text(
-                survey.dateLabel ??
-                    context.l10n
-                        .t('questionCount')
-                        .replaceAll('{count}', '${survey.questionCount}'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -2583,6 +2544,30 @@ class _SurveyTile extends StatelessWidget {
                       ),
                     ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: primary ? 106 : 92,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: primary
+                    ? FilledButton(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () => context.push(destination),
+                        child: Text(
+                          completed
+                              ? context.l10n.t('viewResult')
+                              : context.l10n.t('start'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )
+                    : _StatusPill(
+                        status: completed ? 'completed' : survey.status,
+                      ),
               ),
             ),
           ],

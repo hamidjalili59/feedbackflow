@@ -1812,6 +1812,11 @@ class _AssignmentsSectionState extends ConsumerState<_AssignmentsSection> {
 
   Future<void> _save() async {
     final messenger = ScaffoldMessenger.of(context);
+    final validationMessage = _assignmentValidationMessage(context, _drafts);
+    if (validationMessage != null) {
+      messenger.showSnackBar(SnackBar(content: Text(validationMessage)));
+      return;
+    }
     setState(() => _saving = true);
     try {
       final saved = await ref
@@ -1852,6 +1857,36 @@ bool _canManageAssignments(UserRole? role) {
       role == UserRole.admin ||
       role == UserRole.ceo ||
       role == UserRole.superAdmin;
+}
+
+String? _assignmentValidationMessage(
+  BuildContext context,
+  List<_AssignmentDraft> drafts,
+) {
+  for (final draft in drafts) {
+    final targetId = switch (draft.audienceType) {
+      'user' => draft.audienceUserId,
+      'group' || 'class' || 'department' => draft.audienceGroupId,
+      'segment' => draft.audienceSegmentId,
+      _ => null,
+    };
+    if (targetId == null || targetId.trim().isEmpty) continue;
+    if (!_isUuid(targetId)) {
+      return context.l10n
+          .t('assignment.invalidTargetUuid')
+          .replaceAll(
+            '{type}',
+            _assignmentTypeLabel(context, draft.audienceType),
+          );
+    }
+  }
+  return null;
+}
+
+bool _isUuid(String value) {
+  return RegExp(
+    r'^([0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$',
+  ).hasMatch(value.trim());
 }
 
 class _AssignmentDraft {

@@ -1,6 +1,6 @@
 use crate::api_types::enums::UserRole;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -117,9 +117,12 @@ pub struct FormAssignmentDto {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct FormAssignmentInputDto {
     pub audience_type: AssignmentAudienceType,
+    #[serde(default, deserialize_with = "deserialize_optional_uuid")]
     pub audience_user_id: Option<Uuid>,
     pub audience_role: Option<UserRole>,
+    #[serde(default, deserialize_with = "deserialize_optional_uuid")]
     pub audience_group_id: Option<Uuid>,
+    #[serde(default, deserialize_with = "deserialize_optional_uuid")]
     pub audience_segment_id: Option<Uuid>,
     #[validate(length(max = 180))]
     pub label: Option<String>,
@@ -127,6 +130,57 @@ pub struct FormAssignmentInputDto {
     pub can_answer: Option<bool>,
     #[serde(default)]
     pub metadata: Value,
+}
+
+fn deserialize_optional_uuid<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    let Some(value) = value.map(|item| item.trim().to_owned()) else {
+        return Ok(None);
+    };
+    if value.is_empty() {
+        return Ok(None);
+    }
+    Uuid::parse_str(&value).map(Some).map_err(|_| {
+        serde::de::Error::custom(
+            "assignment target id must be a UUID from the users, groups, or segments table",
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn assignment_input_accepts_uuid_target_ids() {
+        let group_id = Uuid::new_v4();
+        let input: FormAssignmentInputDto = serde_json::from_value(json!({
+            "audience_type": "group",
+            "audience_group_id": group_id.to_string(),
+            "can_see": true,
+            "can_answer": true
+        }))
+        .unwrap();
+
+        assert_eq!(input.audience_group_id, Some(group_id));
+    }
+
+    #[test]
+    fn assignment_input_rejects_display_codes_as_target_ids() {
+        let err = serde_json::from_value::<FormAssignmentInputDto>(json!({
+            "audience_type": "group",
+            "audience_group_id": "1122",
+            "label": "Class 101"
+        }))
+        .unwrap_err()
+        .to_string();
+
+        assert!(err.contains("assignment target id must be a UUID"));
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]

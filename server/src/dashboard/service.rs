@@ -67,12 +67,26 @@ pub async fn dashboard_me(
     .await?;
     let survey_summary = summarize_surveys(&latest_surveys);
     let selected_child_auth = child_auth_for_query(state, auth, selected_child_id).await?;
+    let respondent_scope = selected_child_auth
+        .as_ref()
+        .map(|child_auth| child_auth.user_id)
+        .or_else(|| match auth.role {
+            UserRole::Student | UserRole::Parent => Some(auth.user_id),
+            _ => None,
+        });
     let metric_form_scope = if let Some(child_auth) = selected_child_auth.as_ref() {
         Some(forms_visible_to_subject(state, org_id_for_auth(auth)?, child_auth).await?)
     } else {
         None
     };
-    let metrics = dashboard_metrics(state, auth, &period, metric_form_scope.as_deref()).await?;
+    let metrics = dashboard_metrics(
+        state,
+        auth,
+        &period,
+        metric_form_scope.as_deref(),
+        respondent_scope,
+    )
+    .await?;
     let charts = vec![
         dashboard_participation_chart(
             state,
@@ -80,6 +94,7 @@ pub async fn dashboard_me(
             &period,
             q.compare,
             metric_form_scope.as_deref(),
+            respondent_scope,
         )
         .await?,
     ];
@@ -206,6 +221,10 @@ pub async fn my_surveys(
     let limit = q.limit.clamp(1, 200);
     let period_bounds = q.period.as_deref().map(period_range);
     let child_auth = child_auth_for_query(state, auth, q.child_id).await?;
+    let submission_user_id = child_auth
+        .as_ref()
+        .map(|child_auth| child_auth.user_id)
+        .unwrap_or(auth.user_id);
     let rows = sqlx::query(
         "select f.id, f.creator_id, f.organization_id, f.title, f.description, f.category, f.tags, f.status, f.visibility, \
                 f.scheduled_at, f.published_at, f.closed_at, f.settings, \
@@ -216,7 +235,7 @@ pub async fn my_surveys(
          order by coalesce(f.published_at, f.scheduled_at, f.updated_at) desc limit 250",
     )
     .bind(org_id)
-    .bind(auth.user_id)
+    .bind(submission_user_id)
     .fetch_all(&state.db)
     .await?;
     let mut out = Vec::new();
@@ -428,12 +447,22 @@ async fn dashboard_participation_chart(
     period: &str,
     compare: Option<String>,
     form_scope: Option<&[Uuid]>,
+    respondent_scope: Option<Uuid>,
 ) -> Result<TimeseriesResponseDto, AppError> {
     let org_id = auth
         .organization_id
         .ok_or_else(|| AppError::forbidden("Analytics require an organization"))?;
     let (start, end) = period_range(period);
-    let points = submission_timeseries(state, org_id, start, end, "month", form_scope).await?;
+    let points = submission_timeseries(
+        state,
+        org_id,
+        start,
+        end,
+        "month",
+        form_scope,
+        respondent_scope,
+    )
+    .await?;
     let mut series = vec![TimeseriesSeriesDto {
         key: "current".to_owned(),
         label: "Current".to_owned(),
@@ -451,6 +480,7 @@ async fn dashboard_participation_chart(
                 previous_end,
                 "month",
                 form_scope,
+                respondent_scope,
             )
             .await?,
         });
@@ -579,7 +609,7 @@ pub async fn timeseries(
     let granularity = q.granularity.unwrap_or_else(|| "day".to_owned());
     let (start, end) = period_range(&period);
     let points = if metric == "participation" || metric == "submissions" {
-        submission_timeseries(state, org_id, start, end, &granularity, None).await?
+        submission_timeseries(state, org_id, start, end, &granularity, None, None).await?
     } else {
         metric_timeseries(state, org_id, &metric, start, end, &granularity).await?
     };
@@ -597,6 +627,7 @@ pub async fn timeseries(
                 previous_start,
                 previous_end,
                 &granularity,
+                None,
                 None,
             )
             .await?
@@ -736,7 +767,7 @@ pub async fn alerts(
         return Err(AppError::forbidden("Alerts require a management role"));
     }
     let period = q.period.unwrap_or_else(|| "this_month".to_owned());
-    let metrics = dashboard_metrics(state, auth, &period, None).await?;
+    let metrics = dashboard_metrics(state, auth, &period, None, None).await?;
     let mut items = Vec::new();
     for metric in metrics {
         if let Some(value) = metric.value {
@@ -774,6 +805,7 @@ async fn dashboard_metrics(
     auth: &AuthUser,
     period: &str,
     form_scope: Option<&[Uuid]>,
+    respondent_scope: Option<Uuid>,
 ) -> Result<Vec<DashboardMetricValueDto>, AppError> {
     let org_id = auth
         .organization_id
@@ -782,7 +814,16 @@ async fn dashboard_metrics(
     let (start, end) = period_range(period);
     let mut out = Vec::new();
     for metric in metrics {
-        let value = compute_metric_value(state, org_id, &metric, start, end, form_scope).await?;
+        let value = compute_metric_value(
+            state,
+            org_id,
+            &metric,
+            start,
+            end,
+            form_scope,
+            respondent_scope,
+        )
+        .await?;
         let (label, status) = metric_label_status(&metric, value);
         let unit = metric
             .display
@@ -825,6 +866,7 @@ async fn compute_metric_value(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
     form_scope: Option<&[Uuid]>,
+    respondent_scope: Option<Uuid>,
 ) -> Result<Option<f64>, AppError> {
     let mappings = metric_service::load_mappings(state, org_id, metric.id).await?;
     let scoped_form_ids = form_scope.map(|ids| ids.to_vec());
@@ -839,13 +881,15 @@ async fn compute_metric_value(
                          join forms f on f.id=s.form_id \
                          where a.field_id=$1 and s.deleted_at is null and f.organization_id=$2 \
                            and s.submitted_at >= $3 and s.submitted_at < $4 \
-                           and ($5::uuid[] is null or f.id = any($5))",
+                           and ($5::uuid[] is null or f.id = any($5)) \
+                           and ($6::uuid is null or s.respondent_user_id=$6)",
                     )
                     .bind(field_id)
                     .bind(org_id)
                     .bind(start)
                     .bind(end)
                     .bind(scoped_form_ids.clone())
+                    .bind(respondent_scope)
                     .fetch_all(&state.db)
                     .await?;
                     for row in rows {
@@ -867,14 +911,16 @@ async fn compute_metric_value(
                     "select s.{column} value from form_submissions s join forms f on f.id=s.form_id \
                      where s.deleted_at is null and f.organization_id=$1 and s.submitted_at >= $2 and s.submitted_at < $3 \
                        and ($4::uuid is null or f.id=$4) \
-                       and ($5::uuid[] is null or f.id = any($5))"
+                       and ($5::uuid[] is null or f.id = any($5)) \
+                       and ($6::uuid is null or s.respondent_user_id=$6)"
                 );
                 let query = sqlx::query(&sql)
                     .bind(org_id)
                     .bind(start)
                     .bind(end)
                     .bind(mapping.form_id)
-                    .bind(scoped_form_ids.clone());
+                    .bind(scoped_form_ids.clone())
+                    .bind(respondent_scope);
                 let rows = query.fetch_all(&state.db).await?;
                 for row in rows {
                     let n: f64 = row.try_get("value").unwrap_or(0.0);
@@ -886,14 +932,16 @@ async fn compute_metric_value(
                     "select count(*)::double precision value from form_submissions s join forms f on f.id=s.form_id \
                      where s.deleted_at is null and f.organization_id=$1 and s.submitted_at >= $2 and s.submitted_at < $3 \
                        and ($4::uuid is null or f.id=$4) \
-                       and ($5::uuid[] is null or f.id = any($5))"
+                       and ($5::uuid[] is null or f.id = any($5)) \
+                       and ($6::uuid is null or s.respondent_user_id=$6)"
                 );
                 let query = sqlx::query(&sql)
                     .bind(org_id)
                     .bind(start)
                     .bind(end)
                     .bind(mapping.form_id)
-                    .bind(scoped_form_ids.clone());
+                    .bind(scoped_form_ids.clone())
+                    .bind(respondent_scope);
                 let row = query.fetch_one(&state.db).await?;
                 let n: f64 = row.try_get("value").unwrap_or(0.0);
                 values.push(n * mapping.weight);
@@ -969,6 +1017,7 @@ async fn submission_timeseries(
     end: DateTime<Utc>,
     granularity: &str,
     form_scope: Option<&[Uuid]>,
+    respondent_scope: Option<Uuid>,
 ) -> Result<Vec<TimeseriesPointDto>, AppError> {
     let bucket_expr = bucket_sql(granularity, "s.submitted_at");
     let scoped_form_ids = form_scope.map(|ids| ids.to_vec());
@@ -977,12 +1026,14 @@ async fn submission_timeseries(
          from form_submissions s join forms f on f.id=s.form_id \
          where s.deleted_at is null and f.organization_id=$1 and s.submitted_at >= $2 and s.submitted_at < $3 \
            and ($4::uuid[] is null or f.id = any($4)) \
+           and ($5::uuid is null or s.respondent_user_id=$5) \
          group by 1 order by 1 asc"
     ))
     .bind(org_id)
     .bind(start)
     .bind(end)
     .bind(scoped_form_ids)
+    .bind(respondent_scope)
     .fetch_all(&state.db)
     .await?;
     rows.iter()

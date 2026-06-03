@@ -890,6 +890,8 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.classIdLabel': 'شناسه کلاس',
     'assignment.departmentIdLabel': 'شناسه دپارتمان',
     'assignment.segmentIdLabel': 'شناسه سگمنت',
+    'assignment.invalidTargetUuid':
+        'برای تخصیص {type} باید شناسه UUID واقعی انتخاب شود. کد یا نام نمایشی کلاس قابل ذخیره نیست.',
     'assignment.roleValue': 'نقش {role}',
     'assignment.group': 'گروه یا کلاس',
     'assignment.organization': 'کل سازمان',
@@ -1680,6 +1682,8 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.classIdLabel': 'Class ID',
     'assignment.departmentIdLabel': 'Department ID',
     'assignment.segmentIdLabel': 'Segment ID',
+    'assignment.invalidTargetUuid':
+        'A real UUID is required for {type} assignments. Display codes or names cannot be saved.',
     'assignment.roleValue': 'Role {role}',
     'assignment.group': 'Group or class',
     'assignment.organization': 'Whole organization',
@@ -2408,6 +2412,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.classIdLabel': '班级 ID',
     'assignment.departmentIdLabel': '部门 ID',
     'assignment.segmentIdLabel': '分段 ID',
+    'assignment.invalidTargetUuid': '{type} 分配需要真实 UUID，不能保存显示代码或名称。',
     'assignment.roleValue': '角色 {role}',
     'assignment.group': '群组或班级',
     'assignment.organization': '整个组织',
