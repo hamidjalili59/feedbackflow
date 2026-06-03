@@ -716,6 +716,12 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.seeAllSurveys': 'دیدن همه نظرسنجی‌ها',
     'dashboard.studentProgressTitle': 'پیشرفت {name}',
     'dashboard.activityParticipation': 'مشارکت در فعالیت‌ها',
+    'dashboard.dataScopeCurrentAccount':
+        'این شاخص‌ها بر اساس داده‌های قابل مشاهده برای حساب فعلی محاسبه شده‌اند.',
+    'dashboard.dataScopeNoStudentForms':
+        'برای این دانش‌آموز هنوز فرم تخصیص‌یافته‌ای با داده قابل محاسبه وجود ندارد؛ بنابراین عدد سازمانی به جای داده دانش‌آموز نمایش داده نمی‌شود.',
+    'dashboard.dataScopeSelectedStudent':
+        'این شاخص‌ها فقط از پاسخ‌های فرم‌های تخصیص‌یافته به همین دانش‌آموز محاسبه شده‌اند. تعداد فرم‌های مبنا: {count}',
     'dashboard.parentChildren': 'دانش‌آموزان این والد',
     'dashboard.noChildrenForParent':
         'هنوز دانش‌آموزی برای این والد ثبت نشده است. از مدیریت کاربران، روابط خانوادگی را باز کنید و دانش‌آموز را به این والد وصل کنید.',
@@ -1500,6 +1506,12 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.seeAllSurveys': 'See all surveys',
     'dashboard.studentProgressTitle': '{name} progress',
     'dashboard.activityParticipation': 'Activity participation',
+    'dashboard.dataScopeCurrentAccount':
+        'These metrics are calculated from data visible to the current account.',
+    'dashboard.dataScopeNoStudentForms':
+        'No assigned forms with calculable data exist for this student yet, so organization-wide numbers are not shown as student data.',
+    'dashboard.dataScopeSelectedStudent':
+        'These metrics use only responses from forms assigned to this student. Source forms: {count}',
     'dashboard.parentChildren': 'This parent’s students',
     'dashboard.noChildrenForParent':
         'No student has been linked to this parent yet. Open Family relationships in User management and connect a student to this parent.',
@@ -2241,6 +2253,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'dashboard.seeAllSurveys': '查看全部问卷',
     'dashboard.studentProgressTitle': '{name} 的进展',
     'dashboard.activityParticipation': '活动参与度',
+    'dashboard.dataScopeCurrentAccount': '这些指标基于当前账号可见的数据计算。',
+    'dashboard.dataScopeNoStudentForms':
+        '该学生目前还没有可计算数据的已分配表单，因此不会用组织整体数字冒充学生数据。',
+    'dashboard.dataScopeSelectedStudent': '这些指标只使用分配给该学生的表单回复计算。来源表单数：{count}',
     'dashboard.parentChildren': '此家长关联的学生',
     'dashboard.noChildrenForParent': '此家长尚未关联任何学生。请在用户管理中打开家庭关系，并将学生关联到此家长。',
     'dashboard.studentTitle': '学生仪表盘',

@@ -929,6 +929,8 @@ class _ParentStudentProgressDashboard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 22),
+              _ParentDataScopeNotice(dashboard: dashboard),
+              const SizedBox(height: 14),
               _ParentMetricGrid(metrics: dashboard.metrics),
               const SizedBox(height: 32),
               _ParentSectionHeader(
@@ -947,6 +949,47 @@ class _ParentStudentProgressDashboard extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ParentDataScopeNotice extends StatelessWidget {
+  const _ParentDataScopeNotice({required this.dashboard});
+
+  final DashboardResponseDto2 dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final scopedFormCount = dashboard.metadata['metric_form_count'];
+    final count = scopedFormCount is num ? scopedFormCount.toInt() : null;
+    final message = count == null
+        ? context.l10n.t('dashboard.dataScopeCurrentAccount')
+        : count == 0
+        ? context.l10n.t('dashboard.dataScopeNoStudentForms')
+        : context.l10n
+              .t('dashboard.dataScopeSelectedStudent')
+              .replaceAll('{count}', '$count');
+    return _ParentWhiteCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFF436BFF)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              textAlign: TextAlign.start,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF696D91),
+                fontWeight: FontWeight.w700,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
