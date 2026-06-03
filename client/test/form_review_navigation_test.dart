@@ -1,15 +1,44 @@
+import 'package:feedbackflow_flutter_client/app/providers.dart';
 import 'package:feedbackflow_flutter_client/data/dto/dto.dart';
 import 'package:feedbackflow_flutter_client/features/forms/presentation/form_detail_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('initial review prefers explicit query submission id', () {
+  test('initial review allows explicit query submission id for reviewers', () {
     expect(
       submissionIdForInitialReview(
         querySubmissionId: ' query-submission ',
         formSubmissionId: 'form-submission',
+        canReviewAnySubmission: true,
       ),
       'query-submission',
+    );
+  });
+
+  test('initial review ignores another user query submission id', () {
+    expect(
+      submissionIdForInitialReview(
+        querySubmissionId: 'other-user-submission',
+        formSubmissionId: null,
+      ),
+      isNull,
+    );
+    expect(
+      submissionIdForInitialReview(
+        querySubmissionId: 'other-user-submission',
+        formSubmissionId: 'my-submission',
+      ),
+      'my-submission',
+    );
+  });
+
+  test('initial review accepts query submission id when it matches mine', () {
+    expect(
+      submissionIdForInitialReview(
+        querySubmissionId: ' my-submission ',
+        formSubmissionId: 'my-submission',
+      ),
+      'my-submission',
     );
   });
 
@@ -87,4 +116,24 @@ void main() {
 
     expect(form.mySubmissionId, '20000000-0000-0000-0000-000000000001');
   });
+
+  test(
+    'session invalidation includes user-specific form and submission caches',
+    () {
+      expect(
+        sessionScopedProviderDebugNames,
+        contains('formsControllerProvider'),
+      );
+      expect(sessionScopedProviderDebugNames, contains('formDetailProvider'));
+      expect(
+        sessionScopedProviderDebugNames,
+        contains('formAnswerAccessProvider'),
+      );
+      expect(
+        sessionScopedProviderDebugNames,
+        contains('submissionDetailProvider'),
+      );
+      expect(sessionScopedProviderDebugNames, contains('submissionsProvider'));
+    },
+  );
 }

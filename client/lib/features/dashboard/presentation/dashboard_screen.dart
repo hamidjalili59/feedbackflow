@@ -269,9 +269,7 @@ class _ParentHomeDashboard extends StatelessWidget {
         .where((survey) => survey.mySubmissionId == null)
         .take(2)
         .toList();
-    final selectedChild = dashboard.children.isEmpty
-        ? null
-        : dashboard.children.first;
+    final children = dashboard.children;
     final activities = dashboard.activities.take(2).toList();
     return _ParentAppFrame(
       child: LayoutBuilder(
@@ -283,13 +281,8 @@ class _ParentHomeDashboard extends StatelessWidget {
           return ListView(
             padding: padding,
             children: wide
-                ? _buildWideLayout(context, selectedChild, surveys, activities)
-                : _buildCompactLayout(
-                    context,
-                    selectedChild,
-                    surveys,
-                    activities,
-                  ),
+                ? _buildWideLayout(context, children, surveys, activities)
+                : _buildCompactLayout(context, children, surveys, activities),
           );
         },
       ),
@@ -298,23 +291,17 @@ class _ParentHomeDashboard extends StatelessWidget {
 
   List<Widget> _buildCompactLayout(
     BuildContext context,
-    ChildProfileDto2? selectedChild,
+    List<ChildProfileDto2> children,
     List<SurveyCardDto2> surveys,
     List<ActivityFeedItemDto2> activities,
   ) {
     return [
       _ParentHomeHeader(user: user),
       const SizedBox(height: 22),
-      if (selectedChild != null)
-        _ParentStudentCard(
-          child: selectedChild,
-          onProfileTap: () => _openChildProgress(context, selectedChild),
-          onStudentTap: () => _openChildProgress(context, selectedChild),
-        )
-      else
-        _ParentEmptyCard(
-          message: context.l10n.t('dashboard.noChildrenForParent'),
-        ),
+      _ParentChildrenList(
+        children: children,
+        onChildTap: (child) => _openChildProgress(context, child),
+      ),
       const SizedBox(height: 34),
       _ParentNewSurveysSection(surveys: surveys),
       const SizedBox(height: 38),
@@ -326,19 +313,10 @@ class _ParentHomeDashboard extends StatelessWidget {
 
   List<Widget> _buildWideLayout(
     BuildContext context,
-    ChildProfileDto2? selectedChild,
+    List<ChildProfileDto2> children,
     List<SurveyCardDto2> surveys,
     List<ActivityFeedItemDto2> activities,
   ) {
-    final studentCard = selectedChild == null
-        ? _ParentEmptyCard(
-            message: context.l10n.t('dashboard.noChildrenForParent'),
-          )
-        : _ParentStudentCard(
-            child: selectedChild,
-            onProfileTap: () => _openChildProgress(context, selectedChild),
-            onStudentTap: () => _openChildProgress(context, selectedChild),
-          );
     return [
       Column(
         textDirection: TextDirection.ltr,
@@ -349,7 +327,10 @@ class _ParentHomeDashboard extends StatelessWidget {
             child: _ParentHomeHeader(user: user),
           ),
           const SizedBox(height: 24),
-          studentCard,
+          _ParentChildrenList(
+            children: children,
+            onChildTap: (child) => _openChildProgress(context, child),
+          ),
         ],
       ),
       const SizedBox(height: 34),
@@ -505,6 +486,35 @@ class _ParentHomeHeader extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _ParentChildrenList extends StatelessWidget {
+  const _ParentChildrenList({required this.children, required this.onChildTap});
+
+  final List<ChildProfileDto2> children;
+  final ValueChanged<ChildProfileDto2> onChildTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) {
+      return _ParentEmptyCard(
+        message: context.l10n.t('dashboard.noChildrenForParent'),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          _ParentStudentCard(
+            child: children[i],
+            onProfileTap: () => onChildTap(children[i]),
+            onStudentTap: () => onChildTap(children[i]),
+          ),
+          if (i != children.length - 1) const SizedBox(height: 10),
+        ],
       ],
     );
   }

@@ -58,9 +58,16 @@ class FormDetailScreen extends ConsumerWidget {
           final session = authAsync.asData?.value;
           final isCreator =
               session != null && form.creatorId == session.user.id;
+          final isManager =
+              session != null &&
+              (session.user.primaryRole == UserRole.superAdmin ||
+                  session.user.primaryRole == UserRole.ceo ||
+                  session.user.primaryRole == UserRole.admin ||
+                  session.user.primaryRole == UserRole.manager);
           final reviewSubmissionId = submissionIdForInitialReview(
             querySubmissionId: this.reviewSubmissionId,
             formSubmissionId: form.mySubmissionId,
+            canReviewAnySubmission: isCreator || isManager,
           );
           if (reviewSubmissionId != null && reviewSubmissionId.isNotEmpty) {
             return _SubmissionReviewView(
@@ -78,13 +85,6 @@ class FormDetailScreen extends ConsumerWidget {
           // explicitly navigated to a workspace section (e.g. /forms/:id/builder).
           // From the plain /forms/:id route (initialSection == builder by default),
           // they see the respondent answer flow for published forms.
-          final isManager =
-              session != null &&
-              (session.user.primaryRole == UserRole.superAdmin ||
-                  session.user.primaryRole == UserRole.ceo ||
-                  session.user.primaryRole == UserRole.admin ||
-                  session.user.primaryRole == UserRole.manager);
-
           if (isManager && initialSection != FormWorkspaceSection.builder) {
             // Explicitly navigated to settings/publish/results/etc.
             return _FormWorkspaceView(form: form, section: initialSection);
@@ -111,10 +111,15 @@ class FormDetailScreen extends ConsumerWidget {
 String? submissionIdForInitialReview({
   String? querySubmissionId,
   String? formSubmissionId,
+  bool canReviewAnySubmission = false,
 }) {
   final fromQuery = querySubmissionId?.trim();
-  if (fromQuery != null && fromQuery.isNotEmpty) return fromQuery;
   final fromForm = formSubmissionId?.trim();
+  if (fromQuery != null &&
+      fromQuery.isNotEmpty &&
+      (canReviewAnySubmission || fromQuery == fromForm)) {
+    return fromQuery;
+  }
   if (fromForm != null && fromForm.isNotEmpty) return fromForm;
   return null;
 }

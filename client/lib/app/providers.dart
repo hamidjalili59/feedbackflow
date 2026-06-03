@@ -222,14 +222,54 @@ class AuthController extends _$AuthController {
   }
 
   void _invalidateSessionScopedProviders() {
-    ref.invalidate(dashboardExperienceProvider);
-    ref.invalidate(mySurveysProvider);
-    ref.invalidate(surveyCalendarProvider);
-    ref.invalidate(metricTimeseriesProvider);
-    ref.invalidate(dashboardAnalyticsProvider);
-    ref.invalidate(activitiesProvider);
-    ref.invalidate(effectivePermissionsProvider);
+    invalidateSessionScopedProviders(ref);
   }
+}
+
+const sessionScopedProviderDebugNames = <String>{
+  'dashboardExperienceProvider',
+  'mySurveysProvider',
+  'surveyCalendarProvider',
+  'metricTimeseriesProvider',
+  'dashboardAnalyticsProvider',
+  'activitiesProvider',
+  'auditLogsProvider',
+  'effectivePermissionsProvider',
+  'formsControllerProvider',
+  'formDetailProvider',
+  'formAnswerAccessProvider',
+  'formAssignmentsProvider',
+  'formAnalyticsProvider',
+  'submissionsProvider',
+  'submissionDetailProvider',
+  'metricDefinitionsProvider',
+  'audienceSegmentsProvider',
+};
+
+void invalidateSessionScopedProviders(Ref ref) {
+  ref.invalidate(dashboardExperienceProvider);
+  ref.invalidate(mySurveysProvider);
+  ref.invalidate(surveyCalendarProvider);
+  ref.invalidate(metricTimeseriesProvider);
+  ref.invalidate(dashboardAnalyticsProvider);
+  ref.invalidate(activitiesProvider);
+  ref.invalidate(auditLogsProvider);
+  ref.invalidate(effectivePermissionsProvider);
+  ref.invalidate(formsControllerProvider);
+  ref.invalidate(formDetailProvider);
+  ref.invalidate(formAnswerAccessProvider);
+  ref.invalidate(formAssignmentsProvider);
+  ref.invalidate(formAnalyticsProvider);
+  ref.invalidate(submissionsProvider);
+  ref.invalidate(submissionDetailProvider);
+  ref.invalidate(metricDefinitionsProvider);
+  ref.invalidate(audienceSegmentsProvider);
+}
+
+String? _currentSessionUserId(Ref ref) {
+  return ref.watch(
+    authControllerProvider.select((state) => state.asData?.value?.user.id),
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -243,7 +283,10 @@ class FormsController extends _$FormsController {
   static const int _pageSize = 10;
 
   @override
-  Future<ListResponse<FormSummaryDto>> build() => _load();
+  Future<ListResponse<FormSummaryDto>> build() {
+    _currentSessionUserId(ref);
+    return _load();
+  }
 
   Future<ListResponse<FormSummaryDto>> _load() async {
     try {
@@ -294,6 +337,7 @@ class FormsController extends _$FormsController {
 
 @Riverpod(keepAlive: true)
 Future<FormDetailDto> formDetail(Ref ref, String formId) {
+  _currentSessionUserId(ref);
   return ref.watch(formsRepositoryProvider).getForm(id: formId);
 }
 
@@ -366,6 +410,7 @@ final formAssignmentsProvider =
 
 final formAnswerAccessProvider =
     rp.FutureProvider.family<FormAnswerAccessDto2, String>((ref, formId) {
+      _currentSessionUserId(ref);
       return ref.watch(formsRepositoryProvider).getFormAnswerAccess(id: formId);
     });
 
@@ -407,6 +452,7 @@ Future<FormAnalyticsDto> formAnalytics(Ref ref, String formId) {
 
 @Riverpod(keepAlive: true)
 Future<ListResponse<SubmissionSummaryDto>> submissions(Ref ref, String formId) {
+  _currentSessionUserId(ref);
   return ref
       .watch(submissionsRepositoryProvider)
       .listSubmissions(id: formId, page: 1, pageSize: 30);
@@ -414,6 +460,7 @@ Future<ListResponse<SubmissionSummaryDto>> submissions(Ref ref, String formId) {
 
 @Riverpod(keepAlive: true)
 Future<SubmissionDetailDto> submissionDetail(Ref ref, String submissionId) {
+  _currentSessionUserId(ref);
   return ref
       .watch(submissionsRepositoryProvider)
       .getSubmission(id: submissionId);
