@@ -1,6 +1,13 @@
-چیز هایی که باید اضافه کنم:
--  والدین شبیه تصاویر شروع بشه و شبیه باقی رول ها نباشه.
--  تصویر را آپلود کنه نه اینکه لینک بدهد.
--  فرم هایی که پر کرده را به صورت پر شده ببیند و متفاوت باشد و اگر روی آنها کلیک کرد فقط نتیجه را ببیند و اگر قابل ادیت بود یک دکمه ادیت هم داشته باشد در صفحه review.
--  شاخص های داینامیک در جلوی هر کدام نوشته 1 اتصال این یعنی چی و در آخرش هم نوشته مدیر و ceo میتوانند در سرور لیست را تغییر بدهند در metrics ولی باید در همین پنل بتوانند تغییر بدهند ولی فقط همین رول ها ببینند آن قسمت را برای تغییر.
--  بعضی از فیلد ها نوشته نیازمند توجه اون برای چیه؟
+خطای 422 برای اضافه کردن تخصیص میده:
+Failed to deserialize the JSON body into the target type: assignments[0].audience_group_id: UUID parsing failed: invalid length: expected length 32 for simple format, found 6 at line 1 column 69
+و اینکه ثبت پاسخ فرم خطای 500 میده. 
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "code": "INTERNAL_SERVER_ERROR",
+        "message": "Database operation failed",
+        "details": {}
+    },
+    "meta": {}
+}

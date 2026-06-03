@@ -771,6 +771,7 @@ abstract class FormDetailDto with _$FormDetailDto {
     @JsonKey(name: 'scoring_config') required Object? scoringConfig,
     @JsonKey(name: 'fields') required List<FormFieldDto> fields,
     @JsonKey(name: 'public_token') String? publicToken,
+    @JsonKey(name: 'my_submission_id') String? mySubmissionId,
     @JsonKey(name: 'approved_at') DateTime? approvedAt,
     @JsonKey(name: 'published_at') DateTime? publishedAt,
     @JsonKey(name: 'closed_at') DateTime? closedAt,
@@ -862,6 +863,7 @@ abstract class FormSummaryDto with _$FormSummaryDto {
     @JsonKey(name: 'scoring_mode')
     required ScoringMode scoringMode,
     @JsonKey(name: 'submissions_count') required int submissionsCount,
+    @JsonKey(name: 'my_submission_id') String? mySubmissionId,
     @JsonKey(name: 'public_token') String? publicToken,
     @JsonKey(name: 'created_at') required DateTime createdAt,
     @JsonKey(name: 'updated_at') required DateTime updatedAt,

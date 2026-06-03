@@ -213,6 +213,7 @@ pub struct FormSummaryDto {
     pub publish_mode: PublishMode,
     pub scoring_mode: ScoringMode,
     pub submissions_count: i64,
+    pub my_submission_id: Option<Uuid>,
     pub public_token: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -224,6 +225,7 @@ pub struct FormAnswerAccessDto {
     pub can_view: bool,
     pub can_edit_workspace: bool,
     pub requires_public_link: bool,
+    pub my_submission_id: Option<Uuid>,
     pub reason: Option<String>,
     pub reason_code: Option<String>,
 }
@@ -248,6 +250,7 @@ pub struct FormDetailDto {
     pub scoring_config: Value,
     pub fields: Vec<FormFieldDto>,
     pub public_token: Option<String>,
+    pub my_submission_id: Option<Uuid>,
     pub approved_at: Option<DateTime<Utc>>,
     pub published_at: Option<DateTime<Utc>>,
     pub closed_at: Option<DateTime<Utc>>,

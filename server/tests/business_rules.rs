@@ -1,12 +1,17 @@
+use chrono::Utc;
 use feedbackflow_server::{
     api_types::{
         enums::*,
-        forms::{AudienceRuleDto, FormVisibilityDto},
+        forms::{
+            AudienceRuleDto, FormAnswerAccessDto, FormDetailDto, FormVisibilityDto,
+            PublicProtectionSettingsDto,
+        },
     },
     auth::AuthUser,
     forms::visibility,
     permissions::engine,
 };
+use serde_json::json;
 use uuid::Uuid;
 
 #[test]
@@ -105,4 +110,59 @@ fn role_exclusion_overrides_role_inclusion() {
         &vis,
         Some(&user)
     ));
+}
+
+#[test]
+fn answer_access_serializes_current_user_submission_id() {
+    let submission_id = Uuid::new_v4();
+    let dto = FormAnswerAccessDto {
+        allowed: false,
+        can_view: true,
+        can_edit_workspace: false,
+        requires_public_link: false,
+        my_submission_id: Some(submission_id),
+        reason: Some("already submitted".to_owned()),
+        reason_code: Some("already_submitted".to_owned()),
+    };
+
+    let value = serde_json::to_value(dto).unwrap();
+    assert_eq!(value["my_submission_id"], json!(submission_id));
+    assert_eq!(value["reason_code"], json!("already_submitted"));
+}
+
+#[test]
+fn form_detail_serializes_current_user_submission_id() {
+    let submission_id = Uuid::new_v4();
+    let now = Utc::now();
+    let dto = FormDetailDto {
+        id: Uuid::new_v4(),
+        organization_id: Uuid::new_v4(),
+        creator_id: Uuid::new_v4(),
+        title: "Parent survey".to_owned(),
+        description: None,
+        category: None,
+        tags: vec![],
+        status: FormStatus::Published,
+        visibility_mode: VisibilityMode::Organization,
+        publish_mode: PublishMode::Organization,
+        settings: Default::default(),
+        visibility: FormVisibilityDto {
+            mode: VisibilityMode::Organization,
+            ..Default::default()
+        },
+        public_protection: PublicProtectionSettingsDto::default(),
+        scoring_mode: ScoringMode::None,
+        scoring_config: json!({}),
+        fields: vec![],
+        public_token: None,
+        my_submission_id: Some(submission_id),
+        approved_at: None,
+        published_at: Some(now),
+        closed_at: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    let value = serde_json::to_value(dto).unwrap();
+    assert_eq!(value["my_submission_id"], json!(submission_id));
 }

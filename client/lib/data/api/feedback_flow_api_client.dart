@@ -746,6 +746,25 @@ class FeedbackFlowApiClient {
     );
   }
 
+  /// PUT /api/v1/forms/{id}/assignments
+  /// Requires Bearer JWT and form update permission.
+  Future<ApiResponse<List<FormAssignmentDto2>>> setFormAssignments({
+    required String id,
+    required SetFormAssignmentsRequest2 request,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/assignments', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<List<FormAssignmentDto2>>(
+      response.data,
+      (json) =>
+          _parseDtoList<FormAssignmentDto2>(json, FormAssignmentDto2.fromJson),
+    );
+  }
+
   /// operationId: approveForm
   /// POST /api/v1/forms/{id}/approve
   /// Requires Bearer JWT.

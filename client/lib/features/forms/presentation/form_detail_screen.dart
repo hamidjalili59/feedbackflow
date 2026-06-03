@@ -58,7 +58,10 @@ class FormDetailScreen extends ConsumerWidget {
           final session = authAsync.asData?.value;
           final isCreator =
               session != null && form.creatorId == session.user.id;
-          final reviewSubmissionId = this.reviewSubmissionId;
+          final reviewSubmissionId = submissionIdForInitialReview(
+            querySubmissionId: this.reviewSubmissionId,
+            formSubmissionId: form.mySubmissionId,
+          );
           if (reviewSubmissionId != null && reviewSubmissionId.isNotEmpty) {
             return _SubmissionReviewView(
               form: form,
@@ -103,6 +106,17 @@ class FormDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String? submissionIdForInitialReview({
+  String? querySubmissionId,
+  String? formSubmissionId,
+}) {
+  final fromQuery = querySubmissionId?.trim();
+  if (fromQuery != null && fromQuery.isNotEmpty) return fromQuery;
+  final fromForm = formSubmissionId?.trim();
+  if (fromForm != null && fromForm.isNotEmpty) return fromForm;
+  return null;
 }
 
 enum FormWorkspaceSection {
@@ -179,6 +193,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
   final Map<String, Object?> _answers = {};
   bool _submitting = false;
   bool _submitted = false;
+  SubmissionDetailDto? _submittedSubmission;
 
   @override
   void initState() {
@@ -223,7 +238,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: () => _returnToPreviousOrForms(context),
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: Icon(appBackIcon(context)),
                 label: Text(context.l10n.t('back')),
               ),
             ],
@@ -232,30 +247,34 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       );
     }
 
-    if (_submitted) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_rounded, size: 64, color: scheme.primary),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                context.l10n.t('responseSubmitted'),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(
-                onPressed: () => _returnToPreviousOrForms(context),
-                icon: const Icon(Icons.list_rounded),
-                label: Text(context.l10n.t('forms')),
-              ),
-            ],
-          ),
-        ),
+    final submittedSubmission = _submittedSubmission;
+    if (_submitted && submittedSubmission != null) {
+      return _SubmittedResponseView(
+        form: form,
+        submission: submittedSubmission,
+        onEdit: form.settings.answersEditableAfterSubmission
+            ? () {
+                setState(() {
+                  _submitted = false;
+                  _submittedSubmission = null;
+                });
+              }
+            : null,
+      );
+    }
+
+    final editSubmission = widget.editSubmission;
+    if (editSubmission != null) {
+      final fields = [...form.fields]
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      return StepFormView(
+        formTitle: form.title,
+        fields: fields,
+        answers: _answers,
+        onAnswerChanged: (fieldId, value) =>
+            setState(() => _answers[fieldId] = value),
+        onSubmit: _submit,
+        submitting: _submitting,
       );
     }
 
@@ -269,6 +288,10 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
         onBack: () => _returnToPreviousOrForms(context),
       ),
       data: (access) {
+        final submissionId = access.mySubmissionId?.trim();
+        if (submissionId != null && submissionId.isNotEmpty) {
+          return _SubmissionReviewView(form: form, submissionId: submissionId);
+        }
         if (!access.allowed) {
           return _AnswerAccessBlockedView(form: form, access: access);
         }
@@ -308,8 +331,9 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
           .map((e) => AnswerInputDto(fieldId: e.key, value: e.value))
           .toList();
       final editSubmission = widget.editSubmission;
+      late final SubmissionDetailDto savedSubmission;
       if (editSubmission == null) {
-        await ref
+        savedSubmission = await ref
             .read(submissionsRepositoryProvider)
             .createSubmission(
               id: widget.form.id,
@@ -319,7 +343,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               ),
             );
       } else {
-        await ref
+        savedSubmission = await ref
             .read(submissionsRepositoryProvider)
             .updateSubmission(
               id: editSubmission.id,
@@ -327,7 +351,14 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
             );
         ref.invalidate(submissionDetailProvider(editSubmission.id));
       }
-      if (mounted) setState(() => _submitted = true);
+      ref.invalidate(formAnswerAccessProvider(widget.form.id));
+      ref.invalidate(formsControllerProvider);
+      if (mounted) {
+        setState(() {
+          _submittedSubmission = savedSubmission;
+          _submitted = true;
+        });
+      }
     } catch (error) {
       if (mounted) {
         messenger.showSnackBar(
@@ -357,6 +388,60 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       if (value is Iterable && value.isEmpty) return field;
     }
     return null;
+  }
+}
+
+class _SubmittedResponseView extends StatelessWidget {
+  const _SubmittedResponseView({
+    required this.form,
+    required this.submission,
+    this.onEdit,
+  });
+
+  final FormDetailDto form;
+  final SubmissionDetailDto submission;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: SoftCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionHeader(
+                  icon: Icons.check_circle_rounded,
+                  title: context.l10n.t('submittedReviewTitle'),
+                  message: context.l10n.t('submittedReviewMessage'),
+                  trailing: onEdit == null
+                      ? null
+                      : FilledButton.tonalIcon(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_rounded),
+                          label: Text(context.l10n.t('editResponse')),
+                        ),
+                ),
+                AppSpacing.gapLg,
+                _SubmissionDetailContent(form: form, submission: submission),
+                AppSpacing.gapLg,
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _returnToPreviousOrForms(context),
+                    icon: const Icon(Icons.list_rounded),
+                    label: Text(context.l10n.t('forms')),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1431,20 +1516,6 @@ class _SettingsSectionState extends State<_SettingsSection> {
                 ),
               ),
               const SizedBox(height: 16),
-              _EnumDropdown<VisibilityMode>(
-                label: context.l10n.t('visibility'),
-                value: _visibilityMode,
-                values: const [
-                  VisibilityMode.private,
-                  VisibilityMode.organization,
-                  VisibilityMode.selectedRoles,
-                  VisibilityMode.subordinates,
-                  VisibilityMode.publicLink,
-                ],
-                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
-                onChanged: (value) => setState(() => _visibilityMode = value),
-              ),
-              AppSpacing.gapSm,
               _EnumDropdown<ScoringMode>(
                 label: context.l10n.t('scoringMode'),
                 value: _scoringMode,
@@ -1587,14 +1658,26 @@ class _SettingsSectionState extends State<_SettingsSection> {
   }
 }
 
-class _AssignmentsSection extends ConsumerWidget {
+class _AssignmentsSection extends ConsumerStatefulWidget {
   const _AssignmentsSection({required this.form});
 
   final FormDetailDto form;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final assignmentsAsync = ref.watch(formAssignmentsProvider(form.id));
+  ConsumerState<_AssignmentsSection> createState() =>
+      _AssignmentsSectionState();
+}
+
+class _AssignmentsSectionState extends ConsumerState<_AssignmentsSection> {
+  final List<_AssignmentDraft> _drafts = [];
+  String? _loadedSignature;
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final assignmentsAsync = ref.watch(formAssignmentsProvider(widget.form.id));
+    final session = ref.watch(authControllerProvider).asData?.value;
+    final canManage = _canManageAssignments(session?.user.primaryRole);
     return SoftCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1603,10 +1686,35 @@ class _AssignmentsSection extends ConsumerWidget {
             icon: Icons.group_add_rounded,
             title: context.l10n.t('form.assignmentsTitle'),
             message: context.l10n.t('form.assignmentsDescription'),
-            trailing: IconButton.filledTonal(
-              tooltip: context.l10n.t('refresh'),
-              onPressed: () => ref.invalidate(formAssignmentsProvider(form.id)),
-              icon: const Icon(Icons.refresh_rounded),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (canManage) ...[
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _addDraft,
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(context.l10n.t('add')),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: Text(context.l10n.t('save')),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton.filledTonal(
+                  tooltip: context.l10n.t('refresh'),
+                  onPressed: () =>
+                      ref.invalidate(formAssignmentsProvider(widget.form.id)),
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
             ),
           ),
           AppSpacing.gapLg,
@@ -1627,7 +1735,8 @@ class _AssignmentsSection extends ConsumerWidget {
               message: FriendlyApiErrorMessage.from(error, context: context),
             ),
             data: (assignments) {
-              if (assignments.isEmpty) {
+              _syncDrafts(assignments);
+              if (!canManage && assignments.isEmpty) {
                 return _EmptyStateMessage(
                   icon: Icons.group_off_rounded,
                   title: context.l10n.t('form.noAssignmentsTitle'),
@@ -1635,14 +1744,350 @@ class _AssignmentsSection extends ConsumerWidget {
                 );
               }
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final assignment in assignments) ...[
-                    _AssignmentTile(assignment: assignment),
-                    if (assignment != assignments.last) AppSpacing.gapSm,
-                  ],
+                  if (canManage)
+                    for (var i = 0; i < _drafts.length; i++) ...[
+                      _AssignmentEditorCard(
+                        key: ValueKey(_drafts[i].id),
+                        draft: _drafts[i],
+                        onChanged: (draft) =>
+                            setState(() => _drafts[i] = draft),
+                        onDelete: () => setState(() => _drafts.removeAt(i)),
+                      ),
+                      if (i != _drafts.length - 1) AppSpacing.gapSm,
+                    ]
+                  else
+                    for (final assignment in assignments) ...[
+                      _AssignmentTile(assignment: assignment),
+                      if (assignment != assignments.last) AppSpacing.gapSm,
+                    ],
+                  if (canManage && _drafts.isEmpty)
+                    _EmptyStateMessage(
+                      icon: Icons.group_off_rounded,
+                      title: context.l10n.t('form.noAssignmentsTitle'),
+                      message: context.l10n.t('form.noAssignmentsDescription'),
+                    ),
                 ],
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _syncDrafts(List<FormAssignmentDto2> assignments) {
+    final signature = assignments
+        .map(
+          (assignment) =>
+              '${assignment.id}:${assignment.audienceType}:${assignment.audienceRole?.toJson()}:${assignment.audienceUserId}:${assignment.audienceGroupId}:${assignment.audienceSegmentId}:${assignment.canSee}:${assignment.canAnswer}:${assignment.label}',
+        )
+        .join('|');
+    if (_loadedSignature == signature) return;
+    _loadedSignature = signature;
+    _drafts
+      ..clear()
+      ..addAll(assignments.map(_AssignmentDraft.fromDto));
+  }
+
+  void _addDraft() {
+    setState(() {
+      _drafts.add(
+        _AssignmentDraft(
+          id: 'new-${DateTime.now().microsecondsSinceEpoch}',
+          audienceType: 'role',
+          audienceRole: UserRole.teacher,
+          canSee: true,
+          canAnswer: true,
+        ),
+      );
+    });
+  }
+
+  Future<void> _save() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      final saved = await ref
+          .read(analyticsRepositoryProvider)
+          .setFormAssignments(
+            id: widget.form.id,
+            request: SetFormAssignmentsRequest2(
+              assignments: _drafts.map((draft) => draft.toInput()).toList(),
+            ),
+          );
+      ref.invalidate(formAssignmentsProvider(widget.form.id));
+      if (!mounted) return;
+      setState(() {
+        _loadedSignature = null;
+        _syncDrafts(saved);
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.l10n.t('settingsSaved'))),
+      );
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+bool _canManageAssignments(UserRole? role) {
+  return role == UserRole.manager ||
+      role == UserRole.admin ||
+      role == UserRole.ceo ||
+      role == UserRole.superAdmin;
+}
+
+class _AssignmentDraft {
+  const _AssignmentDraft({
+    required this.id,
+    required this.audienceType,
+    this.audienceUserId,
+    this.audienceRole,
+    this.audienceGroupId,
+    this.audienceSegmentId,
+    this.label,
+    required this.canSee,
+    required this.canAnswer,
+  });
+
+  final String id;
+  final String audienceType;
+  final String? audienceUserId;
+  final UserRole? audienceRole;
+  final String? audienceGroupId;
+  final String? audienceSegmentId;
+  final String? label;
+  final bool canSee;
+  final bool canAnswer;
+
+  factory _AssignmentDraft.fromDto(FormAssignmentDto2 dto) {
+    return _AssignmentDraft(
+      id: dto.id,
+      audienceType: dto.audienceType,
+      audienceUserId: dto.audienceUserId,
+      audienceRole: dto.audienceRole,
+      audienceGroupId: dto.audienceGroupId,
+      audienceSegmentId: dto.audienceSegmentId,
+      label: dto.label,
+      canSee: dto.canSee,
+      canAnswer: dto.canAnswer,
+    );
+  }
+
+  _AssignmentDraft copyWith({
+    String? audienceType,
+    String? audienceUserId,
+    UserRole? audienceRole,
+    String? audienceGroupId,
+    String? audienceSegmentId,
+    String? label,
+    bool? canSee,
+    bool? canAnswer,
+    bool clearTargetIds = false,
+  }) {
+    return _AssignmentDraft(
+      id: id,
+      audienceType: audienceType ?? this.audienceType,
+      audienceUserId: clearTargetIds
+          ? null
+          : audienceUserId ?? this.audienceUserId,
+      audienceRole: clearTargetIds ? null : audienceRole ?? this.audienceRole,
+      audienceGroupId: clearTargetIds
+          ? null
+          : audienceGroupId ?? this.audienceGroupId,
+      audienceSegmentId: clearTargetIds
+          ? null
+          : audienceSegmentId ?? this.audienceSegmentId,
+      label: label ?? this.label,
+      canSee: canSee ?? this.canSee,
+      canAnswer: canAnswer ?? this.canAnswer,
+    );
+  }
+
+  FormAssignmentInputDto2 toInput() {
+    return FormAssignmentInputDto2(
+      audienceType: audienceType,
+      audienceUserId: audienceType == 'user' ? audienceUserId : null,
+      audienceRole: audienceType == 'role' ? audienceRole : null,
+      audienceGroupId:
+          (audienceType == 'group' ||
+              audienceType == 'class' ||
+              audienceType == 'department')
+          ? audienceGroupId
+          : null,
+      audienceSegmentId: audienceType == 'segment' ? audienceSegmentId : null,
+      label: label,
+      canSee: canSee,
+      canAnswer: canAnswer,
+    );
+  }
+}
+
+class _AssignmentEditorCard extends StatelessWidget {
+  const _AssignmentEditorCard({
+    required this.draft,
+    required this.onChanged,
+    required this.onDelete,
+    super.key,
+  });
+
+  final _AssignmentDraft draft;
+  final ValueChanged<_AssignmentDraft> onChanged;
+  final VoidCallback onDelete;
+
+  static const _audienceTypes = [
+    'role',
+    'user',
+    'group',
+    'class',
+    'department',
+    'organization',
+    'segment',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.56),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _audienceTypes.contains(draft.audienceType)
+                      ? draft.audienceType
+                      : 'role',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('form.assignmentAudienceType'),
+                    prefixIcon: const Icon(Icons.group_add_rounded),
+                  ),
+                  items: [
+                    for (final type in _audienceTypes)
+                      DropdownMenuItem(
+                        value: type,
+                        child: Text(_assignmentTypeLabel(context, type)),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    onChanged(
+                      _AssignmentDraft(
+                        id: draft.id,
+                        audienceType: value,
+                        audienceRole: value == 'role'
+                            ? draft.audienceRole ?? UserRole.teacher
+                            : null,
+                        label: draft.label,
+                        canSee: draft.canSee,
+                        canAnswer: draft.canAnswer,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filledTonal(
+                tooltip: context.l10n.t('delete'),
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+            ],
+          ),
+          AppSpacing.gapSm,
+          if (draft.audienceType == 'role')
+            DropdownButtonFormField<UserRole>(
+              initialValue: draft.audienceRole ?? UserRole.teacher,
+              decoration: InputDecoration(
+                labelText: context.l10n.t('role'),
+                prefixIcon: const Icon(Icons.badge_rounded),
+              ),
+              items:
+                  const [
+                        UserRole.parent,
+                        UserRole.teacher,
+                        UserRole.manager,
+                        UserRole.admin,
+                        UserRole.ceo,
+                      ]
+                      .map(
+                        (role) => DropdownMenuItem(
+                          value: role,
+                          child: Text(context.l10n.enumLabel(role.toJson())),
+                        ),
+                      )
+                      .toList(),
+              onChanged: (role) {
+                if (role != null) onChanged(draft.copyWith(audienceRole: role));
+              },
+            )
+          else if (_targetIdLabelKey(draft.audienceType) != null)
+            TextFormField(
+              initialValue: _targetId(draft),
+              decoration: InputDecoration(
+                labelText: context.l10n.t(
+                  _targetIdLabelKey(draft.audienceType)!,
+                ),
+                helperText: context.l10n.t('form.assignmentTargetIdHelper'),
+                prefixIcon: const Icon(Icons.tag_rounded),
+              ),
+              onChanged: (value) => onChanged(_withTargetId(draft, value)),
+            )
+          else
+            _InlineNotice(
+              icon: Icons.apartment_rounded,
+              title: context.l10n.t('assignment.organization'),
+              message: context.l10n.t('assignment.organizationAudience'),
+            ),
+          AppSpacing.gapSm,
+          TextFormField(
+            initialValue: draft.label,
+            decoration: InputDecoration(
+              labelText: context.l10n.t('form.assignmentLabel'),
+              prefixIcon: const Icon(Icons.label_outline_rounded),
+            ),
+            onChanged: (value) => onChanged(draft.copyWith(label: value)),
+          ),
+          AppSpacing.gapSm,
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              FilterChip(
+                selected: draft.canSee,
+                avatar: const Icon(Icons.visibility_rounded, size: 18),
+                label: Text(context.l10n.t('form.canView')),
+                onSelected: (value) => onChanged(draft.copyWith(canSee: value)),
+              ),
+              FilterChip(
+                selected: draft.canAnswer,
+                avatar: const Icon(Icons.edit_rounded, size: 18),
+                label: Text(context.l10n.t('form.canRespond')),
+                onSelected: (value) =>
+                    onChanged(draft.copyWith(canAnswer: value)),
+              ),
+            ],
           ),
         ],
       ),
@@ -1787,6 +2232,51 @@ IconData _assignmentIcon(FormAssignmentDto2 assignment) {
   }
 }
 
+String _assignmentTypeLabel(BuildContext context, String type) {
+  return switch (type) {
+    'user' => context.l10n.t('assignment.user'),
+    'role' => context.l10n.t('assignment.roleSpecific'),
+    'group' => context.l10n.t('assignment.group'),
+    'class' => context.l10n.t('assignment.class'),
+    'department' => context.l10n.t('assignment.department'),
+    'organization' => context.l10n.t('assignment.organization'),
+    'segment' => context.l10n.t('assignment.segment'),
+    _ => type,
+  };
+}
+
+String? _targetIdLabelKey(String type) {
+  return switch (type) {
+    'user' => 'assignment.userIdLabel',
+    'group' => 'assignment.groupIdLabel',
+    'class' => 'assignment.classIdLabel',
+    'department' => 'assignment.departmentIdLabel',
+    'segment' => 'assignment.segmentIdLabel',
+    _ => null,
+  };
+}
+
+String? _targetId(_AssignmentDraft draft) {
+  return switch (draft.audienceType) {
+    'user' => draft.audienceUserId,
+    'group' || 'class' || 'department' => draft.audienceGroupId,
+    'segment' => draft.audienceSegmentId,
+    _ => null,
+  };
+}
+
+_AssignmentDraft _withTargetId(_AssignmentDraft draft, String value) {
+  final normalized = value.trim().isEmpty ? null : value.trim();
+  return switch (draft.audienceType) {
+    'user' => draft.copyWith(audienceUserId: normalized),
+    'group' ||
+    'class' ||
+    'department' => draft.copyWith(audienceGroupId: normalized),
+    'segment' => draft.copyWith(audienceSegmentId: normalized),
+    _ => draft,
+  };
+}
+
 String _assignmentAudienceTitle(
   BuildContext context,
   FormAssignmentDto2 assignment,
@@ -1803,6 +2293,10 @@ String _assignmentAudienceTitle(
                 .replaceAll('{role}', context.l10n.enumLabel(role.toJson()));
     case 'group':
       return context.l10n.t('assignment.group');
+    case 'class':
+      return context.l10n.t('assignment.class');
+    case 'department':
+      return context.l10n.t('assignment.department');
     case 'organization':
       return context.l10n.t('assignment.organization');
     case 'segment':
@@ -1831,6 +2325,8 @@ String _assignmentAudienceSubtitle(
                 .t('assignment.allRoleUsersValue')
                 .replaceAll('{role}', context.l10n.enumLabel(role.toJson()));
     case 'group':
+    case 'class':
+    case 'department':
       return assignment.audienceGroupId == null
           ? context.l10n.t('assignment.groupAudience')
           : context.l10n
@@ -2048,6 +2544,7 @@ class _PublishSection extends StatefulWidget {
 
 class _PublishSectionState extends State<_PublishSection> {
   PublishMode _mode = PublishMode.organization;
+  late VisibilityMode _visibilityMode;
   Set<UserRole> _selectedRoles = {};
   bool _busy = false;
 
@@ -2055,6 +2552,7 @@ class _PublishSectionState extends State<_PublishSection> {
   void initState() {
     super.initState();
     _mode = widget.form.publishMode;
+    _visibilityMode = widget.form.visibility.mode;
   }
 
   @override
@@ -2073,6 +2571,32 @@ class _PublishSectionState extends State<_PublishSection> {
               AppSpacing.gapLg,
               _StatusGuidance(form: widget.form),
               AppSpacing.gapLg,
+              _AccessModeExplainer(
+                icon: Icons.visibility_rounded,
+                title: context.l10n.t('visibility'),
+                message: context.l10n.t('visibilityModeHelp'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _EnumDropdown<VisibilityMode>(
+                label: context.l10n.t('visibility'),
+                value: _visibilityMode,
+                values: const [
+                  VisibilityMode.private,
+                  VisibilityMode.organization,
+                  VisibilityMode.selectedRoles,
+                  VisibilityMode.subordinates,
+                  VisibilityMode.publicLink,
+                ],
+                labelFor: (value) => context.l10n.enumLabel(value.toJson()),
+                onChanged: (value) => setState(() => _visibilityMode = value),
+              ),
+              AppSpacing.gapMd,
+              _AccessModeExplainer(
+                icon: Icons.rocket_launch_rounded,
+                title: context.l10n.t('publishMode'),
+                message: context.l10n.t('publishModeHelp'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               _EnumDropdown<PublishMode>(
                 label: context.l10n.t('publishMode'),
                 value: _mode,
@@ -2151,7 +2675,10 @@ class _PublishSectionState extends State<_PublishSection> {
             id: widget.form.id,
             request: PublishFormRequest(
               publishMode: _mode,
-              visibility: _safeVisibility(widget.form.visibility),
+              visibility: _visibilityWithMode(
+                widget.form.visibility,
+                _visibilityMode,
+              ),
               publicProtection: widget.form.publicProtection,
             ),
           ),
@@ -2237,6 +2764,62 @@ class _PublishSectionState extends State<_PublishSection> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+class _AccessModeExplainer extends StatelessWidget {
+  const _AccessModeExplainer({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -3579,6 +4162,23 @@ FormVisibilityDto _safeVisibility(FormVisibilityDto visibility) {
     guestCanAnswer: visibility.guestCanAnswer,
     anonymousAllowed: visibility.anonymousAllowed,
     metadata: visibility.metadata ?? const <String, Object?>{},
+  );
+}
+
+FormVisibilityDto _visibilityWithMode(
+  FormVisibilityDto visibility,
+  VisibilityMode mode,
+) {
+  final safe = _safeVisibility(visibility);
+  return FormVisibilityDto(
+    mode: mode,
+    canSee: safe.canSee,
+    canAnswer: safe.canAnswer,
+    cannotSee: safe.cannotSee,
+    cannotAnswer: safe.cannotAnswer,
+    guestCanAnswer: safe.guestCanAnswer,
+    anonymousAllowed: safe.anonymousAllowed,
+    metadata: safe.metadata,
   );
 }
 

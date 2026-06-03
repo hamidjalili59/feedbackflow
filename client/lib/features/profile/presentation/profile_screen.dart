@@ -22,9 +22,20 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    final session = auth.asData?.value;
+    final parentMode = session?.user.primaryRole == UserRole.parent;
     return AppShell(
       selected: AppDestination.profile,
-      appBar: AdaptiveAppBar(title: Text(context.l10n.t('profile'))),
+      showNavigation: !parentMode,
+      appBar: AdaptiveAppBar(
+        title: Text(context.l10n.t('profile')),
+        leading: parentMode
+            ? const Padding(
+                padding: EdgeInsetsDirectional.only(start: 8),
+                child: AppBackButton(fallbackLocation: '/dashboard'),
+              )
+            : null,
+      ),
       body: auth.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) =>

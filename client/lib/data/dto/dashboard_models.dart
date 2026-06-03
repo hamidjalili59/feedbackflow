@@ -806,6 +806,71 @@ class FormAssignmentDto2 {
   }
 }
 
+class FormAssignmentInputDto2 {
+  const FormAssignmentInputDto2({
+    required this.audienceType,
+    this.audienceUserId,
+    this.audienceRole,
+    this.audienceGroupId,
+    this.audienceSegmentId,
+    this.label,
+    this.canSee = true,
+    this.canAnswer = true,
+    this.metadata = const <String, Object?>{},
+  });
+
+  final String audienceType;
+  final String? audienceUserId;
+  final UserRole? audienceRole;
+  final String? audienceGroupId;
+  final String? audienceSegmentId;
+  final String? label;
+  final bool canSee;
+  final bool canAnswer;
+  final Map<String, Object?> metadata;
+
+  factory FormAssignmentInputDto2.fromAssignment(
+    FormAssignmentDto2 assignment,
+  ) {
+    return FormAssignmentInputDto2(
+      audienceType: assignment.audienceType,
+      audienceUserId: assignment.audienceUserId,
+      audienceRole: assignment.audienceRole,
+      audienceGroupId: assignment.audienceGroupId,
+      audienceSegmentId: assignment.audienceSegmentId,
+      label: assignment.label,
+      canSee: assignment.canSee,
+      canAnswer: assignment.canAnswer,
+      metadata: assignment.metadata,
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'audience_type': audienceType,
+    if (audienceUserId != null && audienceUserId!.trim().isNotEmpty)
+      'audience_user_id': audienceUserId,
+    if (audienceRole != null) 'audience_role': audienceRole!.toJson(),
+    if (audienceGroupId != null && audienceGroupId!.trim().isNotEmpty)
+      'audience_group_id': audienceGroupId,
+    if (audienceSegmentId != null && audienceSegmentId!.trim().isNotEmpty)
+      'audience_segment_id': audienceSegmentId,
+    if (label != null && label!.trim().isNotEmpty) 'label': label,
+    'can_see': canSee,
+    'can_answer': canAnswer,
+    'metadata': metadata,
+  };
+}
+
+class SetFormAssignmentsRequest2 {
+  const SetFormAssignmentsRequest2({required this.assignments});
+
+  final List<FormAssignmentInputDto2> assignments;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'assignments': [for (final assignment in assignments) assignment.toJson()],
+  };
+}
+
 class GuestLoginRequest {
   const GuestLoginRequest({
     this.organizationId,
@@ -837,6 +902,7 @@ class FormAnswerAccessDto2 {
     required this.canView,
     required this.canEditWorkspace,
     required this.requiresPublicLink,
+    this.mySubmissionId,
     this.reason,
     this.reasonCode,
   });
@@ -845,6 +911,7 @@ class FormAnswerAccessDto2 {
   final bool canView;
   final bool canEditWorkspace;
   final bool requiresPublicLink;
+  final String? mySubmissionId;
   final String? reason;
   final String? reasonCode;
 
@@ -855,6 +922,7 @@ class FormAnswerAccessDto2 {
       canView: _bool(map['can_view']),
       canEditWorkspace: _bool(map['can_edit_workspace']),
       requiresPublicLink: _bool(map['requires_public_link']),
+      mySubmissionId: _string(map['my_submission_id']),
       reason: _string(map['reason']),
       reasonCode: _string(map['reason_code']),
     );

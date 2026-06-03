@@ -38,14 +38,22 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
     final formsAsync = ref.watch(formsControllerProvider);
     final authSession = ref.watch(authControllerProvider).asData?.value;
     final canCreate = _canCreateForms(authSession);
+    final parentMode = authSession?.user.primaryRole == UserRole.parent;
     final compact = context.isCompactWidth;
     return AppShell(
       selected: AppDestination.forms,
+      showNavigation: !parentMode,
       appBar: AdaptiveAppBar(
         title: Text(context.l10n.t('forms')),
+        leading: parentMode
+            ? const Padding(
+                padding: EdgeInsetsDirectional.only(start: 8),
+                child: AppBackButton(fallbackLocation: '/dashboard'),
+              )
+            : null,
         primaryAction: canCreate
             ? Padding(
-                padding: const EdgeInsets.only(top: 4,bottom: 4),
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
                 child: compact
                     ? IconButton.filledTonal(
                         tooltip: context.l10n.t('newForm'),
@@ -123,7 +131,15 @@ class _FormsListScreenState extends ConsumerState<FormsListScreen> {
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: _FormCard(
                             form: form,
-                            onTap: () => context.push('/forms/${form.id}'),
+                            onTap: () {
+                              final submissionId = form.mySubmissionId;
+                              final destination =
+                                  submissionId != null &&
+                                      submissionId.trim().isNotEmpty
+                                  ? '/forms/${form.id}?submission_id=${Uri.encodeComponent(submissionId)}'
+                                  : '/forms/${form.id}';
+                              context.push(destination);
+                            },
                           ),
                         ),
                     if (pagination != null) ...[
@@ -513,6 +529,8 @@ class _FormCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     final compact = context.isCompactWidth;
     final iconSize = compact ? 44.0 : 54.0;
+    final answered =
+        form.mySubmissionId != null && form.mySubmissionId!.trim().isNotEmpty;
     return SoftCard(
       onTap: onTap,
       padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
@@ -547,7 +565,19 @@ class _FormCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xxs),
-                _StatusBadge(status: form.status.toJson()),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _StatusBadge(status: form.status.toJson()),
+                    if (answered)
+                      _MetaChip(
+                        icon: Icons.check_circle_rounded,
+                        label: context.l10n.t('submittedReviewTitle'),
+                        translate: false,
+                      ),
+                  ],
+                ),
                 if ((form.description ?? '').trim().isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Text(
@@ -601,7 +631,7 @@ class _FormCard extends StatelessWidget {
           ),
           if (!compact) ...[
             const SizedBox(width: AppSpacing.xs),
-            Icon(Icons.arrow_forward_rounded, color: scheme.onSurfaceVariant),
+            Icon(appForwardIcon(context), color: scheme.onSurfaceVariant),
           ],
         ],
       ),

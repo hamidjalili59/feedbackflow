@@ -87,12 +87,12 @@ pub async fn list_forms(
         UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
     );
     let status_filter = if restrict_non_management {
-        " and (f.status='published' or f.creator_id=$8)"
+        " and (f.status='published' or f.creator_id=$9)"
     } else {
         "" // see all statuses
     };
     let rows = if matches!(auth.role, UserRole::Ceo | UserRole::SuperAdmin) && org_id.is_none() {
-        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count from forms f where f.deleted_at is null and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) and ($2='' or lower(coalesce(f.category,''))=lower($2)) and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) order by {order_by} {direction}, f.id asc limit $5 offset $6");
+        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$7 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id from forms f where f.deleted_at is null and ($1='' or f.title ilike '%'||$1||'%' or coalesce(f.description,'') ilike '%'||$1||'%' or coalesce(f.category,'') ilike '%'||$1||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$1||'%')) and ($2='' or lower(coalesce(f.category,''))=lower($2)) and ($3 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($4))) order by {order_by} {direction}, f.id asc limit $5 offset $6");
         sqlx::query(&sql)
             .bind(&search)
             .bind(&category)
@@ -100,10 +100,11 @@ pub async fn list_forms(
             .bind(&tags)
             .bind(q.limit())
             .bind(q.offset())
+            .bind(auth.user_id)
             .fetch_all(&state.db)
             .await?
     } else {
-        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))){status_filter} order by {order_by} {direction}, f.id asc limit $6 offset $7");
+        let sql = format!("select f.*, (select token from public_form_tokens p where p.form_id=f.id and p.enabled=true limit 1) public_token, (select count(*) from form_submissions s where s.form_id=f.id and s.deleted_at is null) submissions_count, (select s.id from form_submissions s where s.form_id=f.id and s.respondent_user_id=$8 and s.deleted_at is null order by s.submitted_at desc limit 1) my_submission_id from forms f where f.deleted_at is null and f.organization_id=$1 and ($2='' or f.title ilike '%'||$2||'%' or coalesce(f.description,'') ilike '%'||$2||'%' or coalesce(f.category,'') ilike '%'||$2||'%' or exists (select 1 from unnest(f.tags) tag where tag ilike '%'||$2||'%')) and ($3='' or lower(coalesce(f.category,''))=lower($3)) and ($4 or exists (select 1 from unnest(f.tags) tag where lower(tag)=any($5))){status_filter} order by {order_by} {direction}, f.id asc limit $6 offset $7");
         let mut query = sqlx::query(&sql)
             .bind(org_id)
             .bind(&search)
@@ -111,7 +112,8 @@ pub async fn list_forms(
             .bind(tags_empty)
             .bind(&tags)
             .bind(q.limit())
-            .bind(q.offset());
+            .bind(q.offset())
+            .bind(auth.user_id);
         if restrict_non_management {
             query = query.bind(auth.user_id);
         }
@@ -137,7 +139,7 @@ pub async fn get_form(
     auth: &AuthUser,
     id: Uuid,
 ) -> Result<FormDetailDto, AppError> {
-    let detail = load_form_detail(state, id).await?;
+    let mut detail = load_form_detail(state, id).await?;
     let assignment_can_see =
         crate::audience::service::user_matches_form_assignment(state, id, auth, false)
             .await
@@ -157,6 +159,7 @@ pub async fn get_form(
     if !can_see {
         return Err(AppError::forbidden("You cannot view this form"));
     }
+    detail.my_submission_id = latest_submission_id_for_user(state, id, auth.user_id).await?;
     Ok(detail)
 }
 
@@ -186,12 +189,14 @@ pub async fn answer_access(
         Some(auth),
     ) || assignment_can_see
         || assignment_can_answer;
+    let my_submission_id = latest_submission_id_for_user(state, id, auth.user_id).await?;
     if !can_view {
         return Ok(FormAnswerAccessDto {
             allowed: false,
             can_view,
             can_edit_workspace,
             requires_public_link: detail.visibility.mode == VisibilityMode::PublicLink,
+            my_submission_id,
             reason: Some("شما اجازه مشاهده این فرم را ندارید.".to_owned()),
             reason_code: Some("cannot_view".to_owned()),
         });
@@ -202,6 +207,7 @@ pub async fn answer_access(
             can_view,
             can_edit_workspace,
             requires_public_link: false,
+            my_submission_id,
             reason: Some("این فرم هنوز منتشر نشده یا بسته شده است.".to_owned()),
             reason_code: Some("not_published".to_owned()),
         });
@@ -213,6 +219,7 @@ pub async fn answer_access(
                 can_view,
                 can_edit_workspace,
                 requires_public_link: false,
+                my_submission_id,
                 reason: Some("زمان پاسخ‌دهی به این فرم هنوز شروع نشده است.".to_owned()),
                 reason_code: Some("not_started".to_owned()),
             });
@@ -225,6 +232,7 @@ pub async fn answer_access(
                 can_view,
                 can_edit_workspace,
                 requires_public_link: false,
+                my_submission_id,
                 reason: Some("مهلت پاسخ‌دهی به این فرم تمام شده است.".to_owned()),
                 reason_code: Some("closed".to_owned()),
             });
@@ -245,6 +253,7 @@ pub async fn answer_access(
                 can_view,
                 can_edit_workspace,
                 requires_public_link: false,
+                my_submission_id,
                 reason: Some("شما قبلاً به این فرم پاسخ داده‌اید.".to_owned()),
                 reason_code: Some("already_submitted".to_owned()),
             });
@@ -262,6 +271,7 @@ pub async fn answer_access(
         can_view,
         can_edit_workspace,
         requires_public_link: detail.visibility.mode == VisibilityMode::PublicLink && !allowed,
+        my_submission_id,
         reason: if allowed {
             None
         } else {
@@ -302,6 +312,20 @@ async fn row_visible_to_user(
             .await
             .unwrap_or(false);
     Ok(visible_by_assignment || answer_by_assignment)
+}
+
+async fn latest_submission_id_for_user(
+    state: &AppState,
+    form_id: Uuid,
+    user_id: Uuid,
+) -> Result<Option<Uuid>, AppError> {
+    Ok(sqlx::query_scalar(
+        "select id from form_submissions where form_id=$1 and respondent_user_id=$2 and deleted_at is null order by submitted_at desc limit 1",
+    )
+    .bind(form_id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?)
 }
 
 pub async fn update_form(
@@ -1380,6 +1404,7 @@ pub fn row_to_form_summary(row: &sqlx::postgres::PgRow) -> Result<FormSummaryDto
         scoring_mode: enum_from_str(&row.try_get::<String, _>("scoring_mode")?)
             .unwrap_or(ScoringMode::None),
         submissions_count: row.try_get("submissions_count").unwrap_or(0),
+        my_submission_id: row.try_get("my_submission_id").ok(),
         public_token: row.try_get("public_token").ok(),
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
@@ -1420,6 +1445,7 @@ pub fn row_to_form_detail(row: &sqlx::postgres::PgRow) -> Result<FormDetailDto, 
         scoring_config: row.try_get("scoring_config").unwrap_or_else(|_| json!({})),
         fields: vec![],
         public_token: row.try_get("public_token").ok(),
+        my_submission_id: None,
         approved_at: row.try_get("approved_at")?,
         published_at: row.try_get("published_at")?,
         closed_at: row.try_get("closed_at")?,

@@ -6,7 +6,7 @@ use crate::{
         forms::FormVisibilityDto,
         metrics::{
             MetricAggregationMethod, MetricDefinitionDto, MetricMappingSourceType,
-            MetricPositiveDirection,
+            MetricPositiveDirection, MetricType,
         },
     },
     app_state::AppState,
@@ -1064,6 +1064,9 @@ fn metric_label_status(
                 );
             }
         }
+    }
+    if metric.metric_type == MetricType::Count && metric.scale_max.is_none() {
+        return (None, None);
     }
     let status = match metric.positive_direction {
         MetricPositiveDirection::HigherIsBetter => {

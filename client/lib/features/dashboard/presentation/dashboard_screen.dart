@@ -456,7 +456,6 @@ class _ParentHomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      textDirection: TextDirection.ltr,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         InkWell(
@@ -485,7 +484,7 @@ class _ParentHomeHeader extends StatelessWidget {
         const SizedBox(width: 20),
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 context.l10n.t('dashboard.parentGreeting'),
@@ -532,7 +531,6 @@ class _ParentStudentCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Flex(
           direction: compact ? Axis.vertical : Axis.horizontal,
-          textDirection: TextDirection.ltr,
           crossAxisAlignment: compact
               ? CrossAxisAlignment.stretch
               : CrossAxisAlignment.center,
@@ -546,75 +544,69 @@ class _ParentStudentCard extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: onProfileTap,
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                icon: Icon(appBackIcon(context), size: 18),
                 label: Text(context.l10n.t('dashboard.viewProfile')),
               ),
             ),
             SizedBox(width: compact ? 0 : 12, height: compact ? 12 : 0),
             Flexible(
               fit: compact ? FlexFit.loose : FlexFit.tight,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  textDirection: TextDirection.rtl,
-                  spacing: 8,
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: const Color(0xFFE8EEFF),
-                      backgroundImage: _dashboardAvatarImageProvider(
-                        child.avatarUrl,
-                      ),
-                      child: child.avatarUrl == null || child.avatarUrl!.isEmpty
-                          ? Text(
-                              _initials(child.displayName),
-                              style: const TextStyle(
+              child: Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          child.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                        ),
+                        if ([child.className, child.gradeLabel]
+                            .whereType<String>()
+                            .where((value) => value.trim().isNotEmpty)
+                            .join(' - ')
+                            .isNotEmpty) ...[
+                          const SizedBox(height: 2),
                           Text(
-                            child.displayName,
+                            [child.className, child.gradeLabel]
+                                .whereType<String>()
+                                .where((value) => value.trim().isNotEmpty)
+                                .join(' - '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
+                            style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: AppTheme.ink,
-                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFF747A9A),
+                                  fontWeight: FontWeight.w700,
                                 ),
                           ),
-                          if ([child.className, child.gradeLabel]
-                              .whereType<String>()
-                              .where((value) => value.trim().isNotEmpty)
-                              .join(' - ')
-                              .isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              [child.className, child.gradeLabel]
-                                  .whereType<String>()
-                                  .where((value) => value.trim().isNotEmpty)
-                                  .join(' - '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: const Color(0xFF747A9A),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: const Color(0xFFE8EEFF),
+                    backgroundImage: _dashboardAvatarImageProvider(
+                      child.avatarUrl,
+                    ),
+                    child: child.avatarUrl == null || child.avatarUrl!.isEmpty
+                        ? Text(
+                            _initials(child.displayName),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          )
+                        : null,
+                  ),
+                ],
               ),
             ),
           ],
@@ -671,56 +663,69 @@ class _ParentSurveyActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ParentWhiteCard(
-      child: Row(
-        textDirection: TextDirection.ltr,
-        children: [
-          SizedBox(
-            width: 98,
-            height: 42,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF436BFF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+    final destination = _surveyDestination(survey);
+    final answered =
+        survey.mySubmissionId != null && survey.mySubmissionId!.isNotEmpty;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => context.push(destination),
+      child: _ParentWhiteCard(
+        child: Row(
+          textDirection: TextDirection.ltr,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 88, minHeight: 42),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF436BFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => context.push(destination),
+                child: Text(
+                  answered
+                      ? context.l10n.t('viewResult')
+                      : context.l10n.t('start'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              onPressed: () => context.push('/forms/${survey.formId}'),
-              child: Text(context.l10n.t('start')),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  survey.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
+            const Spacer(),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    survey.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  survey.dateLabel ??
-                      context.l10n
-                          .t('questionCount')
-                          .replaceAll('{count}', '${survey.questionCount}'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF747A9A),
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 4),
+                  Text(
+                    survey.dateLabel ??
+                        context.l10n
+                            .t('questionCount')
+                            .replaceAll('{count}', '${survey.questionCount}'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF747A9A),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -972,7 +977,7 @@ class _ParentProgressHeader extends StatelessWidget {
                 backgroundColor: AppTheme.ink,
                 foregroundColor: Colors.white,
               ),
-              icon: const Icon(Icons.chevron_left_rounded),
+              icon: Icon(appBackChevronIcon(context)),
             ),
             const Spacer(),
             _ParentPeriodPill(value: period, onChanged: onPeriodChanged),
@@ -995,7 +1000,7 @@ class _ParentProgressHeader extends StatelessWidget {
                 backgroundColor: AppTheme.ink,
                 foregroundColor: Colors.white,
               ),
-              icon: const Icon(Icons.arrow_forward),
+              icon: Icon(appBackIcon(context)),
             ),
             const SizedBox(width: 18),
             _ParentPeriodPill(value: period, onChanged: onPeriodChanged),
@@ -1021,7 +1026,10 @@ class _ParentMetricGrid extends StatelessWidget {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth - 22) / 2;
+        final twoColumns = constraints.maxWidth >= 430;
+        final width = twoColumns
+            ? (constraints.maxWidth - 22) / 2
+            : constraints.maxWidth;
         return Wrap(
           spacing: 22,
           runSpacing: 22,
@@ -1046,15 +1054,16 @@ class _ParentMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = metric.status ?? _statusFor(metric.value, metric.scaleMax);
-    final color = _statusColor(status);
+    final status = _metricStatus(metric);
+    final color = status == null ? null : _statusColor(status);
     return _ParentWhiteCard(
       padding: const EdgeInsets.all(14),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             metric.title,
+            textAlign: TextAlign.start,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1065,29 +1074,36 @@ class _ParentMetricCard extends StatelessWidget {
           const Spacer(),
           Text(
             metric.displayValue,
+            textAlign: TextAlign.start,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
           const Spacer(),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _statusLabel(context, status),
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w900,
+          if (status != null && color != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _statusLabel(context, status),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1101,53 +1117,58 @@ class _ParentSurveyResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ParentWhiteCard(
-      child: Row(
-        textDirection: TextDirection.ltr,
-        children: [
-          Text(
-            survey.mySubmissionId == null
-                ? context.l10n.t('start')
-                : survey.progress.toStringAsFixed(0),
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(width: 4),
-          if (survey.mySubmissionId != null)
+    final destination = _surveyDestination(survey);
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => context.push(destination),
+      child: _ParentWhiteCard(
+        child: Row(
+          textDirection: TextDirection.ltr,
+          children: [
             Text(
-              context.l10n.t('dashboard.responses'),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF747A9A)),
+              survey.mySubmissionId == null
+                  ? context.l10n.t('start')
+                  : survey.progress.toStringAsFixed(0),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  survey.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
+            const SizedBox(width: 4),
+            if (survey.mySubmissionId != null)
+              Text(
+                context.l10n.t('dashboard.responses'),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF747A9A)),
+              ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    survey.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                Text(
-                  survey.dateLabel ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF747A9A),
+                  Text(
+                    survey.dateLabel ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF747A9A),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1299,7 +1320,6 @@ class _DashboardTopBar extends StatelessWidget {
             ],
           ),
         ),
-        const Spacer(),
         _PeriodDropdown(value: period, onChanged: onPeriodChanged),
         // const SizedBox(width: 12),
         // IconButton.filled(
@@ -1552,10 +1572,11 @@ class _ChildCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     child.displayName,
+                    textAlign: TextAlign.start,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -1615,10 +1636,11 @@ class _StudentProfileCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   user.displayName,
+                  textAlign: TextAlign.start,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -1936,12 +1958,12 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = metric.status ?? _statusFor(metric.value, metric.scaleMax);
-    final statusColor = _statusColor(status);
+    final status = _metricStatus(metric);
+    final statusColor = status == null ? null : _statusColor(status);
     return _SoftPanel(
       padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1949,6 +1971,7 @@ class _MetricCard extends StatelessWidget {
               const Spacer(),
               Text(
                 metric.title,
+                textAlign: TextAlign.start,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
@@ -1958,29 +1981,37 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             metric.displayValue,
+            textAlign: TextAlign.start,
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w900,
               color: AppTheme.ink,
             ),
           ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _statusLabel(context, status),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: statusColor,
-                  fontWeight: FontWeight.w900,
+          if (status != null && statusColor != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _statusLabel(context, status),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -2398,6 +2429,14 @@ class _LatestSurveysCard extends StatelessWidget {
   }
 }
 
+String _surveyDestination(SurveyCardDto2 survey) {
+  final submissionId = survey.mySubmissionId?.trim();
+  if (submissionId != null && submissionId.isNotEmpty) {
+    return '/forms/${survey.formId}?submission_id=${Uri.encodeComponent(submissionId)}';
+  }
+  return '/forms/${survey.formId}';
+}
+
 class _SurveyTile extends StatelessWidget {
   const _SurveyTile({required this.survey, this.primary = false});
 
@@ -2409,9 +2448,7 @@ class _SurveyTile extends StatelessWidget {
     final theme = Theme.of(context);
     final completed =
         survey.mySubmissionId != null || survey.status == 'completed';
-    final destination = completed && survey.mySubmissionId != null
-        ? '/forms/${survey.formId}?submission_id=${Uri.encodeComponent(survey.mySubmissionId!)}'
-        : '/forms/${survey.formId}';
+    final destination = _surveyDestination(survey);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => context.push(destination),
@@ -2431,14 +2468,19 @@ class _SurveyTile extends StatelessWidget {
         child: Row(
           children: [
             if (primary)
-              SizedBox(
-                width: 96,
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 92),
                 child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
                   onPressed: () => context.push(destination),
                   child: Text(
                     completed
                         ? context.l10n.t('viewResult')
                         : context.l10n.t('start'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               )
@@ -3266,7 +3308,7 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
             children: [
               Text(
                 metric.title,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.start,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
@@ -3276,7 +3318,7 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
                 description?.isNotEmpty == true
                     ? description!
                     : context.l10n.t('dashboard.metricDefaultDescription'),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.start,
               ),
               const SizedBox(height: 14),
               _MetricInfoRow(
@@ -3293,10 +3335,9 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
               ),
               _MetricInfoRow(
                 label: context.l10n.t('metric.status'),
-                value: _statusLabel(
-                  context,
-                  metric.status ?? _statusFor(metric.value, metric.scaleMax),
-                ),
+                value: _metricStatus(metric) == null
+                    ? '-'
+                    : _statusLabel(context, _metricStatus(metric)!),
               ),
               _MetricInfoRow(
                 label: context.l10n.t('metric.source'),
@@ -3803,7 +3844,16 @@ String _statusFor(double? value, double? max) {
   return 'normal';
 }
 
+String? _metricStatus(DashboardMetricValueDto2 metric) {
+  final explicit = metric.status?.trim();
+  if (explicit != null && explicit.isNotEmpty) return explicit;
+  if (metric.scaleMax == null || metric.scaleMax == 0) return null;
+  return _statusFor(metric.value, metric.scaleMax);
+}
+
 Color _statusColor(String status) => switch (status) {
+  'success' => AppTheme.success,
+  'neutral' => AppTheme.primary,
   'excellent' || 'great' || 'عالی' => AppTheme.success,
   'good' || 'خوب' => AppTheme.primary,
   'warning' || 'normal' || 'معمولی' => AppTheme.warning,
@@ -3812,6 +3862,8 @@ Color _statusColor(String status) => switch (status) {
 };
 
 String _statusLabel(BuildContext context, String status) => switch (status) {
+  'success' => context.l10n.t('metric.status.excellent'),
+  'neutral' => context.l10n.t('metric.status.good'),
   'excellent' || 'great' => context.l10n.t('metric.status.excellent'),
   'good' => context.l10n.t('metric.status.good'),
   'warning' || 'normal' => context.l10n.t('metric.status.warning'),

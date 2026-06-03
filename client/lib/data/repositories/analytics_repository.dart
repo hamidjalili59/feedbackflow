@@ -66,6 +66,10 @@ abstract class AnalyticsRepository {
     bool? enabled,
   });
   Future<List<FormAssignmentDto2>> listFormAssignments({required String id});
+  Future<List<FormAssignmentDto2>> setFormAssignments({
+    required String id,
+    required SetFormAssignmentsRequest2 request,
+  });
 }
 
 class DioAnalyticsRepository implements AnalyticsRepository {
@@ -253,5 +257,15 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     required String id,
   }) async {
     return EnvelopeGuard.data(await _api.listFormAssignments(id: id));
+  }
+
+  @override
+  Future<List<FormAssignmentDto2>> setFormAssignments({
+    required String id,
+    required SetFormAssignmentsRequest2 request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.setFormAssignments(id: id, request: request),
+    );
   }
 }

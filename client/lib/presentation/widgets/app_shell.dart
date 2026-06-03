@@ -51,6 +51,7 @@ class AppShell extends ConsumerWidget {
     this.appBar,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
+    this.showNavigation = true,
     super.key,
   });
 
@@ -59,9 +60,23 @@ class AppShell extends ConsumerWidget {
   final PreferredSizeWidget? appBar;
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
+  final bool showNavigation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!showNavigation) {
+      return Scaffold(
+        extendBodyBehindAppBar: false,
+        appBar: appBar,
+        body: DecoratedBox(
+          decoration: AppTheme.pageGradient(context),
+          child: SafeArea(top: false, child: body),
+        ),
+        floatingActionButton: floatingActionButton,
+        floatingActionButtonLocation: floatingActionButtonLocation,
+      );
+    }
+
     final size = context.windowSize;
     final isCompact = size.isCompact;
 

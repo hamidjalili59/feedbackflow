@@ -7,6 +7,26 @@ import '../../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_spacing.dart';
 
+IconData appBackIcon(BuildContext context) =>
+    Directionality.of(context) == TextDirection.rtl
+    ? Icons.arrow_forward_rounded
+    : Icons.arrow_back_rounded;
+
+IconData appForwardIcon(BuildContext context) =>
+    Directionality.of(context) == TextDirection.rtl
+    ? Icons.arrow_back_rounded
+    : Icons.arrow_forward_rounded;
+
+IconData appBackChevronIcon(BuildContext context) =>
+    Directionality.of(context) == TextDirection.rtl
+    ? Icons.chevron_right_rounded
+    : Icons.chevron_left_rounded;
+
+IconData appForwardChevronIcon(BuildContext context) =>
+    Directionality.of(context) == TextDirection.rtl
+    ? Icons.chevron_left_rounded
+    : Icons.chevron_right_rounded;
+
 class AppBackButton extends StatelessWidget {
   const AppBackButton({this.fallbackLocation, this.tooltip, super.key});
 
@@ -17,11 +37,7 @@ class AppBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton.filledTonal(
       tooltip: tooltip ?? context.l10n.t('back'),
-      icon: Icon(
-        context.l10n.textDirection == TextDirection.rtl
-            ? Icons.arrow_forward_rounded
-            : Icons.arrow_back_rounded,
-      ),
+      icon: Icon(appBackIcon(context)),
       onPressed: () {
         final navigator = Navigator.of(context);
         if (navigator.canPop()) {
