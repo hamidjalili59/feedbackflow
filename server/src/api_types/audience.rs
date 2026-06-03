@@ -29,6 +29,14 @@ pub enum AudienceSegmentType {
     Custom,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AudienceGroupType {
+    Group,
+    Class,
+    Department,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AudienceSegmentDto {
     pub id: Uuid,
@@ -92,6 +100,99 @@ pub struct AudienceSegmentMemberDto {
     pub primary_role: UserRole,
     pub role_snapshot: Option<String>,
     pub metadata: Value,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, IntoParams)]
+pub struct AudienceGroupQuery {
+    #[serde(default = "default_audience_group_page")]
+    pub page: i64,
+    #[serde(default = "default_audience_group_page_size")]
+    pub page_size: i64,
+    pub search: Option<String>,
+    pub group_type: Option<String>,
+}
+
+fn default_audience_group_page() -> i64 {
+    1
+}
+
+fn default_audience_group_page_size() -> i64 {
+    50
+}
+
+impl AudienceGroupQuery {
+    pub fn limit(&self) -> i64 {
+        self.page_size.clamp(1, 100)
+    }
+
+    pub fn offset(&self) -> i64 {
+        (self.page.max(1) - 1) * self.limit()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AudienceGroupOptionDto {
+    pub id: Uuid,
+    pub name: String,
+    pub group_type: String,
+    pub member_count: i64,
+    pub metadata: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AudienceGroupDto {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub parent_group_id: Option<Uuid>,
+    pub name: String,
+    pub group_type: AudienceGroupType,
+    pub member_count: i64,
+    pub metadata: Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct CreateAudienceGroupRequest {
+    #[validate(length(min = 1, max = 160))]
+    pub name: String,
+    pub group_type: Option<AudienceGroupType>,
+    pub parent_group_id: Option<Uuid>,
+    #[serde(default)]
+    pub metadata: Value,
+    #[serde(default)]
+    pub member_user_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct UpdateAudienceGroupRequest {
+    #[validate(length(min = 1, max = 160))]
+    pub name: Option<String>,
+    pub group_type: Option<AudienceGroupType>,
+    pub parent_group_id: Option<Uuid>,
+    pub metadata: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct AudienceGroupMemberInputDto {
+    pub user_id: Uuid,
+    #[validate(length(max = 80))]
+    pub role_in_group: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct SetAudienceGroupMembersRequest {
+    #[serde(default)]
+    pub members: Vec<AudienceGroupMemberInputDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AudienceGroupMemberDto {
+    pub user_id: Uuid,
+    pub display_name: String,
+    pub primary_role: UserRole,
+    pub role_in_group: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 

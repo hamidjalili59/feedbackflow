@@ -760,6 +760,165 @@ class AudienceSegmentDto2 {
   }
 }
 
+class AudienceGroupOptionDto2 {
+  const AudienceGroupOptionDto2({
+    required this.id,
+    required this.name,
+    required this.groupType,
+    required this.memberCount,
+    this.metadata = const <String, Object?>{},
+  });
+
+  final String id;
+  final String name;
+  final String groupType;
+  final int memberCount;
+  final Map<String, Object?> metadata;
+
+  String? get code => _string(metadata['code']);
+
+  factory AudienceGroupOptionDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return AudienceGroupOptionDto2(
+      id: _string(map['id']) ?? '',
+      name: _string(map['name']) ?? '',
+      groupType: _string(map['group_type']) ?? 'group',
+      memberCount: _int(map['member_count']),
+      metadata: _json(map['metadata']),
+    );
+  }
+}
+
+class AudienceGroupDto2 {
+  const AudienceGroupDto2({
+    required this.id,
+    this.organizationId,
+    this.parentGroupId,
+    required this.name,
+    required this.groupType,
+    required this.memberCount,
+    this.metadata = const <String, Object?>{},
+  });
+
+  final String id;
+  final String? organizationId;
+  final String? parentGroupId;
+  final String name;
+  final String groupType;
+  final int memberCount;
+  final Map<String, Object?> metadata;
+
+  String? get code => _string(metadata['code']);
+
+  factory AudienceGroupDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return AudienceGroupDto2(
+      id: _string(map['id']) ?? '',
+      organizationId: _string(map['organization_id']),
+      parentGroupId: _string(map['parent_group_id']),
+      name: _string(map['name']) ?? '',
+      groupType: _string(map['group_type']) ?? 'group',
+      memberCount: _int(map['member_count']),
+      metadata: _json(map['metadata']),
+    );
+  }
+}
+
+class CreateAudienceGroupRequest2 {
+  const CreateAudienceGroupRequest2({
+    required this.name,
+    this.groupType = 'class',
+    this.parentGroupId,
+    this.metadata = const <String, Object?>{},
+    this.memberUserIds = const <String>[],
+  });
+
+  final String name;
+  final String groupType;
+  final String? parentGroupId;
+  final Map<String, Object?> metadata;
+  final List<String> memberUserIds;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'name': name,
+    'group_type': groupType,
+    if (parentGroupId != null && parentGroupId!.trim().isNotEmpty)
+      'parent_group_id': parentGroupId,
+    'metadata': metadata,
+    if (memberUserIds.isNotEmpty) 'member_user_ids': memberUserIds,
+  };
+}
+
+class UpdateAudienceGroupRequest2 {
+  const UpdateAudienceGroupRequest2({
+    this.name,
+    this.groupType,
+    this.parentGroupId,
+    this.metadata,
+  });
+
+  final String? name;
+  final String? groupType;
+  final String? parentGroupId;
+  final Map<String, Object?>? metadata;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (name != null && name!.trim().isNotEmpty) 'name': name,
+    if (groupType != null && groupType!.trim().isNotEmpty)
+      'group_type': groupType,
+    if (parentGroupId != null && parentGroupId!.trim().isNotEmpty)
+      'parent_group_id': parentGroupId,
+    if (metadata != null) 'metadata': metadata,
+  };
+}
+
+class AudienceGroupMemberInputDto2 {
+  const AudienceGroupMemberInputDto2({required this.userId, this.roleInGroup});
+
+  final String userId;
+  final String? roleInGroup;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'user_id': userId,
+    if (roleInGroup != null && roleInGroup!.trim().isNotEmpty)
+      'role_in_group': roleInGroup,
+  };
+}
+
+class SetAudienceGroupMembersRequest2 {
+  const SetAudienceGroupMembersRequest2({required this.members});
+
+  final List<AudienceGroupMemberInputDto2> members;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'members': [for (final member in members) member.toJson()],
+  };
+}
+
+class AudienceGroupMemberDto2 {
+  const AudienceGroupMemberDto2({
+    required this.userId,
+    required this.displayName,
+    required this.primaryRole,
+    this.roleInGroup,
+  });
+
+  final String userId;
+  final String displayName;
+  final UserRole primaryRole;
+  final String? roleInGroup;
+
+  factory AudienceGroupMemberDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return AudienceGroupMemberDto2(
+      userId: _string(map['user_id']) ?? '',
+      displayName: _string(map['display_name']) ?? '',
+      primaryRole: UserRole.fromJson(_string(map['primary_role']) ?? 'student'),
+      roleInGroup: _string(map['role_in_group']),
+    );
+  }
+}
+
 class FormAssignmentDto2 {
   const FormAssignmentDto2({
     required this.id,

@@ -244,6 +244,7 @@ const sessionScopedProviderDebugNames = <String>{
   'submissionDetailProvider',
   'metricDefinitionsProvider',
   'audienceSegmentsProvider',
+  'audienceGroupsProvider',
 };
 
 void invalidateSessionScopedProviders(Ref ref) {
@@ -264,6 +265,7 @@ void invalidateSessionScopedProviders(Ref ref) {
   ref.invalidate(submissionDetailProvider);
   ref.invalidate(metricDefinitionsProvider);
   ref.invalidate(audienceSegmentsProvider);
+  ref.invalidate(audienceGroupsProvider);
 }
 
 String? _currentSessionUserId(Ref ref) {
@@ -399,6 +401,16 @@ final audienceSegmentsProvider =
       return ref
           .watch(analyticsRepositoryProvider)
           .listAudienceSegments(page: 1, pageSize: 50);
+    });
+
+final audienceGroupsProvider =
+    rp.FutureProvider.family<ListResponse<AudienceGroupOptionDto2>, String?>((
+      ref,
+      groupType,
+    ) {
+      return ref
+          .watch(analyticsRepositoryProvider)
+          .listAudienceGroups(page: 1, pageSize: 100, groupType: groupType);
     });
 
 final formAssignmentsProvider =

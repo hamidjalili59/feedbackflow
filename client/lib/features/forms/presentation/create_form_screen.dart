@@ -70,7 +70,11 @@ class CreateFormScreen extends ConsumerWidget {
           SliverAppBar.large(
             pinned: true,
             leading: const Padding(
-              padding: EdgeInsetsDirectional.only(start: AppSpacing.xs,bottom: 8,top: 8),
+              padding: EdgeInsetsDirectional.only(
+                start: AppSpacing.xs,
+                bottom: 8,
+                top: 8,
+              ),
               child: AppBackButton(fallbackLocation: '/forms'),
             ),
             title: Text(context.l10n.t('createForm')),

@@ -1975,7 +1975,7 @@ class _AssignmentDraft {
   }
 }
 
-class _AssignmentEditorCard extends StatelessWidget {
+class _AssignmentEditorCard extends ConsumerWidget {
   const _AssignmentEditorCard({
     required this.draft,
     required this.onChanged,
@@ -1989,16 +1989,15 @@ class _AssignmentEditorCard extends StatelessWidget {
 
   static const _audienceTypes = [
     'role',
-    'user',
-    'group',
     'class',
+    'group',
     'department',
     'organization',
     'segment',
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -2082,6 +2081,14 @@ class _AssignmentEditorCard extends StatelessWidget {
                 if (role != null) onChanged(draft.copyWith(audienceRole: role));
               },
             )
+          else if (_usesGroupPicker(draft.audienceType))
+            _AssignmentGroupPicker(
+              draft: draft,
+              groupsAsync: ref.watch(
+                audienceGroupsProvider(draft.audienceType),
+              ),
+              onChanged: onChanged,
+            )
           else if (_targetIdLabelKey(draft.audienceType) != null)
             TextFormField(
               initialValue: _targetId(draft),
@@ -2133,6 +2140,108 @@ class _AssignmentEditorCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AssignmentGroupPicker extends StatelessWidget {
+  const _AssignmentGroupPicker({
+    required this.draft,
+    required this.groupsAsync,
+    required this.onChanged,
+  });
+
+  final _AssignmentDraft draft;
+  final AsyncValue<ListResponse<AudienceGroupOptionDto2>> groupsAsync;
+  final ValueChanged<_AssignmentDraft> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return groupsAsync.when(
+      loading: () => InputDecorator(
+        decoration: InputDecoration(
+          labelText: context.l10n.t(_targetIdLabelKey(draft.audienceType)!),
+          prefixIcon: const Icon(Icons.groups_rounded),
+        ),
+        child: const LinearProgressIndicator(minHeight: 2),
+      ),
+      error: (error, stackTrace) => _InlineNotice(
+        icon: Icons.error_outline_rounded,
+        title: context.l10n.t('assignment.targetLoadError'),
+        message: FriendlyApiErrorMessage.from(error, context: context),
+      ),
+      data: (response) {
+        final groups = response.data ?? const <AudienceGroupOptionDto2>[];
+        final selectedId =
+            groups.any((group) => group.id == draft.audienceGroupId)
+            ? draft.audienceGroupId
+            : null;
+        if (groups.isEmpty) {
+          return _InlineNotice(
+            icon: Icons.groups_rounded,
+            title: context.l10n.t('assignment.noTargetsTitle'),
+            message: context.l10n
+                .t('assignment.noTargetsMessage')
+                .replaceAll(
+                  '{type}',
+                  _assignmentTypeLabel(context, draft.audienceType),
+                ),
+          );
+        }
+        return DropdownButtonFormField<String>(
+          initialValue: selectedId,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: context.l10n.t(_targetIdLabelKey(draft.audienceType)!),
+            helperText: context.l10n.t('form.assignmentTargetPickerHelper'),
+            prefixIcon: const Icon(Icons.groups_rounded),
+          ),
+          items: [
+            for (final group in groups)
+              DropdownMenuItem(
+                value: group.id,
+                child: Text(
+                  _groupOptionLabel(context, group),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: (id) {
+            if (id == null) return;
+            AudienceGroupOptionDto2? selected;
+            for (final group in groups) {
+              if (group.id == id) {
+                selected = group;
+                break;
+              }
+            }
+            onChanged(
+              draft.copyWith(
+                audienceGroupId: id,
+                label: selected?.name ?? draft.label,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+bool _usesGroupPicker(String audienceType) {
+  return audienceType == 'group' ||
+      audienceType == 'class' ||
+      audienceType == 'department';
+}
+
+String _groupOptionLabel(BuildContext context, AudienceGroupOptionDto2 group) {
+  final code = group.code;
+  final parts = <String>[
+    group.name,
+    if (code != null && code.trim().isNotEmpty) code.trim(),
+    context.l10n
+        .t('assignment.memberCount')
+        .replaceAll('{count}', '${group.memberCount}'),
+  ];
+  return parts.join(' · ');
 }
 
 class _AssignmentTile extends StatelessWidget {

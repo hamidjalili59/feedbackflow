@@ -729,6 +729,176 @@ class FeedbackFlowApiClient {
     );
   }
 
+  /// GET /api/v1/audience-groups
+  /// Requires Bearer JWT.
+  Future<ListResponse<AudienceGroupOptionDto2>> listAudienceGroups({
+    int page = 1,
+    int pageSize = 50,
+    String? search,
+    String? groupType,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/audience-groups',
+      queryParameters: _clean(<String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        'search': search,
+        'group_type': groupType,
+      }),
+    );
+    return _parseListResponse<AudienceGroupOptionDto2>(
+      response.data,
+      (json) => AudienceGroupOptionDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// POST /api/v1/audience-groups
+  /// Requires Bearer JWT.
+  Future<ApiResponse<AudienceGroupDto2>> createAudienceGroup({
+    required CreateAudienceGroupRequest2 request,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/audience-groups',
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<AudienceGroupDto2>(
+      response.data,
+      (json) => AudienceGroupDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/audience-groups/{id}
+  /// Requires Bearer JWT.
+  Future<ApiResponse<AudienceGroupDto2>> getAudienceGroup({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<AudienceGroupDto2>(
+      response.data,
+      (json) => AudienceGroupDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// PATCH /api/v1/audience-groups/{id}
+  /// Requires Bearer JWT.
+  Future<ApiResponse<AudienceGroupDto2>> updateAudienceGroup({
+    required String id,
+    required UpdateAudienceGroupRequest2 request,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<AudienceGroupDto2>(
+      response.data,
+      (json) => AudienceGroupDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// DELETE /api/v1/audience-groups/{id}
+  /// Requires Bearer JWT.
+  Future<ApiResponse<DeleteResultDto>> deleteAudienceGroup({
+    required String id,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<DeleteResultDto>(
+      response.data,
+      (json) => DeleteResultDto.fromJson(_jsonObject(json)),
+    );
+  }
+
+  /// GET /api/v1/audience-groups/{id}/members
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<AudienceGroupMemberDto2>>> listAudienceGroupMembers({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}/members', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<List<AudienceGroupMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceGroupMemberDto2>(
+        json,
+        AudienceGroupMemberDto2.fromJson,
+      ),
+    );
+  }
+
+  /// PUT /api/v1/audience-groups/{id}/members
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<AudienceGroupMemberDto2>>> setAudienceGroupMembers({
+    required String id,
+    required SetAudienceGroupMembersRequest2 request,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}/members', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<List<AudienceGroupMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceGroupMemberDto2>(
+        json,
+        AudienceGroupMemberDto2.fromJson,
+      ),
+    );
+  }
+
+  /// POST /api/v1/audience-groups/{id}/members
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<AudienceGroupMemberDto2>>> addAudienceGroupMember({
+    required String id,
+    required AudienceGroupMemberInputDto2 member,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}/members', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(member.toJson()),
+    );
+    return _parseApiResponse<List<AudienceGroupMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceGroupMemberDto2>(
+        json,
+        AudienceGroupMemberDto2.fromJson,
+      ),
+    );
+  }
+
+  /// DELETE /api/v1/audience-groups/{id}/members/{userId}
+  /// Requires Bearer JWT.
+  Future<ApiResponse<List<AudienceGroupMemberDto2>>> removeAudienceGroupMember({
+    required String id,
+    required String userId,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path('/api/v1/audience-groups/{id}/members/{userId}', <String, String>{
+        'id': id.toString(),
+        'userId': userId.toString(),
+      }),
+    );
+    return _parseApiResponse<List<AudienceGroupMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceGroupMemberDto2>(
+        json,
+        AudienceGroupMemberDto2.fromJson,
+      ),
+    );
+  }
+
   /// GET /api/v1/forms/{id}/assignments
   /// Requires Bearer JWT.
   Future<ApiResponse<List<FormAssignmentDto2>>> listFormAssignments({

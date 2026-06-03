@@ -25,7 +25,7 @@ pub fn require_audience_manager(auth: &AuthUser) -> Result<(), AppError> {
         Ok(())
     } else {
         Err(AppError::forbidden(
-            "Only managers/admins/CEO can manage audience segments and assignments",
+            "Only managers/admins/CEO can manage audience groups, segments, and assignments",
         ))
     }
 }
@@ -255,6 +255,313 @@ pub async fn set_segment_members(
     list_segment_members(state, auth, id).await
 }
 
+pub async fn list_group_options(
+    state: &AppState,
+    auth: &AuthUser,
+    q: &AudienceGroupQuery,
+) -> Result<(Vec<AudienceGroupOptionDto>, PaginationMeta), AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    let search = q.search.clone().unwrap_or_default();
+    let group_type = q.group_type.clone().unwrap_or_default();
+    let rows = sqlx::query(
+        "select g.id, g.name, g.group_type, g.metadata, count(gm.user_id)::bigint member_count \
+         from groups g \
+         left join group_members gm on gm.group_id=g.id \
+         where g.organization_id=$1 and g.deleted_at is null \
+           and ($2='' or g.name ilike '%'||$2||'%' or coalesce(g.metadata->>'code','') ilike '%'||$2||'%') \
+           and ($3='' or g.group_type=$3) \
+         group by g.id \
+         order by g.group_type asc, g.name asc \
+         limit $4 offset $5",
+    )
+    .bind(org_id)
+    .bind(&search)
+    .bind(&group_type)
+    .bind(q.limit())
+    .bind(q.offset())
+    .fetch_all(&state.db)
+    .await?;
+    let total: i64 = sqlx::query_scalar(
+        "select count(*) from groups g \
+         where g.organization_id=$1 and g.deleted_at is null \
+           and ($2='' or g.name ilike '%'||$2||'%' or coalesce(g.metadata->>'code','') ilike '%'||$2||'%') \
+           and ($3='' or g.group_type=$3)",
+    )
+    .bind(org_id)
+    .bind(&search)
+    .bind(&group_type)
+    .fetch_one(&state.db)
+    .await?;
+    let items = rows
+        .iter()
+        .map(|row| {
+            Ok(AudienceGroupOptionDto {
+                id: row.try_get("id")?,
+                name: row.try_get("name")?,
+                group_type: row.try_get("group_type")?,
+                member_count: row.try_get("member_count")?,
+                metadata: row.try_get("metadata").unwrap_or_else(|_| json!({})),
+            })
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
+    Ok((items, PaginationMeta::new(q.page, q.limit(), total)))
+}
+
+pub async fn create_group(
+    state: &AppState,
+    auth: &AuthUser,
+    request: CreateAudienceGroupRequest,
+) -> Result<AudienceGroupDto, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    if let Some(parent_id) = request.parent_group_id {
+        ensure_group_in_org(state, org_id, parent_id).await?;
+    }
+    let group_type = request.group_type.unwrap_or(AudienceGroupType::Class);
+    let mut tx = state.db.begin().await?;
+    let row = sqlx::query(
+        "insert into groups (organization_id, parent_group_id, group_type, name, metadata) \
+         values ($1,$2,$3,$4,$5) \
+         returning *, 0::bigint member_count",
+    )
+    .bind(org_id)
+    .bind(request.parent_group_id)
+    .bind(enum_to_string(&group_type))
+    .bind(request.name.trim())
+    .bind(default_object(request.metadata))
+    .fetch_one(&mut *tx)
+    .await?;
+    let group_id: Uuid = row.try_get("id")?;
+    let members = request
+        .member_user_ids
+        .into_iter()
+        .map(|user_id| AudienceGroupMemberInputDto {
+            user_id,
+            role_in_group: None,
+        })
+        .collect::<Vec<_>>();
+    upsert_group_members_tx(&mut tx, org_id, group_id, members).await?;
+    tx.commit().await?;
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Created,
+        "audience_group",
+        Some(group_id),
+        json!({"group_type": enum_to_string(&group_type)}),
+    )
+    .await?;
+    load_group(state, org_id, group_id).await
+}
+
+pub async fn get_group(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+) -> Result<AudienceGroupDto, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    load_group(state, org_id, id).await
+}
+
+pub async fn update_group(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    request: UpdateAudienceGroupRequest,
+) -> Result<AudienceGroupDto, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    ensure_group_in_org(state, org_id, id).await?;
+    if let Some(parent_id) = request.parent_group_id {
+        if parent_id == id {
+            return Err(AppError::validation(
+                "A group cannot be its own parent",
+                json!({}),
+            ));
+        }
+        ensure_group_in_org(state, org_id, parent_id).await?;
+    }
+    sqlx::query(
+        "update groups set \
+           name=coalesce($3, name), \
+           group_type=coalesce($4, group_type), \
+           parent_group_id=coalesce($5, parent_group_id), \
+           metadata=coalesce($6, metadata), \
+           updated_at=now() \
+         where id=$1 and organization_id=$2 and deleted_at is null",
+    )
+    .bind(id)
+    .bind(org_id)
+    .bind(request.name.as_deref().map(str::trim))
+    .bind(request.group_type.map(|value| enum_to_string(&value)))
+    .bind(request.parent_group_id)
+    .bind(request.metadata.map(default_object))
+    .execute(&state.db)
+    .await?;
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Updated,
+        "audience_group",
+        Some(id),
+        json!({}),
+    )
+    .await?;
+    load_group(state, org_id, id).await
+}
+
+pub async fn delete_group(state: &AppState, auth: &AuthUser, id: Uuid) -> Result<(), AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    let rows = sqlx::query(
+        "update groups set deleted_at=now(), updated_at=now() \
+         where id=$1 and organization_id=$2 and deleted_at is null",
+    )
+    .bind(id)
+    .bind(org_id)
+    .execute(&state.db)
+    .await?
+    .rows_affected();
+    if rows == 0 {
+        return Err(AppError::not_found("Audience group"));
+    }
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Deleted,
+        "audience_group",
+        Some(id),
+        json!({}),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn list_group_members(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+) -> Result<Vec<AudienceGroupMemberDto>, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    ensure_group_in_org(state, org_id, id).await?;
+    let rows = sqlx::query(
+        "select gm.user_id, u.display_name, u.primary_role, gm.role_in_group, gm.created_at \
+         from group_members gm \
+         join users u on u.id=gm.user_id \
+         where gm.group_id=$1 and u.organization_id=$2 and u.deleted_at is null \
+         order by u.display_name asc",
+    )
+    .bind(id)
+    .bind(org_id)
+    .fetch_all(&state.db)
+    .await?;
+    rows.iter()
+        .map(row_to_group_member)
+        .collect::<Result<Vec<_>, AppError>>()
+}
+
+pub async fn set_group_members(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    request: SetAudienceGroupMembersRequest,
+) -> Result<Vec<AudienceGroupMemberDto>, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    ensure_group_in_org(state, org_id, id).await?;
+    let mut tx = state.db.begin().await?;
+    sqlx::query("delete from group_members where group_id=$1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    upsert_group_members_tx(&mut tx, org_id, id, request.members).await?;
+    sqlx::query("update groups set updated_at=now() where id=$1 and organization_id=$2")
+        .bind(id)
+        .bind(org_id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Updated,
+        "audience_group_members",
+        Some(id),
+        json!({}),
+    )
+    .await?;
+    list_group_members(state, auth, id).await
+}
+
+pub async fn add_group_member(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    member: AudienceGroupMemberInputDto,
+) -> Result<Vec<AudienceGroupMemberDto>, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    ensure_group_in_org(state, org_id, id).await?;
+    let mut tx = state.db.begin().await?;
+    upsert_group_members_tx(&mut tx, org_id, id, vec![member]).await?;
+    sqlx::query("update groups set updated_at=now() where id=$1 and organization_id=$2")
+        .bind(id)
+        .bind(org_id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Updated,
+        "audience_group_members",
+        Some(id),
+        json!({"operation":"add"}),
+    )
+    .await?;
+    list_group_members(state, auth, id).await
+}
+
+pub async fn remove_group_member(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    user_id: Uuid,
+) -> Result<Vec<AudienceGroupMemberDto>, AppError> {
+    require_audience_manager(auth)?;
+    let org_id = scoped_org(auth)?;
+    ensure_group_in_org(state, org_id, id).await?;
+    sqlx::query("delete from group_members where group_id=$1 and user_id=$2")
+        .bind(id)
+        .bind(user_id)
+        .execute(&state.db)
+        .await?;
+    sqlx::query("update groups set updated_at=now() where id=$1 and organization_id=$2")
+        .bind(id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
+    auth_service::audit(
+        state,
+        Some(org_id),
+        Some(auth.user_id),
+        AuditAction::Updated,
+        "audience_group_members",
+        Some(id),
+        json!({"operation":"remove", "user_id": user_id}),
+    )
+    .await?;
+    list_group_members(state, auth, id).await
+}
+
 pub async fn list_form_assignments(
     state: &AppState,
     auth: &AuthUser,
@@ -351,7 +658,7 @@ pub async fn user_matches_form_assignment(
             fa.audience_type='organization' \
             or fa.audience_user_id=$2 \
             or fa.audience_role=$3 \
-            or fa.audience_group_id in (select gm.group_id from group_members gm where gm.user_id=$2) \
+            or fa.audience_group_id in (select gm.group_id from group_members gm join groups g on g.id=gm.group_id and g.deleted_at is null where gm.user_id=$2) \
             or fa.audience_segment_id in (select sm.segment_id from audience_segment_members sm join audience_segments seg on seg.id=sm.segment_id and seg.enabled=true and seg.deleted_at is null where sm.user_id=$2) \
           ) \
         )"
@@ -384,7 +691,7 @@ pub async fn assignment_labels_for_user(
            fa.audience_type='organization' \
            or fa.audience_user_id=$2 \
            or fa.audience_role=$3 \
-           or fa.audience_group_id in (select gm.group_id from group_members gm where gm.user_id=$2) \
+           or fa.audience_group_id in (select gm.group_id from group_members gm join groups g on g.id=gm.group_id and g.deleted_at is null where gm.user_id=$2) \
            or fa.audience_segment_id in (select sm.segment_id from audience_segment_members sm join audience_segments seg on seg.id=sm.segment_id and seg.enabled=true and seg.deleted_at is null where sm.user_id=$2) \
          ) order by fa.created_at asc limit 5",
     )
@@ -509,6 +816,67 @@ async fn load_segment(
     row_to_segment(&row)
 }
 
+async fn load_group(state: &AppState, org_id: Uuid, id: Uuid) -> Result<AudienceGroupDto, AppError> {
+    let row = sqlx::query(
+        "select g.*, count(gm.user_id)::bigint member_count \
+         from groups g \
+         left join group_members gm on gm.group_id=g.id \
+         where g.id=$1 and g.organization_id=$2 and g.deleted_at is null \
+         group by g.id",
+    )
+    .bind(id)
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await?;
+    row_to_group(&row)
+}
+
+async fn ensure_group_in_org(state: &AppState, org_id: Uuid, id: Uuid) -> Result<(), AppError> {
+    let ok: bool = sqlx::query_scalar(
+        "select exists(select 1 from groups where id=$1 and organization_id=$2 and deleted_at is null)",
+    )
+    .bind(id)
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await?;
+    if ok {
+        Ok(())
+    } else {
+        Err(AppError::not_found("Audience group"))
+    }
+}
+
+async fn upsert_group_members_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_id: Uuid,
+    group_id: Uuid,
+    members: Vec<AudienceGroupMemberInputDto>,
+) -> Result<(), AppError> {
+    let mut seen = HashSet::new();
+    for member in members.into_iter().filter(|item| seen.insert(item.user_id)) {
+        let ok: bool = sqlx::query_scalar(
+            "select exists(select 1 from users where id=$1 and organization_id=$2 and deleted_at is null)",
+        )
+        .bind(member.user_id)
+        .bind(org_id)
+        .fetch_one(&mut **tx)
+        .await?;
+        if !ok {
+            return Err(AppError::not_found("Group member user"));
+        }
+        sqlx::query(
+            "insert into group_members (group_id, user_id, role_in_group) values ($1,$2,$3) \
+             on conflict (group_id, user_id) do update set role_in_group=excluded.role_in_group",
+        )
+        .bind(group_id)
+        .bind(member.user_id)
+        .bind(member.role_in_group.as_deref().map(str::trim))
+        .execute(&mut **tx)
+        .await?;
+    }
+    Ok(())
+}
+
 async fn ensure_segment_in_org(state: &AppState, org_id: Uuid, id: Uuid) -> Result<(), AppError> {
     let ok: bool = sqlx::query_scalar(
         "select exists(select 1 from audience_segments where id=$1 and organization_id=$2 and deleted_at is null)",
@@ -552,6 +920,34 @@ fn default_object(value: Value) -> Value {
         Value::Null => json!({}),
         other => other,
     }
+}
+
+fn row_to_group(row: &sqlx::postgres::PgRow) -> Result<AudienceGroupDto, AppError> {
+    let group_type: AudienceGroupType = enum_from_str(&row.try_get::<String, _>("group_type")?)
+        .unwrap_or(AudienceGroupType::Group);
+    Ok(AudienceGroupDto {
+        id: row.try_get("id")?,
+        organization_id: row.try_get("organization_id")?,
+        parent_group_id: row.try_get("parent_group_id")?,
+        name: row.try_get("name")?,
+        group_type,
+        member_count: row.try_get("member_count").unwrap_or(0),
+        metadata: row.try_get("metadata").unwrap_or_else(|_| json!({})),
+        created_at: row.try_get("created_at")?,
+        updated_at: row.try_get("updated_at")?,
+    })
+}
+
+fn row_to_group_member(row: &sqlx::postgres::PgRow) -> Result<AudienceGroupMemberDto, AppError> {
+    let primary_role: UserRole =
+        enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Student);
+    Ok(AudienceGroupMemberDto {
+        user_id: row.try_get("user_id")?,
+        display_name: row.try_get("display_name")?,
+        primary_role,
+        role_in_group: row.try_get("role_in_group")?,
+        created_at: row.try_get("created_at")?,
+    })
 }
 
 fn row_to_segment(row: &sqlx::postgres::PgRow) -> Result<AudienceSegmentDto, AppError> {

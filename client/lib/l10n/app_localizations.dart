@@ -878,6 +878,8 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.assignmentAudienceType': 'نوع مخاطب',
     'form.assignmentTargetIdHelper':
         'شناسه باید از بخش کاربران، گروه‌ها، کلاس‌ها یا سگمنت‌ها برداشته شود.',
+    'form.assignmentTargetPickerHelper':
+        'مخاطب را از لیست موجود انتخاب کنید؛ شناسه به صورت خودکار ثبت می‌شود.',
     'form.assignmentLabel': 'برچسب نمایشی',
     'form.canView': 'مشاهده',
     'form.canRespond': 'پاسخ',
@@ -892,6 +894,11 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.segmentIdLabel': 'شناسه سگمنت',
     'assignment.invalidTargetUuid':
         'برای تخصیص {type} باید شناسه UUID واقعی انتخاب شود. کد یا نام نمایشی کلاس قابل ذخیره نیست.',
+    'assignment.targetLoadError': 'خطا در دریافت مخاطب‌ها',
+    'assignment.noTargetsTitle': 'موردی برای انتخاب وجود ندارد',
+    'assignment.noTargetsMessage':
+        'هنوز {type}ای برای این سازمان تعریف نشده است. ابتدا آن را در مدیریت کاربران/گروه‌ها بسازید و اعضا را اضافه کنید.',
+    'assignment.memberCount': '{count} عضو',
     'assignment.roleValue': 'نقش {role}',
     'assignment.group': 'گروه یا کلاس',
     'assignment.organization': 'کل سازمان',
@@ -1670,6 +1677,8 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.assignmentAudienceType': 'Audience type',
     'form.assignmentTargetIdHelper':
         'Use an ID from Users, Groups, Classes, or Audience segments.',
+    'form.assignmentTargetPickerHelper':
+        'Choose from existing records; the stored ID is filled automatically.',
     'form.assignmentLabel': 'Display label',
     'form.canView': 'View',
     'form.canRespond': 'Respond',
@@ -1684,6 +1693,11 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.segmentIdLabel': 'Segment ID',
     'assignment.invalidTargetUuid':
         'A real UUID is required for {type} assignments. Display codes or names cannot be saved.',
+    'assignment.targetLoadError': 'Could not load targets',
+    'assignment.noTargetsTitle': 'No target available',
+    'assignment.noTargetsMessage':
+        'No {type} has been created for this organization yet. Create it in user/group management first and add members.',
+    'assignment.memberCount': '{count} members',
     'assignment.roleValue': 'Role {role}',
     'assignment.group': 'Group or class',
     'assignment.organization': 'Whole organization',
@@ -2400,6 +2414,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'form.noAssignmentsDescription': '在服务器端创建分配后，此表单的受众会显示在这里。',
     'form.assignmentAudienceType': '受众类型',
     'form.assignmentTargetIdHelper': '请使用用户、群组、班级或受众分段中的 ID。',
+    'form.assignmentTargetPickerHelper': '从现有记录中选择；保存的 ID 会自动填写。',
     'form.assignmentLabel': '显示标签',
     'form.canView': '查看',
     'form.canRespond': '回答',
@@ -2413,6 +2428,10 @@ const Map<String, Map<String, String>> _localizedValues = {
     'assignment.departmentIdLabel': '部门 ID',
     'assignment.segmentIdLabel': '分段 ID',
     'assignment.invalidTargetUuid': '{type} 分配需要真实 UUID，不能保存显示代码或名称。',
+    'assignment.targetLoadError': '无法加载目标',
+    'assignment.noTargetsTitle': '没有可选目标',
+    'assignment.noTargetsMessage': '该组织尚未创建 {type}。请先在用户/群组管理中创建并添加成员。',
+    'assignment.memberCount': '{count} 名成员',
     'assignment.roleValue': '角色 {role}',
     'assignment.group': '群组或班级',
     'assignment.organization': '整个组织',

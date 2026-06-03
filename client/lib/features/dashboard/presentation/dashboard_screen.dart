@@ -238,6 +238,8 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    const _AudienceGroupsCard(),
+                    const SizedBox(height: 16),
                     _UserManagementCard(
                       key: ValueKey('users-$_userListVersion'),
                       actorRole: role,
@@ -4079,6 +4081,613 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
     }
   }
 }
+
+class _AudienceGroupsCard extends ConsumerStatefulWidget {
+  const _AudienceGroupsCard();
+
+  @override
+  ConsumerState<_AudienceGroupsCard> createState() =>
+      _AudienceGroupsCardState();
+}
+
+class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
+  final _name = TextEditingController();
+  final _code = TextEditingController();
+  final _search = TextEditingController();
+  String _groupType = 'class';
+  int _page = 1;
+  bool _saving = false;
+  late Future<ListResponse<AudienceGroupOptionDto2>> _future = _load();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _code.dispose();
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _CardHeader(
+            icon: Icons.groups_2_outlined,
+            title: 'مدیریت کلاس‌ها و گروه‌ها',
+            action: IconButton(
+              tooltip: context.l10n.t('refresh'),
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'اینجا می‌توانید کلاس/گروه بسازید، کد اختیاری بدهید و کاربران را عضو کنید.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 280,
+                child: TextField(
+                  controller: _name,
+                  decoration: const InputDecoration(
+                    labelText: 'نام کلاس یا گروه',
+                    prefixIcon: Icon(Icons.drive_file_rename_outline_rounded),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 160,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _groupType,
+                  decoration: const InputDecoration(labelText: 'نوع'),
+                  items: const [
+                    DropdownMenuItem(value: 'class', child: Text('کلاس')),
+                    DropdownMenuItem(value: 'group', child: Text('گروه')),
+                    DropdownMenuItem(
+                      value: 'department',
+                      child: Text('دپارتمان'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _groupType = value);
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 180,
+                child: TextField(
+                  controller: _code,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.left,
+                  decoration: const InputDecoration(
+                    labelText: 'کد اختیاری',
+                    prefixIcon: Icon(Icons.tag_rounded),
+                  ),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _saving ? null : _create,
+                icon: _saving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_rounded),
+                label: Text(
+                  _saving ? context.l10n.t('saving') : 'ساخت کلاس/گروه',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _search,
+            decoration: InputDecoration(
+              labelText: context.l10n.t('search'),
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                onPressed: () {
+                  _page = 1;
+                  _refresh();
+                },
+                icon: const Icon(Icons.arrow_forward_rounded),
+              ),
+            ),
+            onSubmitted: (_) {
+              _page = 1;
+              _refresh();
+            },
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<ListResponse<AudienceGroupOptionDto2>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                return Text(
+                  FriendlyApiErrorMessage.from(
+                    snapshot.error!,
+                    context: context,
+                  ),
+                );
+              }
+              final groups =
+                  snapshot.data?.data ?? const <AudienceGroupOptionDto2>[];
+              if (groups.isEmpty) {
+                return const Text('هنوز کلاس یا گروهی ساخته نشده است.');
+              }
+              final meta = snapshot.data?.meta?.pagination;
+              return Column(
+                children: [
+                  for (final group in groups)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        child: Icon(_groupTypeIcon(group.groupType)),
+                      ),
+                      title: Text(
+                        group.name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Text(
+                        '${_groupTypeLabel(group.groupType)} · ${group.memberCount} عضو'
+                        '${group.code == null ? '' : ' · کد: ${ltrIsolate(group.code!)}'}',
+                      ),
+                      trailing: Wrap(
+                        spacing: 8,
+                        children: [
+                          IconButton(
+                            tooltip: 'اعضا',
+                            onPressed: () => _manageMembers(group),
+                            icon: const Icon(Icons.group_add_outlined),
+                          ),
+                          IconButton(
+                            tooltip: context.l10n.t('delete'),
+                            onPressed: () => _delete(group),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        onPressed: _page > 1
+                            ? () => _goToPage(_page - 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_left_rounded),
+                      ),
+                      Text('${context.l10n.t('page')} $_page'),
+                      IconButton(
+                        onPressed: meta != null && _page < meta.totalPages
+                            ? () => _goToPage(_page + 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<ListResponse<AudienceGroupOptionDto2>> _load() {
+    return ref
+        .read(analyticsRepositoryProvider)
+        .listAudienceGroups(
+          page: _page,
+          pageSize: 8,
+          search: _search.text.trim().isEmpty ? null : _search.text.trim(),
+        );
+  }
+
+  void _refresh() {
+    setState(() => _future = _load());
+  }
+
+  void _goToPage(int page) {
+    setState(() {
+      _page = page;
+      _future = _load();
+    });
+  }
+
+  Future<void> _create() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('نام کلاس/گروه لازم است.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final metadata = <String, Object?>{};
+      final code = _code.text.trim();
+      if (code.isNotEmpty) metadata['code'] = code;
+      await ref
+          .read(analyticsRepositoryProvider)
+          .createAudienceGroup(
+            request: CreateAudienceGroupRequest2(
+              name: name,
+              groupType: _groupType,
+              metadata: metadata,
+            ),
+          );
+      _name.clear();
+      _code.clear();
+      _page = 1;
+      _refresh();
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('کلاس/گروه ساخته شد.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _manageMembers(AudienceGroupOptionDto2 group) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _GroupMembersDialog(group: group),
+    );
+    if (mounted) _refresh();
+  }
+
+  Future<void> _delete(AudienceGroupOptionDto2 group) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف کلاس/گروه'),
+        content: Text('«${group.name}» حذف شود؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.t('delete')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(analyticsRepositoryProvider)
+          .deleteAudienceGroup(id: group.id);
+      _refresh();
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('کلاس/گروه حذف شد.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _GroupMembersDialog extends ConsumerStatefulWidget {
+  const _GroupMembersDialog({required this.group});
+
+  final AudienceGroupOptionDto2 group;
+
+  @override
+  ConsumerState<_GroupMembersDialog> createState() =>
+      _GroupMembersDialogState();
+}
+
+class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
+  final _search = TextEditingController();
+  final _roleInGroup = TextEditingController();
+  String? _selectedUserId;
+  bool _saving = false;
+  late Future<List<AudienceGroupMemberDto2>> _membersFuture = _loadMembers();
+  late Future<ListResponse<UserSummaryDto>> _usersFuture = _loadUsers();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _roleInGroup.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.sizeOf(context).width.clamp(320.0, 620.0);
+    return AlertDialog(
+      title: Text('اعضای ${widget.group.name}'),
+      content: SizedBox(
+        width: maxWidth,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FutureBuilder<List<AudienceGroupMemberDto2>>(
+                future: _membersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Text(
+                      FriendlyApiErrorMessage.from(
+                        snapshot.error!,
+                        context: context,
+                      ),
+                    );
+                  }
+                  final members =
+                      snapshot.data ?? const <AudienceGroupMemberDto2>[];
+                  if (members.isEmpty) {
+                    return const Text(
+                      'هنوز عضوی به این کلاس/گروه اضافه نشده است.',
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (final member in members)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            child: Text(
+                              member.displayName.characters.first.toUpperCase(),
+                            ),
+                          ),
+                          title: Text(member.displayName),
+                          subtitle: Text(
+                            '${context.l10n.enumLabel(member.primaryRole.toJson())}'
+                            '${member.roleInGroup == null ? '' : ' · ${member.roleInGroup}'}',
+                          ),
+                          trailing: IconButton(
+                            tooltip: context.l10n.t('delete'),
+                            onPressed: _saving ? null : () => _remove(member),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const Divider(height: 28),
+              TextField(
+                controller: _search,
+                decoration: InputDecoration(
+                  labelText: 'جستجوی کاربر برای افزودن',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => _usersFuture = _loadUsers()),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                  ),
+                ),
+                onSubmitted: (_) => setState(() => _usersFuture = _loadUsers()),
+              ),
+              const SizedBox(height: 10),
+              FutureBuilder<ListResponse<UserSummaryDto>>(
+                future: _usersFuture,
+                builder: (context, snapshot) {
+                  final users = snapshot.data?.data ?? const <UserSummaryDto>[];
+                  final selected =
+                      users.any((user) => user.id == _selectedUserId)
+                      ? _selectedUserId
+                      : null;
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const LinearProgressIndicator();
+                  }
+                  if (snapshot.hasError) {
+                    return Text(
+                      FriendlyApiErrorMessage.from(
+                        snapshot.error!,
+                        context: context,
+                      ),
+                    );
+                  }
+                  if (users.isEmpty) {
+                    return const Text('کاربری پیدا نشد.');
+                  }
+                  return DropdownButtonFormField<String>(
+                    initialValue: selected,
+                    decoration: const InputDecoration(labelText: 'کاربر'),
+                    items: [
+                      for (final user in users)
+                        DropdownMenuItem(
+                          value: user.id,
+                          child: Text('${user.displayName} · ${user.phone}'),
+                        ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _selectedUserId = value),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _roleInGroup,
+                decoration: const InputDecoration(
+                  labelText:
+                      'نقش داخل گروه (اختیاری؛ مثل دانش‌آموز، نماینده، مربی)',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _add,
+                  icon: _saving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.group_add_rounded),
+                  label: const Text('افزودن کاربر'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('close')),
+        ),
+      ],
+    );
+  }
+
+  Future<List<AudienceGroupMemberDto2>> _loadMembers() {
+    return ref
+        .read(analyticsRepositoryProvider)
+        .listAudienceGroupMembers(id: widget.group.id);
+  }
+
+  Future<ListResponse<UserSummaryDto>> _loadUsers() {
+    return ref
+        .read(usersRepositoryProvider)
+        .listUsers(
+          page: 1,
+          pageSize: 20,
+          search: _search.text.trim().isEmpty ? null : _search.text.trim(),
+          sortBy: 'display_name',
+          sortOrder: SortOrder.asc,
+        );
+  }
+
+  Future<void> _add() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final selected = _selectedUserId;
+    if (selected == null || selected.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('ابتدا یک کاربر انتخاب کنید.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(analyticsRepositoryProvider)
+          .addAudienceGroupMember(
+            id: widget.group.id,
+            member: AudienceGroupMemberInputDto2(
+              userId: selected,
+              roleInGroup: _roleInGroup.text.trim().isEmpty
+                  ? null
+                  : _roleInGroup.text.trim(),
+            ),
+          );
+      _roleInGroup.clear();
+      setState(() => _membersFuture = _loadMembers());
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('کاربر به کلاس/گروه اضافه شد.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _remove(AudienceGroupMemberDto2 member) async {
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(analyticsRepositoryProvider)
+          .removeAudienceGroupMember(
+            id: widget.group.id,
+            userId: member.userId,
+          );
+      setState(() => _membersFuture = _loadMembers());
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+String _groupTypeLabel(String value) => switch (value) {
+  'class' => 'کلاس',
+  'department' => 'دپارتمان',
+  _ => 'گروه',
+};
+
+IconData _groupTypeIcon(String value) => switch (value) {
+  'class' => Icons.school_outlined,
+  'department' => Icons.account_tree_outlined,
+  _ => Icons.groups_outlined,
+};
 
 class _UserManagementCard extends ConsumerStatefulWidget {
   const _UserManagementCard({super.key, required this.actorRole});

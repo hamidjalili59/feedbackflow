@@ -423,7 +423,7 @@ async fn forms_visible_to_subject(
            and ( \
              fa.audience_user_id=$2 \
              or fa.audience_role=$3 \
-             or fa.audience_group_id in (select gm.group_id from group_members gm where gm.user_id=$2) \
+             or fa.audience_group_id in (select gm.group_id from group_members gm join groups g on g.id=gm.group_id and g.deleted_at is null where gm.user_id=$2) \
              or fa.audience_segment_id in ( \
                select sm.segment_id from audience_segment_members sm \
                join audience_segments seg on seg.id=sm.segment_id and seg.enabled=true and seg.deleted_at is null \
