@@ -3618,62 +3618,10 @@ Future<void> _showSegmentMembersDialog(
   WidgetRef ref,
   AudienceSegmentDto2 segment,
 ) async {
-  final repo = ref.read(analyticsRepositoryProvider);
-  final current = await repo.listAudienceSegmentMembers(id: segment.id);
-  if (!context.mounted) return;
-  final phones = TextEditingController();
   await showDialog<void>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text('اعضای بخش مخاطبان: ${segment.name}'),
-      content: SizedBox(
-        width: MediaQuery.sizeOf(context).width.clamp(320.0, 520.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (current.isNotEmpty)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  current.map((member) => member.displayName).join('، '),
-                ),
-              ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phones,
-              minLines: 8,
-              maxLines: 12,
-              textDirection: TextDirection.ltr,
-              decoration: const InputDecoration(
-                labelText: 'شماره موبایل اعضا',
-                helperText:
-                    'برای جایگزینی اعضا، شماره‌ها را با ویرگول یا خط جدید وارد کنید',
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.t('cancel')),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final userIds = await _resolveUserIdsByPhones(ref, phones.text);
-            await repo.setAudienceSegmentMembers(
-              id: segment.id,
-              request: SetAudienceSegmentMembersRequest2(userIds: userIds),
-            );
-            ref.invalidate(audienceSegmentsProvider);
-            ref.invalidate(dashboardExperienceProvider);
-            if (context.mounted) Navigator.pop(context);
-          },
-          child: Text(context.l10n.t('save')),
-        ),
-      ],
-    ),
-  ).whenComplete(phones.dispose);
+    builder: (context) => _SegmentMembersDialog(segment: segment),
+  );
 }
 
 Future<void> _showFormAssignmentsDialog(
@@ -5392,6 +5340,173 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
   }
 }
 
+class _SegmentMembersDialog extends ConsumerStatefulWidget {
+  const _SegmentMembersDialog({required this.segment});
+
+  final AudienceSegmentDto2 segment;
+
+  @override
+  ConsumerState<_SegmentMembersDialog> createState() =>
+      _SegmentMembersDialogState();
+}
+
+class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
+  final _search = TextEditingController();
+  final Set<String> _selectedUserIds = <String>{};
+  bool _membersLoaded = false;
+  bool _saving = false;
+  late Future<List<AudienceSegmentMemberDto2>> _membersFuture = _loadMembers();
+  late Future<ListResponse<UserSummaryDto>> _usersFuture = _loadUsers();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = MediaQuery.sizeOf(context).width.clamp(320.0, 640.0);
+    return AlertDialog(
+      title: Text('اعضای بخش مخاطبان: ${widget.segment.name}'),
+      content: SizedBox(
+        width: maxWidth,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FutureBuilder<List<AudienceSegmentMemberDto2>>(
+                future: _membersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const LinearProgressIndicator();
+                  }
+                  if (snapshot.hasError) {
+                    return Text(
+                      FriendlyApiErrorMessage.from(
+                        snapshot.error!,
+                        context: context,
+                      ),
+                    );
+                  }
+                  final members =
+                      snapshot.data ?? const <AudienceSegmentMemberDto2>[];
+                  return Text(
+                    members.isEmpty
+                        ? 'هنوز عضوی برای این بخش انتخاب نشده است.'
+                        : '${members.length} عضو فعلی انتخاب شده است.',
+                  );
+                },
+              ),
+              const Divider(height: 28),
+              _UserSearchField(
+                controller: _search,
+                onSearch: _refreshUsers,
+                labelText: 'جستجوی کاربر برای انتخاب اعضا',
+              ),
+              const SizedBox(height: 10),
+              _UserMultiSelectList(
+                usersFuture: _usersFuture,
+                selectedUserIds: _selectedUserIds,
+                emptyText: 'کاربری پیدا نشد.',
+                onChanged: (userId, selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedUserIds.add(userId);
+                    } else {
+                      _selectedUserIds.remove(userId);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              Text('تعداد انتخاب‌شده: ${_selectedUserIds.length}'),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_rounded),
+          label: Text(context.l10n.t('save')),
+        ),
+      ],
+    );
+  }
+
+  Future<List<AudienceSegmentMemberDto2>> _loadMembers() async {
+    final members = await ref
+        .read(analyticsRepositoryProvider)
+        .listAudienceSegmentMembers(id: widget.segment.id);
+    if (!_membersLoaded) {
+      _selectedUserIds
+        ..clear()
+        ..addAll(members.map((member) => member.userId));
+      _membersLoaded = true;
+      if (mounted) setState(() {});
+    }
+    return members;
+  }
+
+  Future<ListResponse<UserSummaryDto>> _loadUsers() {
+    return ref
+        .read(usersRepositoryProvider)
+        .listUsers(
+          page: 1,
+          pageSize: 100,
+          search: _search.text.trim().isEmpty ? null : _search.text.trim(),
+          sortBy: 'display_name',
+          sortOrder: SortOrder.asc,
+        );
+  }
+
+  void _refreshUsers() {
+    setState(() => _usersFuture = _loadUsers());
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(analyticsRepositoryProvider)
+          .setAudienceSegmentMembers(
+            id: widget.segment.id,
+            request: SetAudienceSegmentMembersRequest2(
+              userIds: _selectedUserIds.toList(growable: false),
+            ),
+          );
+      ref.invalidate(audienceSegmentsProvider);
+      ref.invalidate(dashboardExperienceProvider);
+      _membersLoaded = false;
+      setState(() => _membersFuture = _loadMembers());
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
 class _GroupMembersDialog extends ConsumerStatefulWidget {
   const _GroupMembersDialog({required this.group});
 
@@ -5405,7 +5520,9 @@ class _GroupMembersDialog extends ConsumerStatefulWidget {
 class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
   final _search = TextEditingController();
   final _roleInGroup = TextEditingController();
-  String? _selectedUserId;
+  final Set<String> _selectedUserIds = <String>{};
+  final Map<String, String?> _existingRoleByUserId = <String, String?>{};
+  bool _membersLoaded = false;
   bool _saving = false;
   late Future<List<AudienceGroupMemberDto2>> _membersFuture = _loadMembers();
   late Future<ListResponse<UserSummaryDto>> _usersFuture = _loadUsers();
@@ -5482,78 +5599,51 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
               ),
               const Divider(height: 28),
               TextField(
-                controller: _search,
-                decoration: InputDecoration(
-                  labelText: 'جستجوی کاربر برای افزودن',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: IconButton(
-                    onPressed: () =>
-                        setState(() => _usersFuture = _loadUsers()),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                  ),
-                ),
-                onSubmitted: (_) => setState(() => _usersFuture = _loadUsers()),
-              ),
-              const SizedBox(height: 10),
-              FutureBuilder<ListResponse<UserSummaryDto>>(
-                future: _usersFuture,
-                builder: (context, snapshot) {
-                  final users = snapshot.data?.data ?? const <UserSummaryDto>[];
-                  final selected =
-                      users.any((user) => user.id == _selectedUserId)
-                      ? _selectedUserId
-                      : null;
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const LinearProgressIndicator();
-                  }
-                  if (snapshot.hasError) {
-                    return Text(
-                      FriendlyApiErrorMessage.from(
-                        snapshot.error!,
-                        context: context,
-                      ),
-                    );
-                  }
-                  if (users.isEmpty) {
-                    return const Text('کاربری پیدا نشد.');
-                  }
-                  return DropdownButtonFormField<String>(
-                    initialValue: selected,
-                    decoration: const InputDecoration(labelText: 'کاربر'),
-                    items: [
-                      for (final user in users)
-                        DropdownMenuItem(
-                          value: user.id,
-                          child: Text('${user.displayName} · ${user.phone}'),
-                        ),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => _selectedUserId = value),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              TextField(
                 controller: _roleInGroup,
                 decoration: const InputDecoration(
                   labelText:
-                      'نقش داخل گروه (اختیاری؛ مثل دانش‌آموز، نماینده، مربی)',
+                      'نقش داخل گروه برای اعضای جدید (اختیاری؛ مثل دانش‌آموز، نماینده، مربی)',
                   prefixIcon: Icon(Icons.badge_outlined),
                 ),
               ),
+              const SizedBox(height: 10),
+              _UserSearchField(
+                controller: _search,
+                onSearch: _refreshUsers,
+                labelText: 'جستجوی کاربر برای انتخاب اعضا',
+              ),
+              const SizedBox(height: 10),
+              _UserMultiSelectList(
+                usersFuture: _usersFuture,
+                selectedUserIds: _selectedUserIds,
+                emptyText: 'کاربری پیدا نشد.',
+                onChanged: (userId, selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedUserIds.add(userId);
+                    } else {
+                      _selectedUserIds.remove(userId);
+                    }
+                  });
+                },
+              ),
               const SizedBox(height: 12),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _add,
-                  icon: _saving
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.group_add_rounded),
-                  label: const Text('افزودن کاربر'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('تعداد انتخاب‌شده: ${_selectedUserIds.length}'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _saveSelected,
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: Text(context.l10n.t('save')),
+                  ),
+                ],
               ),
             ],
           ),
@@ -5568,10 +5658,23 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
     );
   }
 
-  Future<List<AudienceGroupMemberDto2>> _loadMembers() {
-    return ref
+  Future<List<AudienceGroupMemberDto2>> _loadMembers() async {
+    final members = await ref
         .read(analyticsRepositoryProvider)
         .listAudienceGroupMembers(id: widget.group.id);
+    if (!_membersLoaded) {
+      _selectedUserIds
+        ..clear()
+        ..addAll(members.map((member) => member.userId));
+      _existingRoleByUserId
+        ..clear()
+        ..addEntries(
+          members.map((member) => MapEntry(member.userId, member.roleInGroup)),
+        );
+      _membersLoaded = true;
+      if (mounted) setState(() {});
+    }
+    return members;
   }
 
   Future<ListResponse<UserSummaryDto>> _loadUsers() {
@@ -5579,40 +5682,44 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
         .read(usersRepositoryProvider)
         .listUsers(
           page: 1,
-          pageSize: 20,
+          pageSize: 100,
           search: _search.text.trim().isEmpty ? null : _search.text.trim(),
           sortBy: 'display_name',
           sortOrder: SortOrder.asc,
         );
   }
 
-  Future<void> _add() async {
+  void _refreshUsers() {
+    setState(() => _usersFuture = _loadUsers());
+  }
+
+  Future<void> _saveSelected() async {
     final messenger = ScaffoldMessenger.of(context);
-    final selected = _selectedUserId;
-    if (selected == null || selected.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('ابتدا یک کاربر انتخاب کنید.')),
-      );
-      return;
-    }
     setState(() => _saving = true);
     try {
+      final newRole = _roleInGroup.text.trim();
       await ref
           .read(analyticsRepositoryProvider)
-          .addAudienceGroupMember(
+          .setAudienceGroupMembers(
             id: widget.group.id,
-            member: AudienceGroupMemberInputDto2(
-              userId: selected,
-              roleInGroup: _roleInGroup.text.trim().isEmpty
-                  ? null
-                  : _roleInGroup.text.trim(),
+            request: SetAudienceGroupMembersRequest2(
+              members: [
+                for (final userId in _selectedUserIds)
+                  AudienceGroupMemberInputDto2(
+                    userId: userId,
+                    roleInGroup:
+                        _existingRoleByUserId[userId] ??
+                        (newRole.isEmpty ? null : newRole),
+                  ),
+              ],
             ),
           );
       _roleInGroup.clear();
+      _membersLoaded = false;
       setState(() => _membersFuture = _loadMembers());
       if (mounted) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('کاربر به کلاس/گروه اضافه شد.')),
+          const SnackBar(content: Text('اعضای کلاس/گروه به‌روزرسانی شدند.')),
         );
       }
     } catch (error) {
@@ -5639,6 +5746,8 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
             id: widget.group.id,
             userId: member.userId,
           );
+      _selectedUserIds.remove(member.userId);
+      _existingRoleByUserId.remove(member.userId);
       setState(() => _membersFuture = _loadMembers());
     } catch (error) {
       if (mounted) {
@@ -5654,6 +5763,99 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
       if (mounted) setState(() => _saving = false);
     }
   }
+}
+
+class _UserSearchField extends StatelessWidget {
+  const _UserSearchField({
+    required this.controller,
+    required this.onSearch,
+    required this.labelText,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onSearch;
+  final String labelText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: IconButton(
+          onPressed: onSearch,
+          icon: const Icon(Icons.arrow_forward_rounded),
+        ),
+      ),
+      onSubmitted: (_) => onSearch(),
+    );
+  }
+}
+
+class _UserMultiSelectList extends StatelessWidget {
+  const _UserMultiSelectList({
+    required this.usersFuture,
+    required this.selectedUserIds,
+    required this.emptyText,
+    required this.onChanged,
+  });
+
+  final Future<ListResponse<UserSummaryDto>> usersFuture;
+  final Set<String> selectedUserIds;
+  final String emptyText;
+  final void Function(String userId, bool selected) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ListResponse<UserSummaryDto>>(
+      future: usersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LinearProgressIndicator();
+        }
+        if (snapshot.hasError) {
+          return Text(
+            FriendlyApiErrorMessage.from(snapshot.error!, context: context),
+          );
+        }
+        final users = snapshot.data?.data ?? const <UserSummaryDto>[];
+        if (users.isEmpty) {
+          return Text(emptyText);
+        }
+        return ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 320),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: users.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final user = users[index];
+              final selected = selectedUserIds.contains(user.id);
+              return CheckboxListTile(
+                value: selected,
+                onChanged: (value) => onChanged(user.id, value ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(user.displayName),
+                subtitle: Text(
+                  '${context.l10n.enumLabel(user.primaryRole.toJson())} · ${user.phone}',
+                ),
+                secondary: CircleAvatar(
+                  child: Text(_avatarInitial(user.displayName)),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+String _avatarInitial(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return '?';
+  return trimmed.characters.first.toUpperCase();
 }
 
 String _groupTypeLabel(String value) => switch (value) {
