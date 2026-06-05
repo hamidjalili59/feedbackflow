@@ -3335,10 +3335,12 @@ String _friendlyMetricSource(
       raw == 'metric_definitions + metric_mappings') {
     return context.l10n.t('metric.source.dynamicMappings');
   }
-  if (raw == 'submission_count')
+  if (raw == 'submission_count') {
     return context.l10n.t('metric.source.submissionCount');
-  if (raw == 'field_answer')
+  }
+  if (raw == 'field_answer') {
     return context.l10n.t('metric.source.fieldAnswers');
+  }
   return raw;
 }
 
@@ -5804,7 +5806,7 @@ class _CardHeader extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
-        if (action != null) action!,
+        ?action,
       ],
     );
   }
