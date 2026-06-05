@@ -706,6 +706,38 @@ class FeedbackFlowApiClient {
     );
   }
 
+  Future<ApiResponse<List<MetricMappingDto2>>> listMetricMappings({
+    required String id,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/metrics/{id}/mappings', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<List<MetricMappingDto2>>(
+      response.data,
+      (json) =>
+          _parseDtoList<MetricMappingDto2>(json, MetricMappingDto2.fromJson),
+    );
+  }
+
+  Future<ApiResponse<List<MetricMappingDto2>>> setMetricMappings({
+    required String id,
+    required SetMetricMappingsRequest2 request,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      _path('/api/v1/metrics/{id}/mappings', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<List<MetricMappingDto2>>(
+      response.data,
+      (json) =>
+          _parseDtoList<MetricMappingDto2>(json, MetricMappingDto2.fromJson),
+    );
+  }
+
   /// GET /api/v1/audience-segments
   /// Requires Bearer JWT.
   Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({
@@ -728,6 +760,85 @@ class FeedbackFlowApiClient {
     return _parseListResponse<AudienceSegmentDto2>(
       response.data,
       (json) => AudienceSegmentDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<AudienceSegmentDto2>> createAudienceSegment({
+    required CreateAudienceSegmentRequest2 request,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/audience-segments',
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<AudienceSegmentDto2>(
+      response.data,
+      (json) => AudienceSegmentDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<AudienceSegmentDto2>> updateAudienceSegment({
+    required String id,
+    required UpdateAudienceSegmentRequest2 request,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      _path('/api/v1/audience-segments/{id}', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<AudienceSegmentDto2>(
+      response.data,
+      (json) => AudienceSegmentDto2.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<DeleteResultDto>> deleteAudienceSegment({
+    required String id,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path('/api/v1/audience-segments/{id}', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<DeleteResultDto>(
+      response.data,
+      (json) => DeleteResultDto.fromJson(_jsonObject(json)),
+    );
+  }
+
+  Future<ApiResponse<List<AudienceSegmentMemberDto2>>>
+  listAudienceSegmentMembers({required String id}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/audience-segments/{id}/members', <String, String>{
+        'id': id.toString(),
+      }),
+    );
+    return _parseApiResponse<List<AudienceSegmentMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceSegmentMemberDto2>(
+        json,
+        AudienceSegmentMemberDto2.fromJson,
+      ),
+    );
+  }
+
+  Future<ApiResponse<List<AudienceSegmentMemberDto2>>>
+  setAudienceSegmentMembers({
+    required String id,
+    required SetAudienceSegmentMembersRequest2 request,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      _path('/api/v1/audience-segments/{id}/members', <String, String>{
+        'id': id.toString(),
+      }),
+      data: _body(request.toJson()),
+    );
+    return _parseApiResponse<List<AudienceSegmentMemberDto2>>(
+      response.data,
+      (json) => _parseDtoList<AudienceSegmentMemberDto2>(
+        json,
+        AudienceSegmentMemberDto2.fromJson,
+      ),
     );
   }
 

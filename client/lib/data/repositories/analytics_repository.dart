@@ -58,12 +58,32 @@ abstract class AnalyticsRepository {
     required Map<String, dynamic> request,
   });
   Future<DeleteResultDto> deleteMetric({required String id});
+  Future<List<MetricMappingDto2>> listMetricMappings({required String id});
+  Future<List<MetricMappingDto2>> setMetricMappings({
+    required String id,
+    required SetMetricMappingsRequest2 request,
+  });
   Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({
     int page = 1,
     int pageSize = 20,
     String? search,
     String? segmentType,
     bool? enabled,
+  });
+  Future<AudienceSegmentDto2> createAudienceSegment({
+    required CreateAudienceSegmentRequest2 request,
+  });
+  Future<AudienceSegmentDto2> updateAudienceSegment({
+    required String id,
+    required UpdateAudienceSegmentRequest2 request,
+  });
+  Future<DeleteResultDto> deleteAudienceSegment({required String id});
+  Future<List<AudienceSegmentMemberDto2>> listAudienceSegmentMembers({
+    required String id,
+  });
+  Future<List<AudienceSegmentMemberDto2>> setAudienceSegmentMembers({
+    required String id,
+    required SetAudienceSegmentMembersRequest2 request,
   });
   Future<ListResponse<AudienceGroupOptionDto2>> listAudienceGroups({
     int page = 1,
@@ -264,6 +284,23 @@ class DioAnalyticsRepository implements AnalyticsRepository {
   }
 
   @override
+  Future<List<MetricMappingDto2>> listMetricMappings({
+    required String id,
+  }) async {
+    return EnvelopeGuard.data(await _api.listMetricMappings(id: id));
+  }
+
+  @override
+  Future<List<MetricMappingDto2>> setMetricMappings({
+    required String id,
+    required SetMetricMappingsRequest2 request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.setMetricMappings(id: id, request: request),
+    );
+  }
+
+  @override
   Future<ListResponse<AudienceSegmentDto2>> listAudienceSegments({
     int page = 1,
     int pageSize = 20,
@@ -279,6 +316,47 @@ class DioAnalyticsRepository implements AnalyticsRepository {
         segmentType: segmentType,
         enabled: enabled,
       ),
+    );
+  }
+
+  @override
+  Future<AudienceSegmentDto2> createAudienceSegment({
+    required CreateAudienceSegmentRequest2 request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.createAudienceSegment(request: request),
+    );
+  }
+
+  @override
+  Future<AudienceSegmentDto2> updateAudienceSegment({
+    required String id,
+    required UpdateAudienceSegmentRequest2 request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.updateAudienceSegment(id: id, request: request),
+    );
+  }
+
+  @override
+  Future<DeleteResultDto> deleteAudienceSegment({required String id}) async {
+    return EnvelopeGuard.data(await _api.deleteAudienceSegment(id: id));
+  }
+
+  @override
+  Future<List<AudienceSegmentMemberDto2>> listAudienceSegmentMembers({
+    required String id,
+  }) async {
+    return EnvelopeGuard.data(await _api.listAudienceSegmentMembers(id: id));
+  }
+
+  @override
+  Future<List<AudienceSegmentMemberDto2>> setAudienceSegmentMembers({
+    required String id,
+    required SetAudienceSegmentMembersRequest2 request,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.setAudienceSegmentMembers(id: id, request: request),
     );
   }
 

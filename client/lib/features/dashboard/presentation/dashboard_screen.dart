@@ -2046,21 +2046,12 @@ class _MetricCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  metric.displayValue,
+                  metric.numericDisplayValue,
                   textAlign: TextAlign.start,
-                  style: theme.textTheme.headlineMedium?.copyWith(
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: AppTheme.ink,
                   ),
-                ),
-              ),
-              Text(
-                metric.key,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -2549,7 +2540,7 @@ class _SurveyTile extends StatelessWidget {
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     survey.title,
@@ -2833,6 +2824,12 @@ class _ManagementConfigurationRow extends ConsumerWidget {
                 _SectionTitle(
                   title: context.l10n.t('dashboard.targetSegments'),
                 ),
+                const Spacer(),
+                IconButton.filledTonal(
+                  tooltip: 'افزودن بخش مخاطبان',
+                  onPressed: () => _showSegmentDialog(context, ref),
+                  icon: const Icon(Icons.add_rounded),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -2854,6 +2851,32 @@ class _ManagementConfigurationRow extends ConsumerWidget {
                       trailing: context.l10n
                           .t('dashboard.segmentMemberCount')
                           .replaceAll('{count}', '${segment.memberCount}'),
+                      actions: [
+                        IconButton(
+                          tooltip: 'اعضا',
+                          onPressed: () =>
+                              _showSegmentMembersDialog(context, ref, segment),
+                          icon: const Icon(Icons.group_add_outlined),
+                        ),
+                        IconButton(
+                          tooltip: segment.enabled
+                              ? 'غیرفعال کردن'
+                              : 'فعال کردن',
+                          onPressed: () =>
+                              _toggleSegment(context, ref, segment),
+                          icon: Icon(
+                            segment.enabled
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: context.l10n.t('delete'),
+                          onPressed: () =>
+                              _deleteSegment(context, ref, segment),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
+                      ],
                     ),
                 ],
               ),
@@ -2927,6 +2950,7 @@ class _MetricManagementPanelState
                       metric: metric,
                       busy: _busy,
                       onEdit: () => _editMetric(metric),
+                      onMappings: () => _manageMappings(metric),
                       onToggle: (enabled) => _updateMetric(
                         metric,
                         <String, dynamic>{'enabled': enabled},
@@ -2960,6 +2984,13 @@ class _MetricManagementPanelState
     final result = await _showMetricDialog(context, metric: metric);
     if (result == null) return;
     await _updateMetric(metric, result);
+  }
+
+  Future<void> _manageMappings(MetricDefinitionDto2 metric) async {
+    await _showMetricMappingsDialog(context, ref, metric);
+    ref.invalidate(metricDefinitionsProvider);
+    ref.invalidate(dashboardExperienceProvider);
+    ref.invalidate(metricTimeseriesProvider);
   }
 
   Future<void> _updateMetric(
@@ -3000,12 +3031,14 @@ class _MetricManagementTile extends StatelessWidget {
     required this.metric,
     required this.busy,
     required this.onEdit,
+    required this.onMappings,
     required this.onToggle,
   });
 
   final MetricDefinitionDto2 metric;
   final bool busy;
   final VoidCallback onEdit;
+  final VoidCallback onMappings;
   final ValueChanged<bool> onToggle;
 
   @override
@@ -3021,10 +3054,32 @@ class _MetricManagementTile extends StatelessWidget {
       child: Row(
         children: [
           Switch(value: metric.enabled, onChanged: busy ? null : onToggle),
-          IconButton(
-            tooltip: context.l10n.t('edit'),
-            onPressed: busy ? null : onEdit,
-            icon: const Icon(Icons.edit_outlined),
+          PopupMenuButton<String>(
+            tooltip: 'عملیات شاخص',
+            enabled: !busy,
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (value) {
+              if (value == 'edit') onEdit();
+              if (value == 'mappings') onMappings();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'edit',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('ویرایش شاخص'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'mappings',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.account_tree_outlined),
+                  title: Text('اتصال داده‌ها'),
+                ),
+              ),
+            ],
           ),
           const Spacer(),
           Column(
@@ -3037,7 +3092,7 @@ class _MetricManagementTile extends StatelessWidget {
                 ),
               ),
               Text(
-                '${metric.key} - ${metric.metricType}',
+                '${_metricTypeLabel(metric.metricType)} - ${metric.mappingCount} اتصال',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -3076,15 +3131,6 @@ Future<Map<String, dynamic>?> _showMetricDialog(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: keyController,
-                enabled: metric == null,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: context.l10n.t('metricKey'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              TextField(
                 controller: titleController,
                 decoration: InputDecoration(labelText: context.l10n.t('title')),
               ),
@@ -3102,15 +3148,12 @@ Future<Map<String, dynamic>?> _showMetricDialog(
                   labelText: context.l10n.t('metricType'),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'score', child: Text('score')),
-                  DropdownMenuItem(
-                    value: 'percentage',
-                    child: Text('percentage'),
-                  ),
-                  DropdownMenuItem(value: 'rating', child: Text('rating')),
-                  DropdownMenuItem(value: 'count', child: Text('count')),
-                  DropdownMenuItem(value: 'label', child: Text('label')),
-                  DropdownMenuItem(value: 'custom', child: Text('custom')),
+                  DropdownMenuItem(value: 'score', child: Text('امتیازی')),
+                  DropdownMenuItem(value: 'percentage', child: Text('درصدی')),
+                  DropdownMenuItem(value: 'rating', child: Text('رتبه‌ای')),
+                  DropdownMenuItem(value: 'count', child: Text('شمارشی')),
+                  DropdownMenuItem(value: 'label', child: Text('برچسبی')),
+                  DropdownMenuItem(value: 'custom', child: Text('سفارشی')),
                 ],
                 onChanged: metric == null
                     ? (value) => setState(() => type = value ?? type)
@@ -3132,9 +3175,11 @@ Future<Map<String, dynamic>?> _showMetricDialog(
           ),
           FilledButton(
             onPressed: () {
-              final key = keyController.text.trim();
               final title = titleController.text.trim();
-              if (key.isEmpty || title.isEmpty) return;
+              if (title.isEmpty) return;
+              final key = keyController.text.trim().isEmpty
+                  ? _generatedMetricKey(title)
+                  : keyController.text.trim();
               Navigator.pop(context, <String, dynamic>{
                 if (metric == null) 'key': key,
                 'title': title,
@@ -3157,6 +3202,838 @@ Future<Map<String, dynamic>?> _showMetricDialog(
   });
 }
 
+String _generatedMetricKey(String title) {
+  final normalized = title
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+  if (normalized.isNotEmpty) return normalized;
+  return 'metric_${DateTime.now().millisecondsSinceEpoch}';
+}
+
+Map<String, Object?> _parseJsonObject(String input) {
+  final text = input.trim();
+  if (text.isEmpty) return const <String, Object?>{};
+  final decoded = jsonDecode(text);
+  if (decoded is Map) return Map<String, Object?>.from(decoded);
+  throw const FormatException('Expected a JSON object');
+}
+
+List<String> _phonesFromText(String input) => input
+    .split(RegExp(r'[\s,;]+'))
+    .map((item) => item.trim())
+    .where((item) => item.isNotEmpty)
+    .map(PhoneNumberNormalizer.normalize)
+    .where(PhoneNumberNormalizer.isLikelyValid)
+    .toList(growable: false);
+
+Future<String> _resolveUserIdByPhone(WidgetRef ref, String phone) async {
+  final normalized = PhoneNumberNormalizer.normalize(phone);
+  if (!PhoneNumberNormalizer.isLikelyValid(normalized)) {
+    throw FormatException('شماره موبایل معتبر نیست: $phone');
+  }
+  final response = await ref
+      .read(usersRepositoryProvider)
+      .listUsers(page: 1, pageSize: 10, search: normalized);
+  final users = response.data ?? const <UserSummaryDto>[];
+  final exact = users.where((user) => user.phone == normalized).toList();
+  if (exact.length == 1) return exact.single.id;
+  if (users.length == 1) return users.single.id;
+  if (users.isEmpty) {
+    throw StateError('کاربری با شماره $normalized پیدا نشد.');
+  }
+  throw StateError(
+    'برای شماره $normalized چند کاربر پیدا شد؛ شماره را دقیق‌تر وارد کنید.',
+  );
+}
+
+Future<List<String>> _resolveUserIdsByPhones(
+  WidgetRef ref,
+  String input,
+) async {
+  final phones = _phonesFromText(input);
+  final ids = <String>[];
+  for (final phone in phones) {
+    final id = await _resolveUserIdByPhone(ref, phone);
+    if (!ids.contains(id)) ids.add(id);
+  }
+  return ids;
+}
+
+Future<void> _showMetricMappingsDialog(
+  BuildContext context,
+  WidgetRef ref,
+  MetricDefinitionDto2 metric,
+) async {
+  final repo = ref.read(analyticsRepositoryProvider);
+  final formsRepo = ref.read(formsRepositoryProvider);
+  final messenger = ScaffoldMessenger.of(context);
+  final mappings = await repo.listMetricMappings(id: metric.id);
+  final draftMappings = mappings
+      .map(MetricMappingInputDto2.fromMapping)
+      .toList(growable: true);
+  var formId = mappings.isNotEmpty ? mappings.first.formId : null;
+  var fieldId = mappings.isNotEmpty ? mappings.first.fieldId : null;
+  var sourceType = mappings.isNotEmpty
+      ? mappings.first.sourceType
+      : 'submission_percentage';
+  var weight = mappings.isNotEmpty ? mappings.first.weight : 1.0;
+  var enabled = mappings.isEmpty || mappings.first.enabled;
+  List<FormSummaryDto> forms = const <FormSummaryDto>[];
+  FormDetailDto? selectedForm;
+  try {
+    forms =
+        (await formsRepo.listForms(
+          page: 1,
+          pageSize: 100,
+          sortBy: 'updated_at',
+        )).data ??
+        const <FormSummaryDto>[];
+    if (formId != null && formId.isNotEmpty) {
+      selectedForm = await formsRepo.getForm(id: formId);
+    }
+  } catch (_) {}
+  if (!context.mounted) return;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text('اتصال داده‌ها: ${metric.title}'),
+        content: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(320.0, 560.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (draftMappings.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text('${draftMappings.length} اتصال آماده ذخیره'),
+                  ),
+                for (var index = 0; index < draftMappings.length; index++)
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: IconButton(
+                      tooltip: 'حذف اتصال',
+                      onPressed: () => setState(() {
+                        draftMappings.removeAt(index);
+                      }),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                    title: Text(
+                      _metricSourceTypeLabel(draftMappings[index].sourceType),
+                    ),
+                    subtitle: Text(
+                      [
+                        if (draftMappings[index].formId != null)
+                          'فرم: ${draftMappings[index].formId}',
+                        if (draftMappings[index].fieldId != null)
+                          'فیلد: ${draftMappings[index].fieldId}',
+                        'وزن: ${draftMappings[index].weight}',
+                        draftMappings[index].enabled ? 'فعال' : 'غیرفعال',
+                      ].join(' - '),
+                      textDirection: TextDirection.ltr,
+                    ),
+                  ),
+                const Divider(height: 22),
+                DropdownButtonFormField<String>(
+                  initialValue: sourceType,
+                  decoration: const InputDecoration(labelText: 'منبع داده'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'field_answer',
+                      child: Text('پاسخ یک فیلد'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'submission_score',
+                      child: Text('امتیاز پاسخ'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'submission_percentage',
+                      child: Text('درصد امتیاز پاسخ'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'submission_count',
+                      child: Text('تعداد پاسخ‌ها'),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => sourceType = value ?? sourceType),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: forms.any((form) => form.id == formId)
+                      ? formId
+                      : null,
+                  decoration: const InputDecoration(labelText: 'محدوده فرم'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: '',
+                      child: Text('همه فرم‌ها'),
+                    ),
+                    for (final form in forms)
+                      DropdownMenuItem(value: form.id, child: Text(form.title)),
+                  ],
+                  onChanged: (value) async {
+                    formId = value == null || value.isEmpty ? null : value;
+                    selectedForm = null;
+                    fieldId = null;
+                    setState(() {});
+                    if (formId != null) {
+                      selectedForm = await formsRepo.getForm(id: formId!);
+                      if (context.mounted) setState(() {});
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                if (sourceType == 'field_answer')
+                  DropdownButtonFormField<String>(
+                    initialValue: fieldId?.isEmpty == true ? null : fieldId,
+                    decoration: const InputDecoration(labelText: 'فیلد'),
+                    items: [
+                      for (final field in selectedForm?.fields ?? const [])
+                        DropdownMenuItem(
+                          value: field.id,
+                          child: Text(field.label),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => fieldId = value),
+                  ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: weight.toString(),
+                  decoration: const InputDecoration(labelText: 'وزن'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) =>
+                      weight = double.tryParse(value.trim()) ?? weight,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('فعال'),
+                  value: enabled,
+                  onChanged: (value) => setState(() => enabled = value),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      if (sourceType == 'field_answer' &&
+                          (fieldId == null || fieldId!.isEmpty)) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('ابتدا یک فیلد انتخاب کنید.'),
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() {
+                        draftMappings.add(
+                          MetricMappingInputDto2(
+                            formId: formId,
+                            fieldId: sourceType == 'field_answer'
+                                ? fieldId
+                                : null,
+                            sourceType: sourceType,
+                            weight: weight,
+                            enabled: enabled,
+                          ),
+                        );
+                      });
+                    },
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('افزودن اتصال'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await repo.setMetricMappings(
+                id: metric.id,
+                request: SetMetricMappingsRequest2(mappings: draftMappings),
+              );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: Text(context.l10n.t('save')),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _showSegmentDialog(BuildContext context, WidgetRef ref) async {
+  final name = TextEditingController();
+  final slug = TextEditingController();
+  final description = TextEditingController();
+  final members = TextEditingController();
+  var segmentType = 'static';
+  var enabled = true;
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('افزودن بخش مخاطبان'),
+        content: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(320.0, 520.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('title'),
+                  ),
+                ),
+                TextField(
+                  controller: slug,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(labelText: 'شناسه داخلی'),
+                ),
+                TextField(
+                  controller: description,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('description'),
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: segmentType,
+                  decoration: const InputDecoration(labelText: 'نوع'),
+                  items: const [
+                    DropdownMenuItem(value: 'static', child: Text('ثابت')),
+                    DropdownMenuItem(value: 'dynamic', child: Text('داینامیک')),
+                    DropdownMenuItem(value: 'event', child: Text('رویداد')),
+                    DropdownMenuItem(value: 'camp', child: Text('کمپ')),
+                    DropdownMenuItem(value: 'cohort', child: Text('دوره')),
+                    DropdownMenuItem(value: 'custom', child: Text('سفارشی')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => segmentType = value ?? segmentType),
+                ),
+                TextField(
+                  controller: members,
+                  minLines: 2,
+                  maxLines: 4,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(
+                    labelText: 'شماره موبایل اعضا',
+                    helperText: 'شماره‌ها را با ویرگول یا خط جدید جدا کنید',
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('فعال'),
+                  value: enabled,
+                  onChanged: (value) => setState(() => enabled = value),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final segmentName = name.text.trim();
+              if (segmentName.isEmpty) return;
+              final memberUserIds = await _resolveUserIdsByPhones(
+                ref,
+                members.text,
+              );
+              await ref
+                  .read(analyticsRepositoryProvider)
+                  .createAudienceSegment(
+                    request: CreateAudienceSegmentRequest2(
+                      name: segmentName,
+                      slug: slug.text.trim().isEmpty ? null : slug.text.trim(),
+                      description: description.text.trim().isEmpty
+                          ? null
+                          : description.text.trim(),
+                      segmentType: segmentType,
+                      enabled: enabled,
+                      memberUserIds: memberUserIds,
+                    ),
+                  );
+              ref.invalidate(audienceSegmentsProvider);
+              ref.invalidate(dashboardExperienceProvider);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: Text(context.l10n.t('save')),
+          ),
+        ],
+      ),
+    ),
+  ).whenComplete(() {
+    name.dispose();
+    slug.dispose();
+    description.dispose();
+    members.dispose();
+  });
+}
+
+Future<void> _toggleSegment(
+  BuildContext context,
+  WidgetRef ref,
+  AudienceSegmentDto2 segment,
+) async {
+  await ref
+      .read(analyticsRepositoryProvider)
+      .updateAudienceSegment(
+        id: segment.id,
+        request: UpdateAudienceSegmentRequest2(enabled: !segment.enabled),
+      );
+  ref.invalidate(audienceSegmentsProvider);
+  ref.invalidate(dashboardExperienceProvider);
+}
+
+Future<void> _deleteSegment(
+  BuildContext context,
+  WidgetRef ref,
+  AudienceSegmentDto2 segment,
+) async {
+  await ref
+      .read(analyticsRepositoryProvider)
+      .deleteAudienceSegment(id: segment.id);
+  ref.invalidate(audienceSegmentsProvider);
+  ref.invalidate(dashboardExperienceProvider);
+}
+
+Future<void> _showSegmentMembersDialog(
+  BuildContext context,
+  WidgetRef ref,
+  AudienceSegmentDto2 segment,
+) async {
+  final repo = ref.read(analyticsRepositoryProvider);
+  final current = await repo.listAudienceSegmentMembers(id: segment.id);
+  if (!context.mounted) return;
+  final phones = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('اعضای بخش مخاطبان: ${segment.name}'),
+      content: SizedBox(
+        width: MediaQuery.sizeOf(context).width.clamp(320.0, 520.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (current.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  current.map((member) => member.displayName).join('، '),
+                ),
+              ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: phones,
+              minLines: 8,
+              maxLines: 12,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(
+                labelText: 'شماره موبایل اعضا',
+                helperText:
+                    'برای جایگزینی اعضا، شماره‌ها را با ویرگول یا خط جدید وارد کنید',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.t('cancel')),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final userIds = await _resolveUserIdsByPhones(ref, phones.text);
+            await repo.setAudienceSegmentMembers(
+              id: segment.id,
+              request: SetAudienceSegmentMembersRequest2(userIds: userIds),
+            );
+            ref.invalidate(audienceSegmentsProvider);
+            ref.invalidate(dashboardExperienceProvider);
+            if (context.mounted) Navigator.pop(context);
+          },
+          child: Text(context.l10n.t('save')),
+        ),
+      ],
+    ),
+  ).whenComplete(phones.dispose);
+}
+
+Future<void> _showFormAssignmentsDialog(
+  BuildContext context,
+  WidgetRef ref,
+  FormSummaryDto form,
+) async {
+  final repo = ref.read(analyticsRepositoryProvider);
+  final current = await repo.listFormAssignments(id: form.id);
+  final groups =
+      (await repo.listAudienceGroups(page: 1, pageSize: 100)).data ??
+      const <AudienceGroupOptionDto2>[];
+  final segments =
+      (await repo.listAudienceSegments(
+        page: 1,
+        pageSize: 100,
+        enabled: true,
+      )).data ??
+      const <AudienceSegmentDto2>[];
+  if (!context.mounted) return;
+  var audienceType = 'role';
+  var role = UserRole.student;
+  final targetPhone = TextEditingController();
+  String? selectedGroupId;
+  String? selectedSegmentId;
+  final label = TextEditingController();
+  var canSee = true;
+  var canAnswer = true;
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text('هدف‌گیری فرم: ${form.title}'),
+        content: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(320.0, 560.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (current.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('${current.length} هدف‌گیری فعلی'),
+                  ),
+                DropdownButtonFormField<String>(
+                  initialValue: audienceType,
+                  decoration: const InputDecoration(labelText: 'نوع مخاطب'),
+                  items: const [
+                    DropdownMenuItem(value: 'role', child: Text('نقش')),
+                    DropdownMenuItem(value: 'user', child: Text('کاربر')),
+                    DropdownMenuItem(value: 'group', child: Text('گروه')),
+                    DropdownMenuItem(value: 'class', child: Text('کلاس')),
+                    DropdownMenuItem(
+                      value: 'department',
+                      child: Text('دپارتمان'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'segment',
+                      child: Text('بخش مخاطبان'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'organization',
+                      child: Text('سازمان'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() {
+                    audienceType = value ?? audienceType;
+                    selectedGroupId = null;
+                    selectedSegmentId = null;
+                  }),
+                ),
+                if (audienceType == 'role')
+                  DropdownButtonFormField<UserRole>(
+                    initialValue: role,
+                    decoration: const InputDecoration(labelText: 'نقش'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: UserRole.student,
+                        child: Text('دانش‌آموز'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.parent,
+                        child: Text('والد'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.teacher,
+                        child: Text('معلم'),
+                      ),
+                    ],
+                    onChanged: (value) => setState(() => role = value ?? role),
+                  )
+                else if (audienceType != 'organization')
+                  if (audienceType == 'user')
+                    TextField(
+                      controller: targetPhone,
+                      textDirection: TextDirection.ltr,
+                      decoration: const InputDecoration(
+                        labelText: 'شماره موبایل کاربر',
+                      ),
+                    )
+                  else if (audienceType == 'segment')
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedSegmentId,
+                      decoration: const InputDecoration(
+                        labelText: 'بخش مخاطبان',
+                      ),
+                      items: [
+                        for (final segment in segments)
+                          DropdownMenuItem(
+                            value: segment.id,
+                            child: Text(segment.name),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => selectedSegmentId = value),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedGroupId,
+                      decoration: InputDecoration(
+                        labelText: audienceType == 'class'
+                            ? 'کلاس'
+                            : audienceType == 'department'
+                            ? 'دپارتمان'
+                            : 'گروه',
+                      ),
+                      items: [
+                        for (final group in groups.where(
+                          (group) =>
+                              audienceType == 'group' ||
+                              group.groupType == audienceType,
+                        ))
+                          DropdownMenuItem(
+                            value: group.id,
+                            child: Text(group.name),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => selectedGroupId = value),
+                    ),
+                TextField(
+                  controller: label,
+                  decoration: const InputDecoration(labelText: 'برچسب'),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('اجازه مشاهده'),
+                  value: canSee,
+                  onChanged: (value) =>
+                      setState(() => canSee = value ?? canSee),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('اجازه پاسخ‌دهی'),
+                  value: canAnswer,
+                  onChanged: (value) =>
+                      setState(() => canAnswer = value ?? canAnswer),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final userId = audienceType == 'user'
+                  ? await _resolveUserIdByPhone(ref, targetPhone.text)
+                  : null;
+              final newAssignment = FormAssignmentInputDto2(
+                audienceType: audienceType,
+                audienceRole: audienceType == 'role' ? role : null,
+                audienceUserId: userId,
+                audienceGroupId:
+                    ['group', 'class', 'department'].contains(audienceType)
+                    ? selectedGroupId
+                    : null,
+                audienceSegmentId: audienceType == 'segment'
+                    ? selectedSegmentId
+                    : null,
+                label: label.text.trim().isEmpty ? null : label.text.trim(),
+                canSee: canSee,
+                canAnswer: canAnswer,
+              );
+              await repo.setFormAssignments(
+                id: form.id,
+                request: SetFormAssignmentsRequest2(
+                  assignments: [
+                    for (final assignment in current)
+                      FormAssignmentInputDto2.fromAssignment(assignment),
+                    newAssignment,
+                  ],
+                ),
+              );
+              ref.invalidate(formAssignmentsProvider(form.id));
+              ref.invalidate(dashboardExperienceProvider);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('افزودن هدف‌گیری'),
+          ),
+        ],
+      ),
+    ),
+  ).whenComplete(() {
+    targetPhone.dispose();
+    label.dispose();
+  });
+}
+
+Future<void> _showActivityRulesDialog(
+  BuildContext context,
+  WidgetRef ref,
+  FormSummaryDto form,
+) async {
+  final repo = ref.read(activitiesRepositoryProvider);
+  final existing = await repo.listActivityRules(id: form.id, pageSize: 50);
+  if (!context.mounted) return;
+  var trigger = ActivityTriggerType.submissionCreated;
+  var action = ActivityActionType.createActivity;
+  var enabled = true;
+  final condition = TextEditingController(text: '{}');
+  final title = TextEditingController(text: 'Feedback follow-up');
+  final description = TextEditingController();
+  final assignedToPhone = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text('قواعد فعالیت: ${form.title}'),
+        content: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(320.0, 560.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if ((existing.data ?? const <ActivityRuleDto>[]).isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('${existing.data!.length} قاعده فعلی'),
+                  ),
+                DropdownButtonFormField<ActivityTriggerType>(
+                  initialValue: trigger,
+                  decoration: const InputDecoration(labelText: 'محرک'),
+                  items: ActivityTriggerType.values
+                      .where((value) => value != ActivityTriggerType.unknown)
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(_activityTriggerLabel(value)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => trigger = value ?? trigger),
+                ),
+                TextField(
+                  controller: condition,
+                  minLines: 2,
+                  maxLines: 4,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(
+                    labelText: 'شرط JSON',
+                    helperText:
+                        'برای آستانه امتیاز از نمونه {"threshold":50} استفاده کنید',
+                  ),
+                ),
+                DropdownButtonFormField<ActivityActionType>(
+                  initialValue: action,
+                  decoration: const InputDecoration(labelText: 'عملیات'),
+                  items: ActivityActionType.values
+                      .where((value) => value != ActivityActionType.unknown)
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(_activityActionLabel(value)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => action = value ?? action),
+                ),
+                TextField(
+                  controller: title,
+                  decoration: const InputDecoration(labelText: 'عنوان فعالیت'),
+                ),
+                TextField(
+                  controller: description,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.t('description'),
+                  ),
+                ),
+                TextField(
+                  controller: assignedToPhone,
+                  textDirection: TextDirection.ltr,
+                  decoration: const InputDecoration(
+                    labelText: 'شماره موبایل کاربر مسئول',
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('فعال'),
+                  value: enabled,
+                  onChanged: (value) => setState(() => enabled = value),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final assigneePhone = assignedToPhone.text.trim();
+              final assignedToUserId = assigneePhone.isEmpty
+                  ? null
+                  : await _resolveUserIdByPhone(ref, assigneePhone);
+              final config = <String, Object?>{
+                'title': title.text.trim().isEmpty
+                    ? 'Feedback follow-up'
+                    : title.text.trim(),
+              };
+              if (description.text.trim().isNotEmpty) {
+                config['description'] = description.text.trim();
+              }
+              if (assignedToUserId != null) {
+                config['assigned_to_user_id'] = assignedToUserId;
+              }
+              await repo.createActivityRule(
+                id: form.id,
+                request: CreateActivityRuleRequest(
+                  triggerType: trigger,
+                  condition: _parseJsonObject(condition.text),
+                  actionType: action,
+                  actionConfig: config,
+                  enabled: enabled,
+                ),
+              );
+              ref.invalidate(activitiesProvider);
+              ref.invalidate(dashboardExperienceProvider);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: Text(context.l10n.t('save')),
+          ),
+        ],
+      ),
+    ),
+  ).whenComplete(() {
+    condition.dispose();
+    title.dispose();
+    description.dispose();
+    assignedToPhone.dispose();
+  });
+}
+
 class _ManagementList extends StatelessWidget {
   const _ManagementList({required this.items, required this.empty});
 
@@ -3175,11 +4052,13 @@ class _ManagementListItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.actions = const <Widget>[],
   });
 
   final String title;
   final String subtitle;
   final String trailing;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -3201,6 +4080,11 @@ class _ManagementListItem extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Wrap(spacing: 4, children: actions),
+          ],
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -3338,11 +4222,60 @@ String _friendlyMetricSource(
   if (raw == 'submission_count') {
     return context.l10n.t('metric.source.submissionCount');
   }
+  if (raw == 'submission_percentage') {
+    return 'میانگین درصد امتیاز پاسخ‌ها';
+  }
+  if (raw == 'submission_score') {
+    return 'میانگین امتیاز پاسخ‌ها';
+  }
   if (raw == 'field_answer') {
     return context.l10n.t('metric.source.fieldAnswers');
   }
   return raw;
 }
+
+String _metricTypeLabel(String type) => switch (type) {
+  'score' => 'امتیازی',
+  'percentage' => 'درصدی',
+  'rating' => 'رتبه‌ای',
+  'count' => 'شمارشی',
+  'label' => 'برچسبی',
+  'custom' => 'سفارشی',
+  _ => 'سفارشی',
+};
+
+String _metricSourceTypeLabel(String sourceType) => switch (sourceType) {
+  'field_answer' => 'پاسخ یک فیلد',
+  'submission_score' => 'امتیاز پاسخ',
+  'submission_percentage' => 'درصد امتیاز پاسخ',
+  'submission_count' => 'تعداد پاسخ‌ها',
+  _ => 'منبع سفارشی',
+};
+
+String _activityTriggerLabel(ActivityTriggerType trigger) => switch (trigger) {
+  ActivityTriggerType.submissionCreated => 'ثبت پاسخ جدید',
+  ActivityTriggerType.scoreAbove => 'امتیاز بالاتر از حد',
+  ActivityTriggerType.scoreBelow => 'امتیاز پایین‌تر از حد',
+  ActivityTriggerType.answerEquals => 'برابر بودن پاسخ',
+  ActivityTriggerType.answerContains => 'شامل بودن پاسخ',
+  ActivityTriggerType.npsLow => 'رضایت پایین',
+  ActivityTriggerType.npsHigh => 'رضایت بالا',
+  ActivityTriggerType.submissionCountReached =>
+    'رسیدن تعداد پاسخ‌ها به حد مشخص',
+  ActivityTriggerType.formClosed => 'بسته شدن فرم',
+  ActivityTriggerType.unknown => 'نامشخص',
+};
+
+String _activityActionLabel(ActivityActionType action) => switch (action) {
+  ActivityActionType.createActivity => 'ایجاد فعالیت پیگیری',
+  ActivityActionType.notifyUser => 'اطلاع‌رسانی به کاربر',
+  ActivityActionType.notifyManager => 'اطلاع‌رسانی به مدیر',
+  ActivityActionType.sendEmail => 'ارسال ایمیل',
+  ActivityActionType.sendWebhook => 'ارسال وب‌هوک',
+  ActivityActionType.markSubmission => 'علامت‌گذاری پاسخ',
+  ActivityActionType.assignFollowUp => 'ارجاع پیگیری',
+  ActivityActionType.unknown => 'نامشخص',
+};
 
 class _MetricMenuDot extends StatelessWidget {
   const _MetricMenuDot({required this.metric});
@@ -3414,10 +4347,6 @@ void _showMetricDetails(BuildContext context, DashboardMetricValueDto2 metric) {
               ),
               const SizedBox(height: 14),
               _MetricInfoRow(
-                label: context.l10n.t('metric.key'),
-                value: metric.key,
-              ),
-              _MetricInfoRow(
                 label: context.l10n.t('metric.currentValue'),
                 value: metric.displayValue,
               ),
@@ -3471,7 +4400,7 @@ void _showMetricChartInfo(
             Text(
               context.l10n
                   .t('metric.chartDescription')
-                  .replaceAll('{key}', metric.key),
+                  .replaceAll('{key}', metric.title),
               textAlign: TextAlign.right,
             ),
             const SizedBox(height: 14),
@@ -5734,6 +6663,18 @@ class _FormManagementCard extends ConsumerWidget {
                           onPressed: () =>
                               context.go('/forms/${form.id}/settings'),
                           icon: const Icon(Icons.tune_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'هدف‌گیری فرم',
+                          onPressed: () =>
+                              _showFormAssignmentsDialog(context, ref, form),
+                          icon: const Icon(Icons.hub_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'قواعد فعالیت',
+                          onPressed: () =>
+                              _showActivityRulesDialog(context, ref, form),
+                          icon: const Icon(Icons.rule_folder_outlined),
                         ),
                         IconButton(
                           tooltip: context.l10n.t('editField'),

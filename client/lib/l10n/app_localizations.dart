@@ -808,7 +808,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.source.fieldAnswers': 'محاسبه‌شده از پاسخ فیلدهای فرم',
     'metric.chartTitle': 'نمودار {title}',
     'metric.chartDescription':
-        'این نمودار از /api/v1/analytics/timeseries با metric={key} خوانده می‌شود.',
+        'این نمودار روند مقدار شاخص «{key}» را بر اساس داده‌های متصل‌شده نشان می‌دهد.',
     'chart.legend.current': 'نیمه دوم سال',
     'chart.legend.previous': 'نیمه اول سال',
     'chart.noData': 'داده نمودار برای این بازه هنوز وجود ندارد.',
@@ -1614,7 +1614,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.source.fieldAnswers': 'Calculated from form field answers',
     'metric.chartTitle': '{title} chart',
     'metric.chartDescription':
-        'This chart is loaded from /api/v1/analytics/timeseries with metric={key}.',
+        'This chart shows the trend for “{key}” based on its connected data.',
     'chart.legend.current': 'Second half of year',
     'chart.legend.previous': 'First half of year',
     'chart.noData': 'No chart data is available for this period yet.',
@@ -2366,8 +2366,7 @@ const Map<String, Map<String, String>> _localizedValues = {
     'metric.source.submissionCount': '已提交回答总数',
     'metric.source.fieldAnswers': '根据表单字段回答计算',
     'metric.chartTitle': '{title}图表',
-    'metric.chartDescription':
-        '该图表通过 /api/v1/analytics/timeseries 加载，metric={key}。',
+    'metric.chartDescription': '该图表显示“{key}”基于已连接数据的趋势。',
     'chart.legend.current': '下半年',
     'chart.legend.previous': '上半年',
     'chart.noData': '此时间段暂无图表数据。',

@@ -279,6 +279,10 @@ class DashboardMetricValueDto2 {
 
   String get displayValue {
     if (label != null && label!.trim().isNotEmpty) return label!;
+    return numericDisplayValue;
+  }
+
+  String get numericDisplayValue {
     if (value == null) return '-';
     final normalized = value! % 1 == 0
         ? value!.toStringAsFixed(0)
@@ -724,6 +728,87 @@ class MetricDefinitionDto2 {
   }
 }
 
+class MetricMappingDto2 {
+  const MetricMappingDto2({
+    required this.id,
+    this.formId,
+    this.fieldId,
+    required this.sourceType,
+    this.transform = const <String, Object?>{},
+    required this.weight,
+    required this.enabled,
+  });
+
+  final String id;
+  final String? formId;
+  final String? fieldId;
+  final String sourceType;
+  final Map<String, Object?> transform;
+  final double weight;
+  final bool enabled;
+
+  factory MetricMappingDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return MetricMappingDto2(
+      id: _string(map['id']) ?? '',
+      formId: _string(map['form_id']),
+      fieldId: _string(map['field_id']),
+      sourceType: _string(map['source_type']) ?? 'field_answer',
+      transform: _json(map['transform']),
+      weight: _double(map['weight']) ?? 1,
+      enabled: _bool(map['enabled'], true),
+    );
+  }
+}
+
+class MetricMappingInputDto2 {
+  const MetricMappingInputDto2({
+    this.formId,
+    this.fieldId,
+    this.sourceType = 'field_answer',
+    this.transform = const <String, Object?>{},
+    this.weight = 1,
+    this.enabled = true,
+  });
+
+  final String? formId;
+  final String? fieldId;
+  final String sourceType;
+  final Map<String, Object?> transform;
+  final double weight;
+  final bool enabled;
+
+  factory MetricMappingInputDto2.fromMapping(MetricMappingDto2 mapping) {
+    return MetricMappingInputDto2(
+      formId: mapping.formId,
+      fieldId: mapping.fieldId,
+      sourceType: mapping.sourceType,
+      transform: mapping.transform,
+      weight: mapping.weight,
+      enabled: mapping.enabled,
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (formId != null && formId!.trim().isNotEmpty) 'form_id': formId,
+    if (fieldId != null && fieldId!.trim().isNotEmpty) 'field_id': fieldId,
+    'source_type': sourceType,
+    'transform': transform,
+    'weight': weight,
+    'enabled': enabled,
+  };
+}
+
+class SetMetricMappingsRequest2 {
+  const SetMetricMappingsRequest2({required this.mappings});
+
+  final List<MetricMappingInputDto2> mappings;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'mappings': [for (final mapping in mappings) mapping.toJson()],
+  };
+}
+
 class AudienceSegmentDto2 {
   const AudienceSegmentDto2({
     required this.id,
@@ -758,6 +843,100 @@ class AudienceSegmentDto2 {
       metadata: _json(map['metadata']),
     );
   }
+}
+
+class CreateAudienceSegmentRequest2 {
+  const CreateAudienceSegmentRequest2({
+    required this.name,
+    this.slug,
+    this.description,
+    this.segmentType = 'static',
+    this.rules = const <String, Object?>{},
+    this.metadata = const <String, Object?>{},
+    this.enabled = true,
+    this.memberUserIds = const <String>[],
+  });
+
+  final String name;
+  final String? slug;
+  final String? description;
+  final String segmentType;
+  final Map<String, Object?> rules;
+  final Map<String, Object?> metadata;
+  final bool enabled;
+  final List<String> memberUserIds;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'name': name,
+    if (slug != null && slug!.trim().isNotEmpty) 'slug': slug,
+    if (description != null && description!.trim().isNotEmpty)
+      'description': description,
+    'segment_type': segmentType,
+    'rules': rules,
+    'metadata': metadata,
+    'enabled': enabled,
+    if (memberUserIds.isNotEmpty) 'member_user_ids': memberUserIds,
+  };
+}
+
+class UpdateAudienceSegmentRequest2 {
+  const UpdateAudienceSegmentRequest2({
+    this.name,
+    this.slug,
+    this.description,
+    this.segmentType,
+    this.rules,
+    this.metadata,
+    this.enabled,
+  });
+
+  final String? name;
+  final String? slug;
+  final String? description;
+  final String? segmentType;
+  final Map<String, Object?>? rules;
+  final Map<String, Object?>? metadata;
+  final bool? enabled;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (name != null && name!.trim().isNotEmpty) 'name': name,
+    if (slug != null && slug!.trim().isNotEmpty) 'slug': slug,
+    if (description != null) 'description': description,
+    if (segmentType != null && segmentType!.trim().isNotEmpty)
+      'segment_type': segmentType,
+    if (rules != null) 'rules': rules,
+    if (metadata != null) 'metadata': metadata,
+    if (enabled != null) 'enabled': enabled,
+  };
+}
+
+class AudienceSegmentMemberDto2 {
+  const AudienceSegmentMemberDto2({
+    required this.userId,
+    required this.displayName,
+    required this.primaryRole,
+  });
+
+  final String userId;
+  final String displayName;
+  final UserRole primaryRole;
+
+  factory AudienceSegmentMemberDto2.fromJson(Object? json) {
+    final map = _map(json);
+    return AudienceSegmentMemberDto2(
+      userId: _string(map['user_id']) ?? '',
+      displayName: _string(map['display_name']) ?? '',
+      primaryRole: UserRole.fromJson(_string(map['primary_role']) ?? 'student'),
+    );
+  }
+}
+
+class SetAudienceSegmentMembersRequest2 {
+  const SetAudienceSegmentMembersRequest2({required this.userIds});
+
+  final List<String> userIds;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'user_ids': userIds};
 }
 
 class AudienceGroupOptionDto2 {
