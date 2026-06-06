@@ -53,16 +53,11 @@ class _BearerTokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final path = options.path;
-    final isPublicAuth =
-        path.contains('/api/v1/auth/login') ||
-        path.contains('/api/v1/auth/register') ||
-        path.contains('/api/v1/auth/refresh') ||
-        path.contains('/api/v1/public/');
-    if (!isPublicAuth) {
+    if (!_isPublicAuthPath(options.path)) {
       final token = await _tokenStore.readAccessToken();
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
+        options.extra[_sentStoredAuthHeader] = true;
       }
     }
     handler.next(options);
@@ -82,20 +77,13 @@ class _TokenRefreshInterceptor extends Interceptor {
   /// Guards concurrent refresh attempts — only one refresh call at a time.
   Completer<bool>? _refreshCompleter;
 
-  bool _isAuthPath(String path) {
-    return path.contains('/api/v1/auth/login') ||
-        path.contains('/api/v1/auth/register') ||
-        path.contains('/api/v1/auth/refresh') ||
-        path.contains('/api/v1/public/');
-  }
-
   @override
   void onResponse(
     Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) async {
     final statusCode = response.statusCode;
-    if (statusCode != 401 || _isAuthPath(response.requestOptions.path)) {
+    if (statusCode != 401 || _isPublicAuthPath(response.requestOptions.path)) {
       handler.next(response);
       return;
     }
@@ -130,7 +118,7 @@ class _TokenRefreshInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final statusCode = err.response?.statusCode;
-    if (statusCode != 401 || _isAuthPath(err.requestOptions.path)) {
+    if (statusCode != 401 || _isPublicAuthPath(err.requestOptions.path)) {
       handler.next(err);
       return;
     }
@@ -242,7 +230,7 @@ class _ApiEnvelopeInterceptor extends Interceptor {
       return;
     }
 
-    if (failure.isAuthFailure) {
+    if (_shouldClearStoredSession(response.requestOptions, failure)) {
       await _tokenStore.clear();
     }
 
@@ -261,7 +249,7 @@ class _ApiEnvelopeInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final failure = ApiFailure.tryRead(err) ?? _failureFromDioError(err);
-    if (failure.isAuthFailure) {
+    if (_shouldClearStoredSession(err.requestOptions, failure)) {
       await _tokenStore.clear();
     }
 
@@ -314,4 +302,23 @@ class _ApiEnvelopeInterceptor extends Interceptor {
         );
     }
   }
+}
+
+const _sentStoredAuthHeader = 'feedbackflow.sentStoredAuthHeader';
+
+bool _isPublicAuthPath(String path) {
+  return path.contains('/api/v1/auth/login') ||
+      path.contains('/api/v1/auth/guest') ||
+      path.contains('/api/v1/auth/register') ||
+      path.contains('/api/v1/auth/refresh') ||
+      path.contains('/api/v1/public/');
+}
+
+bool _shouldClearStoredSession(RequestOptions options, ApiFailure failure) {
+  if (!failure.isAuthFailure) return false;
+
+  // Public form gates use their own access token/password flow. An
+  // INVALID_TOKEN there is local to the form and must not log out the app.
+  return options.extra[_sentStoredAuthHeader] == true ||
+      !_isPublicAuthPath(options.path);
 }

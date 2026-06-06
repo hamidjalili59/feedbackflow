@@ -40,6 +40,14 @@ class FriendlyApiErrorMessage {
       case ErrorCode.unauthorized:
       case ErrorCode.invalidToken:
       case ErrorCode.tokenExpired:
+        if (_isPublicFormGateFailure(failure)) {
+          return UserFacingError(
+            title: l10n?.t('protectedPublicForm') ?? 'Access validation failed',
+            message: failure.message,
+            icon: Icons.lock_outline_rounded,
+            canRetry: false,
+          );
+        }
         return UserFacingError(
           title: l10n?.t('sessionExpired') ?? 'Session expired',
           message:
@@ -93,9 +101,10 @@ class FriendlyApiErrorMessage {
       case ErrorCode.publicProtectionRequired:
         return UserFacingError(
           title: l10n?.t('protectedPublicForm') ?? 'Access validation required',
-          message:
-              l10n?.t('validatePublicFirst') ??
-              'Validate public access before submitting this protected form.',
+          message: failure.message.isNotEmpty
+              ? failure.message
+              : l10n?.t('validatePublicFirst') ??
+                    'Validate public access before submitting this protected form.',
           icon: Icons.verified_user_outlined,
           canRetry: false,
         );
@@ -160,6 +169,18 @@ class FriendlyApiErrorMessage {
         );
     }
   }
+}
+
+bool _isPublicFormGateFailure(ApiFailure failure) {
+  final details = failure.details;
+  if (details is Map) {
+    final field = details['field']?.toString();
+    return field == 'form_password' ||
+        field == 'identity_code' ||
+        field == 'public_access_token' ||
+        field == 'respondent_mode';
+  }
+  return false;
 }
 
 class UserFacingError {

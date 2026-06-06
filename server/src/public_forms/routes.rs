@@ -363,8 +363,8 @@ async fn validate_form_gate(
         let hash: String = row.try_get("secret_hash")?;
         if !password::verify_secret(provided, &hash).unwrap_or(false) {
             return Err(AppError::with_details(
-                StatusCode::UNAUTHORIZED,
-                ErrorCode::InvalidToken,
+                StatusCode::FORBIDDEN,
+                ErrorCode::PublicAccessDenied,
                 "Form password is invalid",
                 json!({ "field": "form_password" }),
             ));
@@ -401,8 +401,8 @@ async fn validate_form_gate(
     }
 
     Err(AppError::with_details(
-        StatusCode::UNAUTHORIZED,
-        ErrorCode::InvalidToken,
+        StatusCode::FORBIDDEN,
+        ErrorCode::PublicAccessDenied,
         "Identity code is invalid",
         json!({ "field": "identity_code" }),
     ))

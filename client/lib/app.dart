@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
@@ -24,13 +25,24 @@ class FeedbackFlowApp extends ConsumerWidget {
       themeMode: ref.watch(themeControllerProvider),
       routerConfig: ref.watch(routerProvider),
       builder: (context, child) {
-        return Directionality(
-          textDirection: context.l10n.textDirection,
-          child: Column(
-            children: [
-              const SmartAppBanner(),
-              Expanded(child: child ?? const SizedBox.shrink()),
-            ],
+        return ScrollConfiguration(
+          behavior: const MaterialScrollBehavior().copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+              PointerDeviceKind.stylus,
+              PointerDeviceKind.invertedStylus,
+            },
+          ),
+          child: Directionality(
+            textDirection: context.l10n.textDirection,
+            child: Column(
+              children: [
+                const SmartAppBanner(),
+                Expanded(child: child ?? const SizedBox.shrink()),
+              ],
+            ),
           ),
         );
       },

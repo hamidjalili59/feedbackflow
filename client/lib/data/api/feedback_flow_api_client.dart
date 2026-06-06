@@ -69,8 +69,16 @@ class FeedbackFlowApiClient {
   }
 
   List<T> _parseDtoList<T>(Object? json, T Function(Object?) fromJsonT) {
-    if (json is! Iterable) return const [];
-    return json.map(fromJsonT).toList(growable: false);
+    final source = switch (json) {
+      Iterable value => value,
+      Map value when value['data'] is Iterable => value['data'] as Iterable,
+      Map value when value['members'] is Iterable =>
+        value['members'] as Iterable,
+      Map value when value['items'] is Iterable => value['items'] as Iterable,
+      _ => null,
+    };
+    if (source == null) return const [];
+    return source.map(fromJsonT).toList(growable: false);
   }
 
   /// operationId: listActivities

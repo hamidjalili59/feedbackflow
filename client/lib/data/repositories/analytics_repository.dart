@@ -355,9 +355,13 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     required String id,
     required SetAudienceSegmentMembersRequest2 request,
   }) async {
-    return EnvelopeGuard.data(
-      await _api.setAudienceSegmentMembers(id: id, request: request),
+    final response = await _api.setAudienceSegmentMembers(
+      id: id,
+      request: request,
     );
+    if (response.success && response.data != null) return response.data!;
+    if (response.success) return listAudienceSegmentMembers(id: id);
+    throw ApiFailure.fromError(response.error);
   }
 
   @override
@@ -416,9 +420,13 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     required String id,
     required SetAudienceGroupMembersRequest2 request,
   }) async {
-    return EnvelopeGuard.data(
-      await _api.setAudienceGroupMembers(id: id, request: request),
+    final response = await _api.setAudienceGroupMembers(
+      id: id,
+      request: request,
     );
+    if (response.success && response.data != null) return response.data!;
+    if (response.success) return listAudienceGroupMembers(id: id);
+    throw ApiFailure.fromError(response.error);
   }
 
   @override
@@ -426,9 +434,10 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     required String id,
     required AudienceGroupMemberInputDto2 member,
   }) async {
-    return EnvelopeGuard.data(
-      await _api.addAudienceGroupMember(id: id, member: member),
-    );
+    final response = await _api.addAudienceGroupMember(id: id, member: member);
+    if (response.success && response.data != null) return response.data!;
+    if (response.success) return listAudienceGroupMembers(id: id);
+    throw ApiFailure.fromError(response.error);
   }
 
   @override
@@ -436,9 +445,13 @@ class DioAnalyticsRepository implements AnalyticsRepository {
     required String id,
     required String userId,
   }) async {
-    return EnvelopeGuard.data(
-      await _api.removeAudienceGroupMember(id: id, userId: userId),
+    final response = await _api.removeAudienceGroupMember(
+      id: id,
+      userId: userId,
     );
+    if (response.success && response.data != null) return response.data!;
+    if (response.success) return listAudienceGroupMembers(id: id);
+    throw ApiFailure.fromError(response.error);
   }
 
   @override

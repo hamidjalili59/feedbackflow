@@ -5246,18 +5246,17 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
                         '${_groupTypeLabel(group.groupType)} · ${group.memberCount} عضو'
                         '${group.code == null ? '' : ' · کد: ${ltrIsolate(group.code!)}'}',
                       ),
-                      trailing: Wrap(
-                        spacing: 8,
-                        children: [
-                          IconButton(
-                            tooltip: 'اعضا',
-                            onPressed: () => _manageMembers(group),
-                            icon: const Icon(Icons.group_add_outlined),
+                      trailing: _MoreActionsButton(
+                        actions: [
+                          _MoreAction(
+                            label: 'اعضا',
+                            icon: Icons.group_add_outlined,
+                            onSelected: () => _manageMembers(group),
                           ),
-                          IconButton(
-                            tooltip: context.l10n.t('delete'),
-                            onPressed: () => _delete(group),
-                            icon: const Icon(Icons.delete_outline_rounded),
+                          _MoreAction(
+                            label: context.l10n.t('delete'),
+                            icon: Icons.delete_outline_rounded,
+                            onSelected: () => _delete(group),
                           ),
                         ],
                       ),
@@ -5546,8 +5545,9 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    late final List<AudienceSegmentMemberDto2> updatedMembers;
     try {
-      await ref
+      updatedMembers = await ref
           .read(analyticsRepositoryProvider)
           .setAudienceSegmentMembers(
             id: widget.segment.id,
@@ -5555,11 +5555,6 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
               userIds: _selectedUserIds.toList(growable: false),
             ),
           );
-      ref.invalidate(audienceSegmentsProvider);
-      ref.invalidate(dashboardExperienceProvider);
-      _membersLoaded = false;
-      setState(() => _membersFuture = _loadMembers());
-      if (mounted) Navigator.pop(context);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -5570,9 +5565,20 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
           ),
         );
       }
+      return;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+
+    if (!mounted) return;
+    _selectedUserIds
+      ..clear()
+      ..addAll(audienceSegmentMemberIds(updatedMembers));
+    _membersLoaded = true;
+    setState(() => _membersFuture = Future.value(updatedMembers));
+    ref.invalidate(audienceSegmentsProvider);
+    ref.invalidate(dashboardExperienceProvider);
+    Navigator.pop(context);
   }
 }
 
@@ -5765,9 +5771,10 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
   Future<void> _saveSelected() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
+    late final List<AudienceGroupMemberDto2> updatedMembers;
     try {
       final newRole = _roleInGroup.text.trim();
-      await ref
+      updatedMembers = await ref
           .read(analyticsRepositoryProvider)
           .setAudienceGroupMembers(
             id: widget.group.id,
@@ -5783,9 +5790,19 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
               ],
             ),
           );
+      if (!mounted) return;
       _roleInGroup.clear();
-      _membersLoaded = false;
-      setState(() => _membersFuture = _loadMembers());
+      _selectedUserIds
+        ..clear()
+        ..addAll(audienceGroupMemberIds(updatedMembers));
+      _existingRoleByUserId
+        ..clear()
+        ..addAll(audienceGroupRoleByUserId(updatedMembers));
+      _membersLoaded = true;
+      setState(() => _membersFuture = Future.value(updatedMembers));
+      ref.invalidate(audienceGroupsProvider);
+      ref.invalidate(dashboardExperienceProvider);
+      Navigator.pop(context);
       if (mounted) {
         messenger.showSnackBar(
           const SnackBar(content: Text('اعضای کلاس/گروه به‌روزرسانی شدند.')),
@@ -5808,16 +5825,25 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
 
   Future<void> _remove(AudienceGroupMemberDto2 member) async {
     setState(() => _saving = true);
+    late final List<AudienceGroupMemberDto2> updatedMembers;
     try {
-      await ref
+      updatedMembers = await ref
           .read(analyticsRepositoryProvider)
           .removeAudienceGroupMember(
             id: widget.group.id,
             userId: member.userId,
           );
-      _selectedUserIds.remove(member.userId);
-      _existingRoleByUserId.remove(member.userId);
-      setState(() => _membersFuture = _loadMembers());
+      if (!mounted) return;
+      _selectedUserIds
+        ..clear()
+        ..addAll(audienceGroupMemberIds(updatedMembers));
+      _existingRoleByUserId
+        ..clear()
+        ..addAll(audienceGroupRoleByUserId(updatedMembers));
+      _membersLoaded = true;
+      setState(() => _membersFuture = Future.value(updatedMembers));
+      ref.invalidate(audienceGroupsProvider);
+      ref.invalidate(dashboardExperienceProvider);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -6038,20 +6064,25 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
                         '${ltrIsolate(user.phone)}'
                         '${user.email == null ? '' : ' · ${ltrIsolate(user.email!)}'}',
                       ),
-                      trailing: Wrap(
-                        spacing: 8,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Chip(label: Text(user.status)),
-                          if (_canHaveFamilyLinks(user.primaryRole))
-                            IconButton(
-                              tooltip: context.l10n.t('familyLinks'),
-                              onPressed: () => _manageFamily(user),
-                              icon: const Icon(Icons.family_restroom_rounded),
-                            ),
-                          IconButton(
-                            tooltip: context.l10n.t('edit'),
-                            onPressed: () => _edit(user),
-                            icon: const Icon(Icons.edit_outlined),
+                          const SizedBox(width: 4),
+                          _MoreActionsButton(
+                            actions: [
+                              if (_canHaveFamilyLinks(user.primaryRole))
+                                _MoreAction(
+                                  label: context.l10n.t('familyLinks'),
+                                  icon: Icons.family_restroom_rounded,
+                                  onSelected: () => _manageFamily(user),
+                                ),
+                              _MoreAction(
+                                label: context.l10n.t('edit'),
+                                icon: Icons.edit_outlined,
+                                onSelected: () => _edit(user),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -6803,19 +6834,19 @@ class _PendingApprovalCardState extends ConsumerState<_PendingApprovalCard> {
                     subtitle: Text(
                       '${context.l10n.enumLabel(form.visibilityMode.toJson())} · ${context.l10n.countSubmissions(form.submissionsCount)}',
                     ),
-                    trailing: Wrap(
-                      spacing: 4,
-                      children: [
-                        FilledButton.tonal(
-                          onPressed: _busy ? null : () => _approve(form),
-                          child: Text(context.l10n.t('approve')),
+                    trailing: _MoreActionsButton(
+                      enabled: !_busy,
+                      actions: [
+                        _MoreAction(
+                          label: context.l10n.t('approve'),
+                          icon: Icons.check_rounded,
+                          onSelected: () => _approve(form),
                         ),
-                        IconButton(
-                          tooltip: context.l10n.t('settings'),
-                          onPressed: _busy
-                              ? null
-                              : () => context.push('/forms/${form.id}/publish'),
-                          icon: const Icon(Icons.tune_rounded),
+                        _MoreAction(
+                          label: context.l10n.t('settings'),
+                          icon: Icons.tune_rounded,
+                          onSelected: () =>
+                              context.push('/forms/${form.id}/publish'),
                         ),
                       ],
                     ),
@@ -6926,32 +6957,31 @@ class _FormManagementCard extends ConsumerWidget {
                         form.status.toJson(),
                       ].join(' · '),
                     ),
-                    trailing: Wrap(
-                      spacing: 8,
-                      children: [
-                        IconButton(
-                          tooltip: context.l10n.t('settings'),
-                          onPressed: () =>
+                    trailing: _MoreActionsButton(
+                      actions: [
+                        _MoreAction(
+                          label: context.l10n.t('settings'),
+                          icon: Icons.tune_rounded,
+                          onSelected: () =>
                               context.push('/forms/${form.id}/settings'),
-                          icon: const Icon(Icons.tune_rounded),
                         ),
-                        IconButton(
-                          tooltip: 'هدف‌گیری فرم',
-                          onPressed: () =>
+                        _MoreAction(
+                          label: 'هدف‌گیری فرم',
+                          icon: Icons.hub_outlined,
+                          onSelected: () =>
                               _showFormAssignmentsDialog(context, ref, form),
-                          icon: const Icon(Icons.hub_outlined),
                         ),
-                        IconButton(
-                          tooltip: 'قواعد فعالیت',
-                          onPressed: () =>
+                        _MoreAction(
+                          label: 'قواعد فعالیت',
+                          icon: Icons.rule_folder_outlined,
+                          onSelected: () =>
                               _showActivityRulesDialog(context, ref, form),
-                          icon: const Icon(Icons.rule_folder_outlined),
                         ),
-                        IconButton(
-                          tooltip: context.l10n.t('editField'),
-                          onPressed: () =>
+                        _MoreAction(
+                          label: context.l10n.t('editField'),
+                          icon: Icons.edit_note_rounded,
+                          onSelected: () =>
                               context.push('/forms/${form.id}/builder'),
-                          icon: const Icon(Icons.edit_note_rounded),
                         ),
                       ],
                     ),
@@ -7055,6 +7085,61 @@ class _DashboardError extends StatelessWidget {
         icon: const Icon(Icons.login_rounded),
         label: Text(context.l10n.t('signIn')),
       ),
+    );
+  }
+}
+
+Set<String> audienceSegmentMemberIds(List<AudienceSegmentMemberDto2> members) {
+  return members.map((member) => member.userId).toSet();
+}
+
+Set<String> audienceGroupMemberIds(List<AudienceGroupMemberDto2> members) {
+  return members.map((member) => member.userId).toSet();
+}
+
+Map<String, String?> audienceGroupRoleByUserId(
+  List<AudienceGroupMemberDto2> members,
+) {
+  return {for (final member in members) member.userId: member.roleInGroup};
+}
+
+class _MoreAction {
+  const _MoreAction({
+    required this.label,
+    required this.icon,
+    required this.onSelected,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onSelected;
+}
+
+class _MoreActionsButton extends StatelessWidget {
+  const _MoreActionsButton({required this.actions, this.enabled = true});
+
+  final List<_MoreAction> actions;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<int>(
+      tooltip: context.l10n.t('more'),
+      enabled: enabled && actions.isNotEmpty,
+      icon: const Icon(Icons.more_vert_rounded),
+      onSelected: (index) => actions[index].onSelected(),
+      itemBuilder: (context) => [
+        for (var i = 0; i < actions.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(actions[i].icon),
+              title: Text(actions[i].label),
+            ),
+          ),
+      ],
     );
   }
 }
