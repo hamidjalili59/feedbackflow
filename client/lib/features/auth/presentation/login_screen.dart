@@ -168,8 +168,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       height: 48,
                       child: FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF91A8F7),
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                         onPressed: loading ? null : _startGuestLogin,
                         child: Text(_guestButtonLabel),

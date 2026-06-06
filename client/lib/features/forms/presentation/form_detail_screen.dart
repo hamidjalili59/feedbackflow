@@ -512,7 +512,7 @@ class _AnswerAccessBlockedView extends StatelessWidget {
                     if (access.canEditWorkspace)
                       FilledButton.tonalIcon(
                         onPressed: () =>
-                            context.go('/forms/${form.id}/settings'),
+                            context.push('/forms/${form.id}/settings'),
                         icon: const Icon(Icons.tune_rounded),
                         label: Text(context.l10n.t('form.manageForm')),
                       ),
@@ -711,7 +711,7 @@ class _WorkspaceNav extends StatelessWidget {
                   avatar: Icon(section.icon, size: 18),
                   label: Text(section.label(context)),
                   onSelected: (_) =>
-                      context.go('/forms/$formId/${section.wire}'),
+                      context.replace('/forms/$formId/${section.wire}'),
                 ),
               ),
           ],
@@ -2010,6 +2010,184 @@ class _AssignmentDraftTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 520;
+    final leading = Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Icon(
+        _assignmentDraftIcon(draft),
+        color: scheme.onPrimaryContainer,
+      ),
+    );
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _assignmentDraftTitle(context, draft),
+          maxLines: compact ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _assignmentDraftSubtitle(context, draft),
+          maxLines: compact ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _TinyStatusChip(
+              label: context.l10n.t('form.canView'),
+              active: draft.canSee,
+              icon: draft.canSee
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_off_rounded,
+            ),
+            _TinyStatusChip(
+              label: context.l10n.t('form.canRespond'),
+              active: draft.canAnswer,
+              icon: draft.canAnswer ? Icons.edit_rounded : Icons.block_rounded,
+            ),
+          ],
+        ),
+      ],
+    );
+    final actions = Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        IconButton.filledTonal(
+          tooltip: context.l10n.t('edit'),
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_rounded),
+        ),
+        IconButton(
+          tooltip: context.l10n.t('delete'),
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline_rounded),
+        ),
+      ],
+    );
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.56),
+        ),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(child: body),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: actions,
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                leading,
+                const SizedBox(width: 12),
+                Expanded(child: body),
+                const SizedBox(width: 8),
+                actions,
+              ],
+            ),
+    );
+  }
+}
+
+class _AssignmentTile extends StatelessWidget {
+  const _AssignmentTile({required this.assignment});
+
+  final FormAssignmentDto2 assignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 520;
+    final canAnswer = assignment.canAnswer;
+    final canSee = assignment.canSee;
+    final leading = Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Icon(
+        _assignmentIcon(assignment),
+        color: scheme.onPrimaryContainer,
+      ),
+    );
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          assignment.label?.trim().isNotEmpty == true
+              ? assignment.label!.trim()
+              : _assignmentAudienceTitle(context, assignment),
+          maxLines: compact ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _assignmentAudienceSubtitle(context, assignment),
+          maxLines: compact ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _TinyStatusChip(
+              label: context.l10n.t('form.canView'),
+              active: canSee,
+              icon: canSee
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_off_rounded,
+            ),
+            _TinyStatusChip(
+              label: context.l10n.t('form.canRespond'),
+              active: canAnswer,
+              icon: canAnswer ? Icons.edit_rounded : Icons.block_rounded,
+            ),
+          ],
+        ),
+      ],
+    );
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2020,81 +2198,11 @@ class _AssignmentDraftTile extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer.withValues(alpha: 0.78),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              _assignmentDraftIcon(draft),
-              color: scheme.onPrimaryContainer,
-            ),
-          ),
+          leading,
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _assignmentDraftTitle(context, draft),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _assignmentDraftSubtitle(context, draft),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _TinyStatusChip(
-                      label: context.l10n.t('form.canView'),
-                      active: draft.canSee,
-                      icon: draft.canSee
-                          ? Icons.visibility_rounded
-                          : Icons.visibility_off_rounded,
-                    ),
-                    _TinyStatusChip(
-                      label: context.l10n.t('form.canRespond'),
-                      active: draft.canAnswer,
-                      icon: draft.canAnswer
-                          ? Icons.edit_rounded
-                          : Icons.block_rounded,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Wrap(
-            spacing: 4,
-            children: [
-              IconButton.filledTonal(
-                tooltip: context.l10n.t('edit'),
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_rounded),
-              ),
-              IconButton(
-                tooltip: context.l10n.t('delete'),
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded),
-              ),
-            ],
-          ),
+          Expanded(child: body),
         ],
       ),
     );
@@ -2228,10 +2336,7 @@ String _assignmentDraftSubtitle(BuildContext context, _AssignmentDraft draft) {
 }
 
 class _AssignmentEditorCard extends ConsumerWidget {
-  const _AssignmentEditorCard({
-    required this.draft,
-    required this.onChanged,
-  });
+  const _AssignmentEditorCard({required this.draft, required this.onChanged});
 
   final _AssignmentDraft draft;
   final ValueChanged<_AssignmentDraft> onChanged;
@@ -2485,87 +2590,6 @@ String _groupOptionLabel(BuildContext context, AudienceGroupOptionDto2 group) {
         .replaceAll('{count}', '${group.memberCount}'),
   ];
   return parts.join(' · ');
-}
-
-class _AssignmentTile extends StatelessWidget {
-  const _AssignmentTile({required this.assignment});
-
-  final FormAssignmentDto2 assignment;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final canAnswer = assignment.canAnswer;
-    final canSee = assignment.canSee;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.36),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.56),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer.withValues(alpha: 0.78),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              _assignmentIcon(assignment),
-              color: scheme.onPrimaryContainer,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  assignment.label?.trim().isNotEmpty == true
-                      ? assignment.label!.trim()
-                      : _assignmentAudienceTitle(context, assignment),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _assignmentAudienceSubtitle(context, assignment),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Wrap(
-            spacing: 6,
-            children: [
-              _TinyStatusChip(
-                label: context.l10n.t('form.canView'),
-                active: canSee,
-                icon: canSee
-                    ? Icons.visibility_rounded
-                    : Icons.visibility_off_rounded,
-              ),
-              _TinyStatusChip(
-                label: context.l10n.t('form.canRespond'),
-                active: canAnswer,
-                icon: canAnswer ? Icons.edit_rounded : Icons.block_rounded,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _TinyStatusChip extends StatelessWidget {
@@ -3076,7 +3100,7 @@ class _PublishSectionState extends State<_PublishSection> {
           ),
     );
     if (mounted && _mode == PublishMode.publicLink) {
-      context.go('/forms/${widget.form.id}/share');
+      context.replace('/forms/${widget.form.id}/share');
     }
   }
 
@@ -3246,7 +3270,7 @@ class _ShareSection extends StatelessWidget {
               title: context.l10n.t('noPublicLinkYet'),
               message: context.l10n.t('publishPublicLinkHint'),
               actionLabel: context.l10n.t('goToPublish'),
-              onAction: () => context.go('/forms/${form.id}/publish'),
+              onAction: () => context.replace('/forms/${form.id}/publish'),
             )
           else ...[
             _InlineNotice(
@@ -3416,7 +3440,7 @@ class _ResultsSection extends ConsumerWidget {
             error: (error, stackTrace) => ErrorPanel(
               error: error,
               onRetry: () => ref.invalidate(formAnalyticsProvider(form.id)),
-              onBack: () => context.go('/forms'),
+              onBack: () => _returnToPreviousOrForms(context),
               onSignIn: () => context.go('/login'),
             ),
             data: (value) => _AnalyticsOverview(analytics: value),
@@ -3428,7 +3452,7 @@ class _ResultsSection extends ConsumerWidget {
             error: (error, stackTrace) => ErrorPanel(
               error: error,
               onRetry: () => ref.invalidate(submissionsProvider(form.id)),
-              onBack: () => context.go('/forms'),
+              onBack: () => _returnToPreviousOrForms(context),
               onSignIn: () => context.go('/login'),
             ),
             data: (value) => _SubmissionsPanel(form: form, response: value),
@@ -3589,15 +3613,17 @@ class _SubmissionsPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                context.l10n.t('latestSubmissions'),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
+            Text(
+              context.l10n.t('latestSubmissions'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             Text(
               context.l10n
@@ -3624,8 +3650,59 @@ class _SubmissionSummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 560;
     final respondent = _submissionRespondentLabel(context, submission);
+    final leading = CircleAvatar(
+      backgroundColor: scheme.primaryContainer,
+      foregroundColor: scheme.onPrimaryContainer,
+      child: const Icon(Icons.receipt_long_rounded),
+    );
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${context.l10n.t('submission')} ${_shortId(submission.id)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${context.l10n.t('submitted')} ${_formatDateTime(submission.submittedAt)}\n$respondent',
+          maxLines: compact ? 4 : 3,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    final actions = Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Chip(
+          label: Text(
+            '${submission.score.percentageScore.toStringAsFixed(0)}%',
+          ),
+        ),
+        FilledButton.tonalIcon(
+          onPressed: () => _showSubmissionDetailSheet(
+            context,
+            form: form,
+            submissionId: submission.id,
+          ),
+          icon: const Icon(Icons.visibility_rounded),
+          label: Text(context.l10n.t('viewDetails')),
+        ),
+      ],
+    );
     return Container(
+      padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
@@ -3634,40 +3711,35 @@ class _SubmissionSummaryTile extends StatelessWidget {
           color: scheme.outlineVariant.withValues(alpha: 0.46),
         ),
       ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primaryContainer,
-          foregroundColor: scheme.onPrimaryContainer,
-          child: const Icon(Icons.receipt_long_rounded),
-        ),
-        title: Text(
-          '${context.l10n.t('submission')} ${_shortId(submission.id)}',
-        ),
-        subtitle: Text(
-          '${context.l10n.t('submitted')} ${_formatDateTime(submission.submittedAt)}\n$respondent',
-        ),
-        isThreeLine: true,
-        trailing: Wrap(
-          spacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Chip(
-              label: Text(
-                '${submission.score.percentageScore.toStringAsFixed(0)}%',
-              ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(child: body),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: actions,
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                leading,
+                const SizedBox(width: 12),
+                Expanded(child: body),
+                const SizedBox(width: 12),
+                actions,
+              ],
             ),
-            FilledButton.tonalIcon(
-              onPressed: () => _showSubmissionDetailSheet(
-                context,
-                form: form,
-                submissionId: submission.id,
-              ),
-              icon: const Icon(Icons.visibility_rounded),
-              label: Text(context.l10n.t('viewDetails')),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -4113,41 +4185,68 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Icon(icon, color: scheme.onPrimaryContainer),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final titleBlock = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.76),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(icon, color: scheme.onPrimaryContainer),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+        final action = trailing;
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
+              titleBlock,
+              if (action != null) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: action,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+              ],
             ],
-          ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-      ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: titleBlock),
+            if (action != null) ...[const SizedBox(width: 12), action],
+          ],
+        );
+      },
     );
   }
 }

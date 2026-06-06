@@ -98,7 +98,7 @@ class _StepFormViewState extends State<StepFormView> {
                             ),
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: const Color(0xFF737B9A),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -186,8 +186,10 @@ class _StepFormViewState extends State<StepFormView> {
                       context.l10n.t('previous'),
                       style: TextStyle(
                         color: _currentPage > 0
-                            ? const Color(0xFF9AA1B8)
-                            : const Color(0xFFC4CAD8),
+                            ? Theme.of(context).colorScheme.onSurfaceVariant
+                            : Theme.of(
+                                context,
+                              ).disabledColor.withValues(alpha: 0.72),
                         fontWeight: FontWeight.w900,
                       ),
                     ),

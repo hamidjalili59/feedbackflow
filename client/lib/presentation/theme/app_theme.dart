@@ -303,6 +303,15 @@ class AppTheme {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.xs,
         ),
+        iconColor: colorScheme.onSurfaceVariant,
+        textColor: colorScheme.onSurface,
+        titleTextStyle: textTheme.titleMedium?.copyWith(
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
+        subtitleTextStyle: textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

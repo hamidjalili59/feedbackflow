@@ -80,8 +80,9 @@ class _ParentAppFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return ColoredBox(
-      color: const Color(0xFFF3F6FA),
+      color: dark ? const Color(0xFF0B1020) : const Color(0xFFF3F6FA),
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -455,8 +456,8 @@ class _ParentHomeHeader extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       _initials(user.displayName).trim(),
-                      style: TextStyle(
-                        color: _dashboardText(context),
+                      style: const TextStyle(
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -609,14 +610,19 @@ class _ParentStudentCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: const Color(0xFFE8EEFF),
+                    backgroundColor: _dashboardTintSurface(context),
                     backgroundImage: _dashboardAvatarImageProvider(
                       child.avatarUrl,
                     ),
                     child: child.avatarUrl == null || child.avatarUrl!.isEmpty
                         ? Text(
                             _initials(child.displayName),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w900,
+                            ),
                           )
                         : null,
                   ),
@@ -833,9 +839,9 @@ class _ParentActivityCard extends StatelessWidget {
           children: [
             Text(
               _localizedTimeAgo(context, item),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: const Color(0xFF8C90A9)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1369,7 +1375,7 @@ class _DashboardTopBar extends StatelessWidget {
               Text(
                 title,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  color: const Color(0xFF5F6388),
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1619,14 +1625,17 @@ class _ChildCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 27,
-              backgroundColor: const Color(0xFFFFE2C1),
+              backgroundColor: _dashboardTintSurface(context),
               backgroundImage: child.avatarUrl == null
                   ? null
                   : NetworkImage(child.avatarUrl!),
               child: child.avatarUrl == null
                   ? Text(
                       _initials(child.displayName),
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w900,
+                      ),
                     )
                   : null,
             ),
@@ -1689,10 +1698,10 @@ class _StudentProfileCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 27,
-            backgroundColor: Color(0xFFE8EEFF),
-            child: Text('🎓', style: TextStyle(fontSize: 28)),
+            backgroundColor: _dashboardTintSurface(context),
+            child: const Text('🎓', style: TextStyle(fontSize: 28)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1814,7 +1823,7 @@ class _SurveySummaryCards extends StatelessWidget {
                 child: _StatusMini(
                   label: context.l10n.t('status.pending'),
                   value: summary.pending + summary.newItems,
-                  color: const Color(0xFF8C90A9),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -2406,6 +2415,7 @@ class _CalendarSurveyRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: survey.formId.isEmpty
           ? null
@@ -2414,8 +2424,11 @@ class _CalendarSurveyRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF4F7FB),
+          color: _dashboardSurface(context),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
         ),
         child: Row(
           children: [
@@ -2428,9 +2441,10 @@ class _CalendarSurveyRow extends StatelessWidget {
                 textAlign: TextAlign.right,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],
@@ -2523,6 +2537,13 @@ Color _dashboardSurface(BuildContext context) {
 Color _dashboardText(BuildContext context) =>
     Theme.of(context).colorScheme.onSurface;
 
+Color _dashboardTintSurface(BuildContext context) {
+  final theme = Theme.of(context);
+  return theme.brightness == Brightness.dark
+      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.42)
+      : const Color(0xFFE8EEFF);
+}
+
 class _SurveyTile extends StatelessWidget {
   const _SurveyTile({required this.survey, this.primary = false});
 
@@ -2543,7 +2564,7 @@ class _SurveyTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: completed
               ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
-              : Colors.white,
+              : _dashboardSurface(context),
           borderRadius: BorderRadius.circular(12),
           border: completed
               ? Border.all(
@@ -2681,13 +2702,13 @@ class _ActivityRow extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8EEFF),
+              color: _dashboardTintSurface(context),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.task_alt_rounded,
               size: 18,
-              color: AppTheme.primary,
+              color: theme.colorScheme.onPrimaryContainer,
             ),
           ),
         ],
@@ -2804,11 +2825,11 @@ class _RankingRow extends StatelessWidget {
           const SizedBox(width: 10),
           CircleAvatar(
             radius: 16,
-            backgroundColor: const Color(0xFFE8EEFF),
+            backgroundColor: _dashboardTintSurface(context),
             child: Text(
               '${item.rank}',
-              style: const TextStyle(
-                color: AppTheme.primary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -4028,6 +4049,40 @@ class _ManagementListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 560;
+    final titleBlock = Column(
+      crossAxisAlignment: compact
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
+      children: [
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    final trailingText = Text(
+      trailing,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.labelMedium?.copyWith(
+        color: AppTheme.primary,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+    final actionWrap = Wrap(spacing: 4, runSpacing: 4, children: actions);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -4035,40 +4090,32 @@ class _ManagementListItem extends StatelessWidget {
         color: _dashboardSurface(context),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        children: [
-          Text(
-            trailing,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: AppTheme.primary,
-              fontWeight: FontWeight.w900,
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                titleBlock,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: trailingText),
+                    if (actions.isNotEmpty) actionWrap,
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Flexible(child: trailingText),
+                const Spacer(),
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  actionWrap,
+                ],
+                const SizedBox(width: 8),
+                Expanded(child: titleBlock),
+              ],
             ),
-          ),
-          const Spacer(),
-          if (actions.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Wrap(spacing: 4, children: actions),
-          ],
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -4678,8 +4725,13 @@ class _EmptyTiny extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F7FB),
+        color: _dashboardSurface(context),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
       ),
       child: Text(
         message,
@@ -6762,12 +6814,12 @@ class _PendingApprovalCardState extends ConsumerState<_PendingApprovalCard> {
                           tooltip: context.l10n.t('settings'),
                           onPressed: _busy
                               ? null
-                              : () => context.go('/forms/${form.id}/publish'),
+                              : () => context.push('/forms/${form.id}/publish'),
                           icon: const Icon(Icons.tune_rounded),
                         ),
                       ],
                     ),
-                    onTap: () => context.go('/forms/${form.id}'),
+                    onTap: () => context.push('/forms/${form.id}'),
                   ),
                   if (form != pending.last) const Divider(height: 8),
                 ],
@@ -6880,7 +6932,7 @@ class _FormManagementCard extends ConsumerWidget {
                         IconButton(
                           tooltip: context.l10n.t('settings'),
                           onPressed: () =>
-                              context.go('/forms/${form.id}/settings'),
+                              context.push('/forms/${form.id}/settings'),
                           icon: const Icon(Icons.tune_rounded),
                         ),
                         IconButton(
@@ -6898,7 +6950,7 @@ class _FormManagementCard extends ConsumerWidget {
                         IconButton(
                           tooltip: context.l10n.t('editField'),
                           onPressed: () =>
-                              context.go('/forms/${form.id}/builder'),
+                              context.push('/forms/${form.id}/builder'),
                           icon: const Icon(Icons.edit_note_rounded),
                         ),
                       ],
@@ -6954,18 +7006,36 @@ class _CardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final compact = MediaQuery.sizeOf(context).width < 560;
+    final titleRow = Row(
       children: [
         Icon(icon),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             title,
+            maxLines: compact ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
+      ],
+    );
+    if (compact && action != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          titleRow,
+          const SizedBox(height: 8),
+          Align(alignment: AlignmentDirectional.centerStart, child: action),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: titleRow),
         ?action,
       ],
     );
