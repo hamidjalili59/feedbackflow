@@ -19,6 +19,10 @@
 pscp feedbackflow-installer-<version>.tar.gz feedbackflow@185.8.173.191:/home/feedbackflow/
 ```
 
+build apk:
+
+flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=http://185.8.173.191 --dart-define=PUBLIC_APP_BASE_URL=http://185.8.173.191
+
 ### ۳. نصب روی سرور
 
 با PuTTY وصل شو به `feedbackflow@185.8.173.191` یا:

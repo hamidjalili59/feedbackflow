@@ -1184,34 +1184,25 @@ class _ParentSurveyResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final destination = _surveyDestination(survey);
+    final completed = survey.mySubmissionId != null;
+    final progressLabel = completed
+        ? '${survey.progress.clamp(0, 100).toStringAsFixed(0)}٪'
+        : context.l10n.t('start');
+    final subtitle = completed
+        ? context.l10n.t('submittedReviewMessage')
+        : survey.dateLabel ?? '';
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () => context.push(destination),
       child: _ParentWhiteCard(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Row(
-          textDirection: TextDirection.ltr,
+          textDirection: TextDirection.rtl,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              survey.mySubmissionId == null
-                  ? context.l10n.t('start')
-                  : survey.progress.toStringAsFixed(0),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: _dashboardText(context),
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(width: 4),
-            if (survey.mySubmissionId != null)
-              Text(
-                context.l10n.t('dashboard.responses'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     survey.title,
@@ -1222,15 +1213,78 @@ class _ParentSurveyResultCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  Text(
-                    survey.dateLabel ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
+                  ],
+                  if (completed && (survey.dateLabel ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      survey.dateLabel!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.start,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 72, maxWidth: 104),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: completed
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.42)
+                      : const Color(0xFFE8EEFF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      progressLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: _dashboardText(context),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (completed) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _surveyStatusLabel(context, 'completed'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
