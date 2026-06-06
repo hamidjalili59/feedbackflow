@@ -3457,7 +3457,7 @@ class _ResultsSection extends ConsumerWidget {
               onBack: () => _returnToPreviousOrForms(context),
               onSignIn: () => context.go('/login'),
             ),
-            data: (value) => _AnalyticsOverview(analytics: value),
+            data: (value) => _AnalyticsOverview(form: form, analytics: value),
           ),
           AppSpacing.gapLg,
           submissions.when(
@@ -3478,12 +3478,14 @@ class _ResultsSection extends ConsumerWidget {
 }
 
 class _AnalyticsOverview extends StatelessWidget {
-  const _AnalyticsOverview({required this.analytics});
+  const _AnalyticsOverview({required this.form, required this.analytics});
 
+  final FormDetailDto form;
   final FormAnalyticsDto analytics;
 
   @override
   Widget build(BuildContext context) {
+    final hasScoring = _formHasScoring(form);
     final cards = <Widget>[
       _MetricCard(
         title: context.l10n.t('totalSubmissions'),
@@ -3505,16 +3507,18 @@ class _AnalyticsOverview extends StatelessWidget {
         value: '${analytics.completion.completionRate.toStringAsFixed(1)}%',
         icon: Icons.task_alt_rounded,
       ),
-      _MetricCard(
-        title: context.l10n.t('averageScore'),
-        value: analytics.score.averageScore.toStringAsFixed(1),
-        icon: Icons.stacked_line_chart_rounded,
-      ),
-      _MetricCard(
-        title: context.l10n.t('averagePercentage'),
-        value: '${analytics.score.averagePercentage.toStringAsFixed(1)}%',
-        icon: Icons.percent_rounded,
-      ),
+      if (hasScoring)
+        _MetricCard(
+          title: context.l10n.t('averageScore'),
+          value: analytics.score.averageScore.toStringAsFixed(1),
+          icon: Icons.stacked_line_chart_rounded,
+        ),
+      if (hasScoring)
+        _MetricCard(
+          title: context.l10n.t('averagePercentage'),
+          value: '${analytics.score.averagePercentage.toStringAsFixed(1)}%',
+          icon: Icons.percent_rounded,
+        ),
     ];
 
     return Column(
@@ -3699,11 +3703,12 @@ class _SubmissionSummaryTile extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Chip(
-          label: Text(
-            '${submission.score.percentageScore.toStringAsFixed(0)}%',
+        if (_formHasScoring(form))
+          Chip(
+            label: Text(
+              '${submission.score.percentageScore.toStringAsFixed(0)}%',
+            ),
           ),
-        ),
         FilledButton.tonalIcon(
           onPressed: () => _showSubmissionDetailSheet(
             context,
@@ -3889,7 +3894,7 @@ class _SubmissionDetailContent extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // --- Score summary ---
+          // --- Submission summary ---
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
@@ -3908,30 +3913,30 @@ class _SubmissionDetailContent extends StatelessWidget {
             ),
             child: Row(
               children: [
+                if (_formHasScoring(form)) ...[
+                  _ScoreBadge(
+                    label: context.l10n.t('score'),
+                    value: submission.score.totalScore.toStringAsFixed(1),
+                    icon: Icons.score_rounded,
+                    scheme: scheme,
+                    theme: theme,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  _ScoreBadge(
+                    label: context.l10n.t('percentage'),
+                    value:
+                        '${submission.score.percentageScore.toStringAsFixed(0)}%',
+                    icon: Icons.percent_rounded,
+                    scheme: scheme,
+                    theme: theme,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
                 _ScoreBadge(
-                  label: context.l10n.t('score'),
-                  value: submission.score.totalScore.toStringAsFixed(1),
-                  icon: Icons.score_rounded,
-                  scheme: scheme,
-                  theme: theme,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _ScoreBadge(
-                  label: context.l10n.t('percentage'),
-                  value:
-                      '${submission.score.percentageScore.toStringAsFixed(0)}%',
-                  icon: Icons.percent_rounded,
-                  scheme: scheme,
-                  theme: theme,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _ScoreBadge(
-                  label: submission.anonymous
-                      ? context.l10n.t('anonymous')
-                      : context.l10n.t('identified'),
+                  label: context.l10n.t('identified'),
                   value: submission.anonymous
-                      ? context.l10n.t('yes')
-                      : context.l10n.t('no'),
+                      ? context.l10n.t('no')
+                      : context.l10n.t('yes'),
                   icon: submission.anonymous
                       ? Icons.visibility_off_rounded
                       : Icons.person_rounded,
@@ -4124,6 +4129,9 @@ class _ResponsiveCardGrid extends StatelessWidget {
 
 String _formatDateTime(DateTime value) =>
     value.toLocal().toString().split('.').first;
+
+bool _formHasScoring(FormDetailDto form) =>
+    form.scoringMode != ScoringMode.none;
 
 String _shortId(String value) =>
     value.length <= 8 ? value : value.substring(0, 8);
