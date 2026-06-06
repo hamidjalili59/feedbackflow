@@ -82,9 +82,9 @@ class _StepFormViewState extends State<StepFormView> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
-                        color: AppTheme.ink,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Expanded(
@@ -117,7 +117,9 @@ class _StepFormViewState extends State<StepFormView> {
                       height: 8,
                       child: LinearProgressIndicator(
                         value: value,
-                        backgroundColor: Colors.white,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         color: AppTheme.primary,
                       ),
                     ),
@@ -249,7 +251,7 @@ class _QuestionPage extends StatelessWidget {
                 field.label,
                 textAlign: TextAlign.right,
                 style: theme.textTheme.headlineMedium?.copyWith(
-                  color: AppTheme.ink,
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w900,
                   height: 1.55,
                   letterSpacing: -0.45,
@@ -261,7 +263,7 @@ class _QuestionPage extends StatelessWidget {
                   field.description!,
                   textAlign: TextAlign.right,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF858BA6),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

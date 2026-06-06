@@ -1046,6 +1046,8 @@ class _FaceOptionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _moodColor(moodIndex);
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
     return Semantics(
       button: true,
       selected: selected,
@@ -1061,11 +1063,13 @@ class _FaceOptionButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: selected ? const Color(0xFFE2F8EC) : Colors.white,
+            color: selected
+                ? (dark ? const Color(0xFF163E2C) : const Color(0xFFE2F8EC))
+                : theme.colorScheme.surface,
             border: Border.all(
               color: selected
                   ? const Color(0xFF35C981)
-                  : const Color(0xFFE4E9F3),
+                  : theme.colorScheme.outlineVariant,
               width: selected ? 4 : 1,
             ),
             boxShadow: selected

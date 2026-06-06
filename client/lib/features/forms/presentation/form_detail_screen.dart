@@ -2144,7 +2144,6 @@ class _AssignmentEditorDialogState extends State<_AssignmentEditorDialog> {
               _AssignmentEditorCard(
                 draft: _draft,
                 onChanged: (draft) => setState(() => _draft = draft),
-                showDelete: false,
               ),
             ],
           ),
@@ -2232,15 +2231,10 @@ class _AssignmentEditorCard extends ConsumerWidget {
   const _AssignmentEditorCard({
     required this.draft,
     required this.onChanged,
-    this.onDelete,
-    this.showDelete = true,
-    super.key,
   });
 
   final _AssignmentDraft draft;
   final ValueChanged<_AssignmentDraft> onChanged;
-  final VoidCallback? onDelete;
-  final bool showDelete;
 
   static const _audienceTypes = [
     'role',
@@ -2301,14 +2295,6 @@ class _AssignmentEditorCard extends ConsumerWidget {
                   },
                 ),
               ),
-              if (showDelete) ...[
-                const SizedBox(width: AppSpacing.sm),
-                IconButton.filledTonal(
-                  tooltip: context.l10n.t('delete'),
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
-              ],
             ],
           ),
           AppSpacing.gapSm,

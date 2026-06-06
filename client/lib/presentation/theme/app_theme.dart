@@ -243,7 +243,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: dark ? const Color(0xFF202842) : surface,
-        selectedColor: const Color(0xFFE8EEFF),
+        selectedColor: dark ? const Color(0xFF25346B) : const Color(0xFFE8EEFF),
         checkmarkColor: primary,
         labelStyle: textTheme.labelLarge?.copyWith(
           color: colorScheme.onSurface,
@@ -264,7 +264,9 @@ class AppTheme {
             ? const Color(0xFF0F1426).withValues(alpha: 0.95)
             : Colors.white.withValues(alpha: 0.95),
         elevation: 0,
-        indicatorColor: const Color(0xFFE8EEFF),
+        indicatorColor: dark
+            ? const Color(0xFF25346B)
+            : const Color(0xFFE8EEFF),
         labelTextStyle: WidgetStatePropertyAll(
           textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900),
         ),
@@ -272,7 +274,9 @@ class AppTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: Colors.transparent,
-        indicatorColor: const Color(0xFFE8EEFF),
+        indicatorColor: dark
+            ? const Color(0xFF25346B)
+            : const Color(0xFFE8EEFF),
         selectedIconTheme: const IconThemeData(color: primary),
         selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w900,
@@ -286,7 +290,9 @@ class AppTheme {
       navigationDrawerTheme: NavigationDrawerThemeData(
         backgroundColor: dark ? const Color(0xFF0F1426) : background,
         elevation: 0,
-        indicatorColor: const Color(0xFFE8EEFF),
+        indicatorColor: dark
+            ? const Color(0xFF25346B)
+            : const Color(0xFFE8EEFF),
         labelTextStyle: WidgetStatePropertyAll(
           textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
         ),

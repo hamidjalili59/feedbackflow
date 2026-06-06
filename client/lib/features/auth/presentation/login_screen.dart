@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
-                            color: AppTheme.ink,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.6,
                           ),
@@ -97,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : context.l10n.t('login.phoneSubtitle'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF79809C),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -180,7 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _guestHelpText,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF858BA6),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.7,
                       ),
                     ),
@@ -313,7 +313,7 @@ class _PhoneInput extends StatelessWidget {
             Text(
               '+98',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.ink,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -424,17 +424,26 @@ class _InputShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
     return Container(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: dark ? 0.58 : 0.72,
+        ),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(
+            alpha: dark ? 0.38 : 0.28,
+          ),
+        ),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             blurRadius: 24,
             offset: const Offset(0, 12),
-            color: Colors.black.withValues(alpha: 0.035),
+            color: Colors.black.withValues(alpha: dark ? 0.20 : 0.035),
           ),
         ],
       ),
