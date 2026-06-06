@@ -362,9 +362,13 @@ class FeedbackFlowApiClient {
   /// operationId: getForm
   /// GET /api/v1/forms/{id}
   /// Requires Bearer JWT.
-  Future<ApiResponse<FormDetailDto>> getForm({required String id}) async {
+  Future<ApiResponse<FormDetailDto>> getForm({
+    required String id,
+    String? childId,
+  }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       _path('/api/v1/forms/{id}', <String, String>{'id': id.toString()}),
+      queryParameters: _clean(<String, dynamic>{'child_id': childId}),
     );
     return _parseApiResponse<FormDetailDto>(
       response.data,
@@ -377,11 +381,13 @@ class FeedbackFlowApiClient {
   /// Requires Bearer JWT.
   Future<ApiResponse<FormAnswerAccessDto2>> getFormAnswerAccess({
     required String id,
+    String? childId,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       _path('/api/v1/forms/{id}/answer-access', <String, String>{
         'id': id.toString(),
       }),
+      queryParameters: _clean(<String, dynamic>{'child_id': childId}),
     );
     return _parseApiResponse<FormAnswerAccessDto2>(
       response.data,

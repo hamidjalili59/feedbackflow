@@ -16,6 +16,7 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
+use serde::Deserialize;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -85,18 +86,27 @@ pub async fn get_form(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    Query(q): Query<FormContextQuery>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    Ok(response::ok(service::get_form(&state, &auth, id).await?))
+    Ok(response::ok(
+        service::get_form_with_child(&state, &auth, id, q.child_id).await?,
+    ))
 }
 
 pub async fn get_answer_access(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    Query(q): Query<FormContextQuery>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
     Ok(response::ok(
-        service::answer_access(&state, &auth, id).await?,
+        service::answer_access_with_child(&state, &auth, id, q.child_id).await?,
     ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FormContextQuery {
+    pub child_id: Option<Uuid>,
 }
 pub async fn update_form(
     State(state): State<AppState>,

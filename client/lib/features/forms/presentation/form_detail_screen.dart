@@ -22,15 +22,17 @@ class FormDetailScreen extends ConsumerWidget {
     required this.formId,
     this.initialSection = FormWorkspaceSection.builder,
     this.reviewSubmissionId,
+    this.childId,
   });
 
   final String formId;
   final FormWorkspaceSection initialSection;
   final String? reviewSubmissionId;
+  final String? childId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(formDetailProvider(formId));
+    final detailAsync = ref.watch(formDetailProvider(formId, childId));
     final authAsync = ref.watch(authControllerProvider);
     return GradientScaffold(
       appBar: AppBar(
@@ -50,7 +52,7 @@ class FormDetailScreen extends ConsumerWidget {
             LoadingPanel(message: context.l10n.t('loadingFormWorkspace')),
         error: (error, stackTrace) => ErrorPanel(
           error: error,
-          onRetry: () => ref.invalidate(formDetailProvider(formId)),
+          onRetry: () => ref.invalidate(formDetailProvider(formId, childId)),
           onBack: () => _returnToPreviousOrForms(context),
           onSignIn: () => context.go('/login'),
         ),
@@ -92,7 +94,7 @@ class FormDetailScreen extends ConsumerWidget {
 
           if (isManager && form.status == FormStatus.published) {
             // From forms list → answer the form like a respondent.
-            return _RespondentFormView(form: form);
+            return _RespondentFormView(form: form, childId: childId);
           }
 
           if (isManager) {
@@ -101,7 +103,7 @@ class FormDetailScreen extends ConsumerWidget {
           }
 
           // Regular users (teacher/parent/student) → answer flow.
-          return _RespondentFormView(form: form);
+          return _RespondentFormView(form: form, childId: childId);
         },
       ),
     );
@@ -184,10 +186,12 @@ class _RespondentFormView extends ConsumerStatefulWidget {
     super.key,
     required this.form,
     this.editSubmission,
+    this.childId,
   });
 
   final FormDetailDto form;
   final SubmissionDetailDto? editSubmission;
+  final String? childId;
 
   @override
   ConsumerState<_RespondentFormView> createState() =>
@@ -283,13 +287,17 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       );
     }
 
-    final accessAsync = ref.watch(formAnswerAccessProvider(form.id));
+    final accessQuery = FormAccessQueryInput(
+      formId: form.id,
+      childId: widget.childId,
+    );
+    final accessAsync = ref.watch(formAnswerAccessProvider(accessQuery));
     return accessAsync.when(
       loading: () =>
           LoadingPanel(message: context.l10n.t('form.checkingAnswerAccess')),
       error: (error, stackTrace) => ErrorPanel(
         error: error,
-        onRetry: () => ref.invalidate(formAnswerAccessProvider(form.id)),
+        onRetry: () => ref.invalidate(formAnswerAccessProvider(accessQuery)),
         onBack: () => _returnToPreviousOrForms(context),
       ),
       data: (access) {
@@ -345,6 +353,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
               request: CreateSubmissionRequest(
                 answers: answers,
                 anonymous: false,
+                childId: widget.childId,
               ),
             );
       } else {
@@ -356,8 +365,12 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
             );
         ref.invalidate(submissionDetailProvider(editSubmission.id));
       }
-      ref.invalidate(formAnswerAccessProvider(widget.form.id));
-      ref.invalidate(formDetailProvider(widget.form.id));
+      ref.invalidate(
+        formAnswerAccessProvider(
+          FormAccessQueryInput(formId: widget.form.id, childId: widget.childId),
+        ),
+      );
+      ref.invalidate(formDetailProvider(widget.form.id, widget.childId));
       ref.invalidate(formsControllerProvider);
       ref.invalidate(dashboardExperienceProvider);
       ref.invalidate(mySurveysProvider);
@@ -560,6 +573,7 @@ class _SubmissionReviewViewState extends ConsumerState<_SubmissionReviewView> {
             key: ValueKey('edit-${submission.id}-${submission.updatedAt}'),
             form: widget.form,
             editSubmission: submission,
+            childId: submission.respondentUserId,
           );
         }
         return SingleChildScrollView(

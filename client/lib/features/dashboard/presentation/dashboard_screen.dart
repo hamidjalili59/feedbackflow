@@ -956,7 +956,10 @@ class _ParentStudentProgressDashboard extends StatelessWidget {
                 )
               else
                 for (final survey in dashboard.latestSurveys.take(3)) ...[
-                  _ParentSurveyResultCard(survey: survey),
+                  _ParentSurveyResultCard(
+                    survey: survey,
+                    childId: dashboard.selectedChildId,
+                  ),
                   const SizedBox(height: 12),
                 ],
             ],
@@ -1177,13 +1180,14 @@ class _ParentMetricCard extends StatelessWidget {
 }
 
 class _ParentSurveyResultCard extends StatelessWidget {
-  const _ParentSurveyResultCard({required this.survey});
+  const _ParentSurveyResultCard({required this.survey, this.childId});
 
   final SurveyCardDto2 survey;
+  final String? childId;
 
   @override
   Widget build(BuildContext context) {
-    final destination = _surveyDestination(survey);
+    final destination = _surveyDestination(survey, childId: childId);
     final completed = survey.mySubmissionId != null;
     final progressLabel = completed
         ? '${survey.progress.clamp(0, 100).toStringAsFixed(0)}٪'
@@ -2573,11 +2577,20 @@ class _LatestSurveysCard extends StatelessWidget {
   }
 }
 
-String _surveyDestination(SurveyCardDto2 survey) {
+String _surveyDestination(SurveyCardDto2 survey, {String? childId}) {
+  final child = childId?.trim();
   final submissionId = survey.mySubmissionId?.trim();
+  final childQuery = child != null && child.isNotEmpty
+      ? 'child_id=${Uri.encodeComponent(child)}'
+      : null;
   if (submissionId != null && submissionId.isNotEmpty) {
-    return '/forms/${survey.formId}?submission_id=${Uri.encodeComponent(submissionId)}';
+    final params = [
+      'submission_id=${Uri.encodeComponent(submissionId)}',
+      ?childQuery,
+    ].join('&');
+    return '/forms/${survey.formId}?$params';
   }
+  if (childQuery != null) return '/forms/${survey.formId}?$childQuery';
   return '/forms/${survey.formId}';
 }
 

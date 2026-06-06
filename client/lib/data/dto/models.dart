@@ -429,6 +429,7 @@ abstract class CreateSubmissionRequest with _$CreateSubmissionRequest {
     @JsonKey(name: 'answers') required List<AnswerInputDto> answers,
     @JsonKey(name: 'anonymous') bool? anonymous,
     @JsonKey(name: 'fingerprint_token') String? fingerprintToken,
+    @JsonKey(name: 'child_id') String? childId,
   }) = _CreateSubmissionRequest;
 
   factory CreateSubmissionRequest.fromJson(Map<String, dynamic> json) =>

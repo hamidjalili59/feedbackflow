@@ -1,4 +1,5 @@
 import '../core/api/dio_factory.dart';
+import '../core/settings/app_settings_store.dart';
 import '../core/security/token_store.dart';
 import '../data/api/feedback_flow_api_client.dart';
 import '../data/local/app_database.dart';
@@ -18,6 +19,7 @@ import '../data/repositories/users_repository.dart';
 class AppDependencies {
   AppDependencies._({
     required this.tokenStore,
+    required this.settingsStore,
     required this.database,
     required this.apiClient,
     required this.authRepository,
@@ -35,6 +37,7 @@ class AppDependencies {
   });
 
   final AuthTokenStore tokenStore;
+  final AppSettingsStore settingsStore;
   final AppDatabase database;
   final FeedbackFlowApiClient apiClient;
   final AuthRepository authRepository;
@@ -56,6 +59,7 @@ class AppDependencies {
     final apiClient = FeedbackFlowApiClient(dio);
     return AppDependencies._(
       tokenStore: tokenStore,
+      settingsStore: createSettingsStore(),
       database: AppDatabase(),
       apiClient: apiClient,
       authRepository: DioAuthRepository(apiClient),

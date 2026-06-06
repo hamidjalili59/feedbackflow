@@ -362,7 +362,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       final file = result?.files.single;
       final bytes = file?.bytes;
       if (bytes == null || bytes.isEmpty) return;
-      if (bytes.length > 1024 * 1024) {
+      if (bytes.length > 10 * 1024 * 1024) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.t('avatarTooLarge'))),

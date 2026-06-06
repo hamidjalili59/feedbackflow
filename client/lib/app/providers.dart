@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as rp;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../core/security/token_store.dart';
+import '../core/settings/app_settings_store.dart';
 import '../data/api/feedback_flow_api_client.dart';
 import '../data/dto/dto.dart';
 import '../data/local/app_database.dart';
@@ -34,6 +37,10 @@ AppDependencies appDependencies(Ref ref) {
 @Riverpod(keepAlive: true)
 AuthTokenStore tokenStore(Ref ref) =>
     ref.watch(appDependenciesProvider).tokenStore;
+
+@Riverpod(keepAlive: true)
+AppSettingsStore settingsStore(Ref ref) =>
+    ref.watch(appDependenciesProvider).settingsStore;
 
 @Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) => ref.watch(appDependenciesProvider).database;
@@ -101,18 +108,34 @@ class LocaleController extends _$LocaleController {
 @Riverpod(keepAlive: true)
 class ThemeController extends _$ThemeController {
   @override
-  ThemeMode build() => ThemeMode.system;
+  ThemeMode build() {
+    ref.read(settingsStoreProvider).readThemeMode().then((value) {
+      final mode = _themeModeFromStorage(value);
+      if (mode != state) state = mode;
+    });
+    return ThemeMode.light;
+  }
 
-  void setThemeMode(ThemeMode mode) => state = mode;
+  Future<void> setThemeMode(ThemeMode mode) async {
+    state = mode;
+    await ref.read(settingsStoreProvider).saveThemeMode(mode.name);
+  }
 
   void cycle() {
-    state = switch (state) {
+    final next = switch (state) {
       ThemeMode.system => ThemeMode.light,
       ThemeMode.light => ThemeMode.dark,
       ThemeMode.dark => ThemeMode.system,
     };
+    unawaited(setThemeMode(next));
   }
 }
+
+ThemeMode _themeModeFromStorage(String? value) => switch (value) {
+  'system' => ThemeMode.system,
+  'dark' => ThemeMode.dark,
+  _ => ThemeMode.light,
+};
 
 class AuthSession {
   const AuthSession({required this.user, this.effectivePermissions});
@@ -338,9 +361,11 @@ class FormsController extends _$FormsController {
 }
 
 @Riverpod(keepAlive: true)
-Future<FormDetailDto> formDetail(Ref ref, String formId) {
+Future<FormDetailDto> formDetail(Ref ref, String formId, [String? childId]) {
   _currentSessionUserId(ref);
-  return ref.watch(formsRepositoryProvider).getForm(id: formId);
+  return ref
+      .watch(formsRepositoryProvider)
+      .getForm(id: formId, childId: childId);
 }
 
 @Riverpod(keepAlive: true)
@@ -421,10 +446,33 @@ final formAssignmentsProvider =
     });
 
 final formAnswerAccessProvider =
-    rp.FutureProvider.family<FormAnswerAccessDto2, String>((ref, formId) {
+    rp.FutureProvider.family<FormAnswerAccessDto2, FormAccessQueryInput>((
+      ref,
+      query,
+    ) {
       _currentSessionUserId(ref);
-      return ref.watch(formsRepositoryProvider).getFormAnswerAccess(id: formId);
+      return ref
+          .watch(formsRepositoryProvider)
+          .getFormAnswerAccess(id: query.formId, childId: query.childId);
     });
+
+class FormAccessQueryInput {
+  const FormAccessQueryInput({required this.formId, this.childId});
+
+  final String formId;
+  final String? childId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormAccessQueryInput &&
+          runtimeType == other.runtimeType &&
+          formId == other.formId &&
+          childId == other.childId;
+
+  @override
+  int get hashCode => Object.hash(formId, childId);
+}
 
 @Riverpod(keepAlive: true)
 Future<DashboardAnalyticsDto> dashboardAnalytics(Ref ref) {

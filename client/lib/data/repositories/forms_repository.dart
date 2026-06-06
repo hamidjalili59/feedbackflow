@@ -16,8 +16,11 @@ abstract class FormsRepository {
   });
   Future<List<String>> listFormTags({String? search});
   Future<FormDetailDto> createForm({required CreateFormRequest request});
-  Future<FormDetailDto> getForm({required String id});
-  Future<FormAnswerAccessDto2> getFormAnswerAccess({required String id});
+  Future<FormDetailDto> getForm({required String id, String? childId});
+  Future<FormAnswerAccessDto2> getFormAnswerAccess({
+    required String id,
+    String? childId,
+  });
   Future<DeleteResultDto> deleteForm({required String id});
   Future<FormDetailDto> updateForm({
     required String id,
@@ -109,13 +112,18 @@ class DioFormsRepository implements FormsRepository {
   }
 
   @override
-  Future<FormDetailDto> getForm({required String id}) async {
-    return EnvelopeGuard.data(await _api.getForm(id: id));
+  Future<FormDetailDto> getForm({required String id, String? childId}) async {
+    return EnvelopeGuard.data(await _api.getForm(id: id, childId: childId));
   }
 
   @override
-  Future<FormAnswerAccessDto2> getFormAnswerAccess({required String id}) async {
-    return EnvelopeGuard.data(await _api.getFormAnswerAccess(id: id));
+  Future<FormAnswerAccessDto2> getFormAnswerAccess({
+    required String id,
+    String? childId,
+  }) async {
+    return EnvelopeGuard.data(
+      await _api.getFormAnswerAccess(id: id, childId: childId),
+    );
   }
 
   @override

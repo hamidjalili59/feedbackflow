@@ -34,6 +34,19 @@ pub async fn create_submission(
 ) -> Result<SubmissionDetailDto, AppError> {
     let form = form_service::load_form_detail(state, form_id).await?;
     let user = auth;
+    let subject_user = match (user, request.child_id) {
+        (Some(auth_user), Some(child_id)) => {
+            Some(child_auth_for_parent(state, auth_user, child_id).await?)
+        }
+        (Some(auth_user), None) => Some(auth_user.clone()),
+        (None, Some(_)) => {
+            return Err(AppError::forbidden(
+                "Child context requires an authenticated parent",
+            ));
+        }
+        (None, None) => None,
+    };
+    let subject = subject_user.as_ref();
     let has_public_access_context = public_context.is_some();
     let can_answer_by_visibility = visibility::can_answer_form(
         form.status,
@@ -41,13 +54,29 @@ pub async fn create_submission(
         form.organization_id,
         &form.visibility,
         user,
-    );
-    let can_answer_by_assignment = match user {
-        Some(auth_user) => {
-            crate::audience::service::user_matches_form_assignment(state, form_id, auth_user, true)
-                .await
-                .unwrap_or(false)
-        }
+    ) || subject
+        .filter(|subject_user| match user {
+            Some(auth_user) => auth_user.user_id != subject_user.user_id,
+            None => true,
+        })
+        .is_some_and(|subject_user| {
+            visibility::can_answer_form(
+                form.status,
+                form.creator_id,
+                form.organization_id,
+                &form.visibility,
+                Some(subject_user),
+            )
+        });
+    let can_answer_by_assignment = match subject {
+        Some(subject_user) => crate::audience::service::user_matches_form_assignment(
+            state,
+            form_id,
+            subject_user,
+            true,
+        )
+        .await
+        .unwrap_or(false),
         None => false,
     };
     if !has_public_access_context && !can_answer_by_visibility && !can_answer_by_assignment {
@@ -84,7 +113,7 @@ pub async fn create_submission(
         }
     }
     if form.settings.one_submission_per_user {
-        if let Some(u) = user {
+        if let Some(u) = subject {
             let exists: bool = sqlx::query_scalar("select exists(select 1 from form_submissions where form_id=$1 and respondent_user_id=$2 and deleted_at is null)").bind(form_id).bind(u.user_id).fetch_one(&state.db).await.unwrap_or(false);
             if exists {
                 return Err(AppError::conflict("User has already submitted this form"));
@@ -107,7 +136,7 @@ pub async fn create_submission(
             json!({ "field": "anonymous" }),
         ));
     }
-    let anonymous = request.anonymous.unwrap_or(user.is_none());
+    let anonymous = request.anonymous.unwrap_or(subject.is_none());
     let public_token_id = public_context.as_ref().map(|ctx| ctx.public_token_id);
     let access_code_id = public_context.as_ref().and_then(|ctx| ctx.access_code_id);
     let respondent_mode = public_context
@@ -132,7 +161,7 @@ pub async fn create_submission(
         });
     let mut tx = state.db.begin().await?;
     let row = sqlx::query("insert into form_submissions (form_id, respondent_user_id, guest_token_id, access_code_id, respondent_mode, respondent_label, anonymous, fingerprint_token, valid, total_score, max_score, percentage_score, score_category) values ($1,$2,$3,$4,$5,$6,$7,$8,true,$9,$10,$11,$12) returning id, form_id, respondent_user_id, guest_token_id, access_code_id, respondent_mode, respondent_label, anonymous, valid, total_score, max_score, percentage_score, score_category, submitted_at, updated_at")
-        .bind(form_id).bind(user.map(|u| u.user_id)).bind(public_token_id).bind(access_code_id).bind(respondent_mode).bind(respondent_label).bind(anonymous).bind(request.fingerprint_token)
+        .bind(form_id).bind(subject.map(|u| u.user_id)).bind(public_token_id).bind(access_code_id).bind(respondent_mode).bind(respondent_label).bind(anonymous).bind(request.fingerprint_token)
         .bind(score_result.total_score).bind(score_result.max_score).bind(score_result.percentage_score).bind(score_result.category.as_ref().map(|c| c.label.clone()))
         .fetch_one(&mut *tx).await?;
     let submission_id: Uuid = row.try_get("id")?;
@@ -157,10 +186,49 @@ pub async fn create_submission(
         AuditAction::SubmissionCreated,
         "submission",
         Some(submission_id),
-        json!({"form_id": form_id}),
+        json!({"form_id": form_id, "submitted_for_user_id": subject.map(|u| u.user_id)}),
     )
     .await?;
     load_submission(state, submission_id).await
+}
+
+async fn child_auth_for_parent(
+    state: &AppState,
+    auth: &AuthUser,
+    child_id: Uuid,
+) -> Result<AuthUser, AppError> {
+    if auth.role != UserRole::Parent {
+        return Err(AppError::forbidden(
+            "Child context is only available to parent users",
+        ));
+    }
+    let org_id = auth
+        .organization_id
+        .ok_or_else(|| AppError::forbidden("Child context requires an organization"))?;
+    let row = sqlx::query(
+        "select u.primary_role \
+         from user_relationships ur \
+         join users u on u.id=ur.child_user_id and u.deleted_at is null \
+         where ur.organization_id=$1 and ur.parent_user_id=$2 and ur.child_user_id=$3 \
+           and ur.relationship_type='parent_child'",
+    )
+    .bind(org_id)
+    .bind(auth.user_id)
+    .bind(child_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(row) = row else {
+        return Err(AppError::forbidden(
+            "Selected child is not linked to this parent",
+        ));
+    };
+    let role =
+        enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Student);
+    Ok(AuthUser {
+        user_id: child_id,
+        organization_id: Some(org_id),
+        role,
+    })
 }
 
 pub async fn list_submissions(
@@ -211,6 +279,7 @@ pub async fn get_submission(
     let detail = load_submission(state, id).await?;
     let form = form_service::load_form_detail(state, detail.form_id).await?;
     if detail.respondent_user_id == Some(auth.user_id)
+        || parent_can_access_respondent(state, auth, detail.respondent_user_id).await?
         || matches!(
             auth.role,
             UserRole::Manager | UserRole::Admin | UserRole::Ceo | UserRole::SuperAdmin
@@ -242,6 +311,7 @@ pub async fn update_submission(
         ));
     }
     if current.respondent_user_id != Some(auth.user_id)
+        && !parent_can_access_respondent(state, auth, current.respondent_user_id).await?
         && !matches!(
             auth.role,
             UserRole::Admin | UserRole::Manager | UserRole::Ceo | UserRole::SuperAdmin
@@ -277,6 +347,7 @@ pub async fn delete_submission(
 ) -> Result<(), AppError> {
     let detail = load_submission(state, id).await?;
     if detail.respondent_user_id != Some(auth.user_id)
+        && !parent_can_access_respondent(state, auth, detail.respondent_user_id).await?
         && !matches!(
             auth.role,
             UserRole::Admin | UserRole::Manager | UserRole::Ceo | UserRole::SuperAdmin
@@ -289,6 +360,35 @@ pub async fn delete_submission(
         .execute(&state.db)
         .await?;
     Ok(())
+}
+
+async fn parent_can_access_respondent(
+    state: &AppState,
+    auth: &AuthUser,
+    respondent_user_id: Option<Uuid>,
+) -> Result<bool, AppError> {
+    let Some(child_id) = respondent_user_id else {
+        return Ok(false);
+    };
+    if auth.role != UserRole::Parent {
+        return Ok(false);
+    }
+    let Some(org_id) = auth.organization_id else {
+        return Ok(false);
+    };
+    Ok(sqlx::query_scalar(
+        "select exists( \
+           select 1 from user_relationships \
+           where organization_id=$1 and parent_user_id=$2 and child_user_id=$3 \
+             and relationship_type='parent_child' \
+         )",
+    )
+    .bind(org_id)
+    .bind(auth.user_id)
+    .bind(child_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(false))
 }
 
 pub async fn score_breakdown(

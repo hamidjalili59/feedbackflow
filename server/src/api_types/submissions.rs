@@ -32,6 +32,7 @@ pub struct CreateSubmissionRequest {
     pub anonymous: Option<bool>,
     pub fingerprint_token: Option<String>,
     pub respondent_name: Option<String>,
+    pub child_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]

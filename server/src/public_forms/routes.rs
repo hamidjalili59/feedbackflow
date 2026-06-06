@@ -180,6 +180,7 @@ pub async fn submit_public_form(
         anonymous: Some(mode == "anonymous"),
         fingerprint_token: payload.fingerprint_token,
         respondent_name: payload.respondent_name,
+        child_id: None,
     };
     let submission = submission_service::create_submission(
         &state,

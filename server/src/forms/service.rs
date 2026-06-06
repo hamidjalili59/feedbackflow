@@ -83,10 +83,11 @@ pub async fn list_forms(
         .unwrap_or_default()
         .trim()
         .to_owned();
-    if !requested_status.is_empty()
-        && enum_from_str::<FormStatus>(&requested_status).is_err()
-    {
-        return Err(AppError::validation("Invalid form status filter", json!({"status": requested_status})));
+    if !requested_status.is_empty() && enum_from_str::<FormStatus>(&requested_status).is_err() {
+        return Err(AppError::validation(
+            "Invalid form status filter",
+            json!({"status": requested_status}),
+        ));
     }
     let order_by = form_sort_column(q.sort_by.as_deref());
     let direction = match q.sort_order.unwrap_or(SortOrder::Desc) {
@@ -222,7 +223,18 @@ pub async fn get_form(
     auth: &AuthUser,
     id: Uuid,
 ) -> Result<FormDetailDto, AppError> {
+    get_form_with_child(state, auth, id, None).await
+}
+
+pub async fn get_form_with_child(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    child_id: Option<Uuid>,
+) -> Result<FormDetailDto, AppError> {
     let mut detail = load_form_detail(state, id).await?;
+    let subject_auth = child_auth_for_parent(state, auth, child_id).await?;
+    let subject = subject_auth.as_ref().unwrap_or(auth);
     let assignment_can_see =
         crate::audience::service::user_matches_form_assignment(state, id, auth, false)
             .await
@@ -231,6 +243,20 @@ pub async fn get_form(
         crate::audience::service::user_matches_form_assignment(state, id, auth, true)
             .await
             .unwrap_or(false);
+    let subject_assignment_can_see = if subject.user_id != auth.user_id {
+        crate::audience::service::user_matches_form_assignment(state, id, subject, false)
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    };
+    let subject_assignment_can_answer = if subject.user_id != auth.user_id {
+        crate::audience::service::user_matches_form_assignment(state, id, subject, true)
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    };
     let can_see = visibility::can_see_form(
         detail.status,
         detail.creator_id,
@@ -238,11 +264,21 @@ pub async fn get_form(
         &detail.visibility,
         Some(auth),
     ) || assignment_can_see
-        || assignment_can_answer;
+        || assignment_can_answer
+        || (subject.user_id != auth.user_id
+            && visibility::can_see_form(
+                detail.status,
+                detail.creator_id,
+                detail.organization_id,
+                &detail.visibility,
+                Some(subject),
+            ))
+        || subject_assignment_can_see
+        || subject_assignment_can_answer;
     if !can_see {
         return Err(AppError::forbidden("You cannot view this form"));
     }
-    detail.my_submission_id = latest_submission_id_for_user(state, id, auth.user_id).await?;
+    detail.my_submission_id = latest_submission_id_for_user(state, id, subject.user_id).await?;
     Ok(detail)
 }
 
@@ -251,7 +287,18 @@ pub async fn answer_access(
     auth: &AuthUser,
     id: Uuid,
 ) -> Result<FormAnswerAccessDto, AppError> {
+    answer_access_with_child(state, auth, id, None).await
+}
+
+pub async fn answer_access_with_child(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+    child_id: Option<Uuid>,
+) -> Result<FormAnswerAccessDto, AppError> {
     let detail = load_form_detail(state, id).await?;
+    let subject_auth = child_auth_for_parent(state, auth, child_id).await?;
+    let subject = subject_auth.as_ref().unwrap_or(auth);
     let attrs = attrs_for_form(state, id).await?;
     let can_edit_workspace =
         engine::can_rbac(auth.role, PermissionAction::Update, ResourceType::Form)
@@ -264,6 +311,20 @@ pub async fn answer_access(
         crate::audience::service::user_matches_form_assignment(state, id, auth, true)
             .await
             .unwrap_or(false);
+    let subject_assignment_can_see = if subject.user_id != auth.user_id {
+        crate::audience::service::user_matches_form_assignment(state, id, subject, false)
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    };
+    let subject_assignment_can_answer = if subject.user_id != auth.user_id {
+        crate::audience::service::user_matches_form_assignment(state, id, subject, true)
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    };
     let can_view = visibility::can_see_form(
         detail.status,
         detail.creator_id,
@@ -271,8 +332,18 @@ pub async fn answer_access(
         &detail.visibility,
         Some(auth),
     ) || assignment_can_see
-        || assignment_can_answer;
-    let my_submission_id = latest_submission_id_for_user(state, id, auth.user_id).await?;
+        || assignment_can_answer
+        || (subject.user_id != auth.user_id
+            && visibility::can_see_form(
+                detail.status,
+                detail.creator_id,
+                detail.organization_id,
+                &detail.visibility,
+                Some(subject),
+            ))
+        || subject_assignment_can_see
+        || subject_assignment_can_answer;
+    let my_submission_id = latest_submission_id_for_user(state, id, subject.user_id).await?;
     if !can_view {
         return Ok(FormAnswerAccessDto {
             allowed: false,
@@ -326,7 +397,7 @@ pub async fn answer_access(
             "select exists(select 1 from form_submissions where form_id=$1 and respondent_user_id=$2 and deleted_at is null)",
         )
         .bind(id)
-        .bind(auth.user_id)
+        .bind(subject.user_id)
         .fetch_one(&state.db)
         .await
         .unwrap_or(false);
@@ -348,7 +419,16 @@ pub async fn answer_access(
         detail.organization_id,
         &detail.visibility,
         Some(auth),
-    ) || assignment_can_answer;
+    ) || assignment_can_answer
+        || (subject.user_id != auth.user_id
+            && visibility::can_answer_form(
+                detail.status,
+                detail.creator_id,
+                detail.organization_id,
+                &detail.visibility,
+                Some(subject),
+            ))
+        || subject_assignment_can_answer;
     Ok(FormAnswerAccessDto {
         allowed,
         can_view,
@@ -366,6 +446,48 @@ pub async fn answer_access(
             Some("cannot_answer".to_owned())
         },
     })
+}
+
+async fn child_auth_for_parent(
+    state: &AppState,
+    auth: &AuthUser,
+    child_id: Option<Uuid>,
+) -> Result<Option<AuthUser>, AppError> {
+    let Some(child_id) = child_id else {
+        return Ok(None);
+    };
+    if auth.role != UserRole::Parent {
+        return Err(AppError::forbidden(
+            "Child context is only available to parent users",
+        ));
+    }
+    let org_id = auth
+        .organization_id
+        .ok_or_else(|| AppError::forbidden("Child context requires an organization"))?;
+    let row = sqlx::query(
+        "select u.primary_role \
+         from user_relationships ur \
+         join users u on u.id=ur.child_user_id and u.deleted_at is null \
+         where ur.organization_id=$1 and ur.parent_user_id=$2 and ur.child_user_id=$3 \
+           and ur.relationship_type='parent_child'",
+    )
+    .bind(org_id)
+    .bind(auth.user_id)
+    .bind(child_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some(row) = row else {
+        return Err(AppError::forbidden(
+            "Selected child is not linked to this parent",
+        ));
+    };
+    let role =
+        enum_from_str(&row.try_get::<String, _>("primary_role")?).unwrap_or(UserRole::Student);
+    Ok(Some(AuthUser {
+        user_id: child_id,
+        organization_id: Some(org_id),
+        role,
+    }))
 }
 
 async fn row_visible_to_user(
