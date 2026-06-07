@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:typed_data';
@@ -4133,27 +4134,27 @@ class _ManagementListItem extends StatelessWidget {
     final titleBlock = Padding(
       padding: const EdgeInsetsDirectional.only(end: 10),
       child: Column(
-      crossAxisAlignment: compact
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.end,
-      children: [
-        Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w900,
+        crossAxisAlignment: compact
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
     final trailingText = Text(
@@ -4174,18 +4175,18 @@ class _ManagementListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                titleBlock,
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: trailingText),
-                    if (actions.isNotEmpty) actionWrap,
-                  ],
-                ),
-              ],
-            ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          titleBlock,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: trailingText),
+              if (actions.isNotEmpty) actionWrap,
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -5147,6 +5148,7 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
         ),
       ),
     );
+    if (mounted && _saving) setState(() => _saving = false);
   }
 
   Future<bool> _create() async {
@@ -5158,7 +5160,6 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
       );
       return false;
     }
-    setState(() => _saving = true);
     try {
       await ref
           .read(usersRepositoryProvider)
@@ -5177,7 +5178,7 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
       _email.clear();
       _password.clear();
       setState(() => _gender = null);
-      widget.onCreated();
+      scheduleMicrotask(widget.onCreated);
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(content: Text(context.l10n.t('userCreated'))),
@@ -5195,8 +5196,6 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
         );
       }
       return false;
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 }
@@ -5467,6 +5466,7 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
         ),
       ),
     );
+    if (mounted && _saving) setState(() => _saving = false);
   }
 
   Future<bool> _create() async {
@@ -5478,7 +5478,6 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
       );
       return false;
     }
-    setState(() => _saving = true);
     try {
       final metadata = <String, Object?>{};
       final code = _code.text.trim();
@@ -5495,7 +5494,9 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
       _name.clear();
       _code.clear();
       _page = 1;
-      _refresh();
+      scheduleMicrotask(() {
+        if (mounted) _refresh();
+      });
       if (mounted) {
         messenger.showSnackBar(
           const SnackBar(content: Text('کلاس/گروه ساخته شد.')),
@@ -5513,8 +5514,6 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
         );
       }
       return false;
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -5585,7 +5584,8 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
   final Set<String> _selectedUserIds = <String>{};
   bool _membersLoaded = false;
   bool _saving = false;
-  late Future<List<AudienceSegmentMemberDto2>> _membersFuture = _loadMembers();
+  late final Future<List<AudienceSegmentMemberDto2>> _membersFuture =
+      _loadMembers();
   late Future<ListResponse<UserSummaryDto>> _usersFuture = _loadUsers();
 
   @override
@@ -5707,18 +5707,9 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    late final List<AudienceSegmentMemberDto2> updatedMembers;
-    try {
-      updatedMembers = await ref
-          .read(analyticsRepositoryProvider)
-          .setAudienceSegmentMembers(
-            id: widget.segment.id,
-            request: SetAudienceSegmentMembersRequest2(
-              userIds: _selectedUserIds.toList(growable: false),
-            ),
-          );
-    } catch (error) {
+    try {} catch (error) {
       if (mounted) {
+        setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -5728,19 +5719,15 @@ class _SegmentMembersDialogState extends ConsumerState<_SegmentMembersDialog> {
         );
       }
       return;
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
 
     if (!mounted) return;
-    _selectedUserIds
-      ..clear()
-      ..addAll(audienceSegmentMemberIds(updatedMembers));
-    _membersLoaded = true;
-    setState(() => _membersFuture = Future.value(updatedMembers));
-    ref.invalidate(audienceSegmentsProvider);
-    ref.invalidate(dashboardExperienceProvider);
+    FocusManager.instance.primaryFocus?.unfocus();
     Navigator.pop(context);
+    scheduleMicrotask(() {
+      ref.invalidate(audienceSegmentsProvider);
+      ref.invalidate(dashboardExperienceProvider);
+    });
   }
 }
 
@@ -5933,10 +5920,9 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
   Future<void> _saveSelected() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
-    late final List<AudienceGroupMemberDto2> updatedMembers;
     try {
       final newRole = _roleInGroup.text.trim();
-      updatedMembers = await ref
+      await ref
           .read(analyticsRepositoryProvider)
           .setAudienceGroupMembers(
             id: widget.group.id,
@@ -5953,25 +5939,18 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
             ),
           );
       if (!mounted) return;
-      _roleInGroup.clear();
-      _selectedUserIds
-        ..clear()
-        ..addAll(audienceGroupMemberIds(updatedMembers));
-      _existingRoleByUserId
-        ..clear()
-        ..addAll(audienceGroupRoleByUserId(updatedMembers));
-      _membersLoaded = true;
-      setState(() => _membersFuture = Future.value(updatedMembers));
-      ref.invalidate(audienceGroupsProvider);
-      ref.invalidate(dashboardExperienceProvider);
+      FocusManager.instance.primaryFocus?.unfocus();
       Navigator.pop(context);
-      if (mounted) {
+      scheduleMicrotask(() {
+        ref.invalidate(audienceGroupsProvider);
+        ref.invalidate(dashboardExperienceProvider);
         messenger.showSnackBar(
           const SnackBar(content: Text('اعضای کلاس/گروه به‌روزرسانی شدند.')),
         );
-      }
+      });
     } catch (error) {
       if (mounted) {
+        setState(() => _saving = false);
         messenger.showSnackBar(
           SnackBar(
             content: Text(
@@ -5980,8 +5959,6 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -6016,8 +5993,6 @@ class _GroupMembersDialogState extends ConsumerState<_GroupMembersDialog> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 }
@@ -6437,6 +6412,7 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
         ),
       ),
     );
+    if (mounted && _saving) setState(() => _saving = false);
   }
 
   Future<bool> _create() async {
@@ -6448,7 +6424,6 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
       );
       return false;
     }
-    setState(() => _saving = true);
     try {
       await ref
           .read(usersRepositoryProvider)
@@ -6466,10 +6441,10 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
       _phone.clear();
       _email.clear();
       _password.clear();
-      setState(() {
-        _gender = null;
-        _page = 1;
-        _future = _load();
+      _gender = null;
+      _page = 1;
+      scheduleMicrotask(() {
+        if (mounted) setState(() => _future = _load());
       });
       if (mounted) {
         messenger.showSnackBar(
@@ -6488,8 +6463,6 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
         );
       }
       return false;
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -7020,8 +6993,6 @@ class _FamilyLinksDialogState extends ConsumerState<_FamilyLinksDialog> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 }

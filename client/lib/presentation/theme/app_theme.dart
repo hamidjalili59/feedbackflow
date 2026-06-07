@@ -60,8 +60,21 @@ class AppTheme {
               ? const Color(0xFF25346B)
               : const Color(0xFFE8EEFF),
           onPrimaryContainer: dark ? const Color(0xFFDDE5FF) : primaryStrong,
-          secondary: success,
+          secondary: const Color(0xFF5B6EE1),
+          onSecondary: Colors.white,
+          secondaryContainer: dark
+              ? const Color(0xFF27315F)
+              : const Color(0xFFE7EAFF),
+          onSecondaryContainer: dark
+              ? const Color(0xFFE4E8FF)
+              : const Color(0xFF24306F),
           tertiary: warning,
+          tertiaryContainer: dark
+              ? const Color(0xFF342B68)
+              : const Color(0xFFEDE9FF),
+          onTertiaryContainer: dark
+              ? const Color(0xFFE9E4FF)
+              : const Color(0xFF3A2F78),
           surface: dark ? const Color(0xFF151A2D) : surface,
           onSurface: dark ? const Color(0xFFEFF2FF) : ink,
           onSurfaceVariant: dark ? const Color(0xFFADB4CF) : muted,
