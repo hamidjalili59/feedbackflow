@@ -230,8 +230,8 @@ class AuthController extends _$AuthController {
       }
     }
     await tokenStore.clear();
-    _invalidateSessionScopedProviders();
     state = const AsyncValue.data(null);
+    _invalidateSessionScopedProviders();
   }
 
   Future<void> updateProfile(UpdateUserProfileRequest request) async {
@@ -250,7 +250,12 @@ class AuthController extends _$AuthController {
   }
 
   void _invalidateSessionScopedProviders() {
-    invalidateSessionScopedProviders(ref);
+    // Invalidating providers that watch auth while AuthController itself is
+    // completing a state transition creates a Riverpod dependency cycle on web.
+    // Defer the invalidation until the current provider notification is finished.
+    Future<void>.microtask(() {
+      if (ref.mounted) invalidateSessionScopedProviders(ref);
+    });
   }
 }
 

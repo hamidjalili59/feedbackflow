@@ -1214,16 +1214,6 @@ String _templateSubtitle(BuildContext context, FormTemplateType type) =>
       ),
     };
 
-IconData _categoryIcon(field_ui.FieldTypeCategory category) {
-  return switch (category) {
-    field_ui.FieldTypeCategory.essentials => Icons.text_fields_rounded,
-    field_ui.FieldTypeCategory.choices => Icons.checklist_rounded,
-    field_ui.FieldTypeCategory.ratings => Icons.star_rate_rounded,
-    field_ui.FieldTypeCategory.layout => Icons.view_agenda_rounded,
-    field_ui.FieldTypeCategory.advanced => Icons.tune_rounded,
-  };
-}
-
 String _localizedCreateFormError(BuildContext context, String message) {
   final trimmed = message.trim();
   final lower = trimmed.toLowerCase();

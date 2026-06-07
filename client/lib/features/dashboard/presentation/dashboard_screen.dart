@@ -4133,27 +4133,27 @@ class _ManagementListItem extends StatelessWidget {
     final titleBlock = Padding(
       padding: const EdgeInsetsDirectional.only(end: 10),
       child: Column(
-        crossAxisAlignment: compact
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.end,
-        children: [
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+      crossAxisAlignment: compact
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
+      children: [
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
           ),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+        ),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-        ],
+        ),
+      ],
       ),
     );
     final trailingText = Text(
@@ -4174,18 +4174,18 @@ class _ManagementListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          titleBlock,
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: trailingText),
-              if (actions.isNotEmpty) actionWrap,
-            ],
-          ),
-        ],
-      ),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                titleBlock,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: trailingText),
+                    if (actions.isNotEmpty) actionWrap,
+                  ],
+                ),
+              ],
+            ),
     );
   }
 }
@@ -5124,8 +5124,14 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
                   ? null
                   : () async {
                       setDialogState(() => _saving = true);
-                      await _create(closeDialog: true);
-                      if (mounted) setDialogState(() => _saving = false);
+                      final created = await _create();
+                      if (!dialogContext.mounted) return;
+                      if (created) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        setDialogState(() => _saving = false);
+                      }
                     },
               icon: _saving
                   ? const SizedBox.square(
@@ -5143,14 +5149,14 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
     );
   }
 
-  Future<void> _create({bool closeDialog = false}) async {
+  Future<bool> _create() async {
     final messenger = ScaffoldMessenger.of(context);
     final normalizedPhone = PhoneNumberNormalizer.normalize(_phone.text);
     if (!PhoneNumberNormalizer.isLikelyValid(normalizedPhone)) {
       messenger.showSnackBar(
         SnackBar(content: Text(context.l10n.t('dashboard.invalidPhone'))),
       );
-      return;
+      return false;
     }
     setState(() => _saving = true);
     try {
@@ -5176,8 +5182,8 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
         messenger.showSnackBar(
           SnackBar(content: Text(context.l10n.t('userCreated'))),
         );
-        if (closeDialog) Navigator.of(context).pop();
       }
+      return true;
     } catch (error) {
       if (mounted) {
         messenger.showSnackBar(
@@ -5188,6 +5194,7 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
           ),
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -5437,8 +5444,12 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
                   ? null
                   : () async {
                       setDialogState(() => _saving = true);
-                      await _create(closeDialog: true);
-                      if (dialogContext.mounted) {
+                      final created = await _create();
+                      if (!dialogContext.mounted) return;
+                      if (created) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.of(dialogContext).pop();
+                      } else {
                         setDialogState(() => _saving = false);
                       }
                     },
@@ -5458,14 +5469,14 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
     );
   }
 
-  Future<void> _create({bool closeDialog = false}) async {
+  Future<bool> _create() async {
     final messenger = ScaffoldMessenger.of(context);
     final name = _name.text.trim();
     if (name.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(content: Text('نام کلاس/گروه لازم است.')),
       );
-      return;
+      return false;
     }
     setState(() => _saving = true);
     try {
@@ -5489,8 +5500,8 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
         messenger.showSnackBar(
           const SnackBar(content: Text('کلاس/گروه ساخته شد.')),
         );
-        if (closeDialog) Navigator.of(context).pop();
       }
+      return true;
     } catch (error) {
       if (mounted) {
         messenger.showSnackBar(
@@ -5501,6 +5512,7 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
           ),
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -6402,8 +6414,12 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
                   ? null
                   : () async {
                       setDialogState(() => _saving = true);
-                      await _create(closeDialog: true);
-                      if (dialogContext.mounted) {
+                      final created = await _create();
+                      if (!dialogContext.mounted) return;
+                      if (created) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.of(dialogContext).pop();
+                      } else {
                         setDialogState(() => _saving = false);
                       }
                     },
@@ -6423,14 +6439,14 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
     );
   }
 
-  Future<void> _create({bool closeDialog = false}) async {
+  Future<bool> _create() async {
     final messenger = ScaffoldMessenger.of(context);
     final normalizedPhone = PhoneNumberNormalizer.normalize(_phone.text);
     if (!PhoneNumberNormalizer.isLikelyValid(normalizedPhone)) {
       messenger.showSnackBar(
         SnackBar(content: Text(context.l10n.t('dashboard.invalidPhone'))),
       );
-      return;
+      return false;
     }
     setState(() => _saving = true);
     try {
@@ -6459,8 +6475,8 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
         messenger.showSnackBar(
           SnackBar(content: Text(context.l10n.t('userCreated'))),
         );
-        if (closeDialog) Navigator.of(context).pop();
       }
+      return true;
     } catch (error) {
       if (mounted) {
         messenger.showSnackBar(
@@ -6471,6 +6487,7 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
           ),
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -190,11 +190,13 @@ class _RespondentFormView extends ConsumerStatefulWidget {
     required this.form,
     this.editSubmission,
     this.childId,
+    this.onEditCompleted,
   });
 
   final FormDetailDto form;
   final SubmissionDetailDto? editSubmission;
   final String? childId;
+  final ValueChanged<SubmissionDetailDto>? onEditCompleted;
 
   @override
   ConsumerState<_RespondentFormView> createState() =>
@@ -450,6 +452,10 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       ref.invalidate(mySurveysProvider);
       ref.invalidate(surveyCalendarProvider);
       if (mounted) {
+        if (editSubmission != null) {
+          widget.onEditCompleted?.call(savedSubmission);
+          return;
+        }
         await ref.read(submissionsRepositoryProvider).deleteAnswerDraft(
           id: widget.form.id, childId: widget.childId,
         ).catchError((_) {});
@@ -659,6 +665,10 @@ class _SubmissionReviewViewState extends ConsumerState<_SubmissionReviewView> {
             form: widget.form,
             editSubmission: submission,
             childId: submission.respondentUserId,
+            onEditCompleted: (updatedSubmission) {
+              ref.invalidate(submissionDetailProvider(widget.submissionId));
+              if (mounted) setState(() => _editing = false);
+            },
           );
         }
         return SingleChildScrollView(
