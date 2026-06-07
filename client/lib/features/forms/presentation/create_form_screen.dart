@@ -1072,50 +1072,57 @@ class _FieldPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final important = field_ui.fieldTypeCatalog.where(
+      (item) => item.category == field_ui.FieldTypeCategory.essentials ||
+          item.category == field_ui.FieldTypeCategory.choices ||
+          item.category == field_ui.FieldTypeCategory.ratings,
+    );
+    final extra = field_ui.fieldTypeCatalog.where(
+      (item) => item.category == field_ui.FieldTypeCategory.layout ||
+          item.category == field_ui.FieldTypeCategory.advanced,
+    );
+    Widget chips(Iterable<field_ui.FieldTypeInfo> items) => Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final info in items)
+          ActionChip(
+            avatar: Icon(info.icon, size: 18),
+            label: Text(info.localizedLabel(context)),
+            onPressed: () => Navigator.of(context).pop(info.type),
+          ),
+      ],
+    );
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.84,
       minChildSize: 0.5,
       maxChildSize: 0.94,
-      builder: (context, controller) {
-        return ListView(
-          controller: controller,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            Text(
-              context.l10n.t('chooseField'),
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+      builder: (context, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          Text(
+            context.l10n.t('chooseField'),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w900,
             ),
-            const SizedBox(height: 16),
-            for (final category in field_ui.FieldTypeCategory.values) ...[
-              ListTile(
-                leading: Icon(_categoryIcon(category)),
-                title: Text(
-                  category.localizedLabel(context),
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final info in field_ui.fieldTypeCatalog.where(
-                    (item) => item.category == category,
-                  ))
-                    ActionChip(
-                      avatar: Icon(info.icon, size: 18),
-                      label: Text(info.localizedLabel(context)),
-                      onPressed: () => Navigator.of(context).pop(info.type),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-          ],
-        );
-      },
+          ),
+          const SizedBox(height: 16),
+          chips(important),
+          const SizedBox(height: 12),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              context.l10n.t('more'),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            leading: const Icon(Icons.tune_rounded),
+            childrenPadding: const EdgeInsets.only(bottom: 12),
+            children: [Align(alignment: AlignmentDirectional.centerStart, child: chips(extra))],
+          ),
+        ],
+      ),
     );
   }
 }

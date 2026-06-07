@@ -175,7 +175,7 @@ pub async fn children_for_parent(
         .organization_id
         .ok_or_else(|| AppError::forbidden("Children require an organization"))?;
     let rows = sqlx::query(
-        "select u.id, u.display_name, u.profile, \
+        "select distinct on (u.id) u.id, u.display_name, u.profile, \
                 g.id class_id, g.name class_name, \
                 null::uuid branch_id, null::text branch_name \
          from user_relationships ur \
@@ -186,7 +186,7 @@ pub async fn children_for_parent(
            order by gm.created_at desc limit 1 \
          ) g on true \
          where ur.organization_id=$1 and ur.parent_user_id=$2 \
-         order by u.display_name asc",
+         order by u.id, u.display_name asc",
     )
     .bind(org_id)
     .bind(auth.user_id)

@@ -25,6 +25,27 @@ pub struct AnswerDto {
     pub created_at: DateTime<Utc>,
 }
 
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SaveAnswerDraftRequest {
+    #[serde(default)]
+    pub answers: Value,
+    pub current_step: i32,
+    pub total_steps: i32,
+    pub child_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AnswerDraftDto {
+    pub form_id: Uuid,
+    pub respondent_user_id: Uuid,
+    pub child_id: Option<Uuid>,
+    pub answers: Value,
+    pub current_step: i32,
+    pub total_steps: i32,
+    pub updated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateSubmissionRequest {
     #[validate(length(min = 1))]

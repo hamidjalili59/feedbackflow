@@ -12,6 +12,9 @@ abstract class SubmissionsRepository {
     SortOrder? sortOrder,
     String? filters,
   });
+  Future<Map<String, dynamic>?> getAnswerDraft({required String id, String? childId});
+  Future<void> saveAnswerDraft({required String id, required Map<String, Object?> answers, required int currentStep, required int totalSteps, String? childId});
+  Future<void> deleteAnswerDraft({required String id, String? childId});
   Future<SubmissionDetailDto> createSubmission({
     required String id,
     required CreateSubmissionRequest request,
@@ -29,6 +32,23 @@ class DioSubmissionsRepository implements SubmissionsRepository {
 
   final FeedbackFlowApiClient _api;
 
+
+  @override
+  Future<Map<String, dynamic>?> getAnswerDraft({required String id, String? childId}) async {
+    return EnvelopeGuard.data(await _api.getAnswerDraft(id: id, childId: childId));
+  }
+
+  @override
+  Future<void> saveAnswerDraft({required String id, required Map<String, Object?> answers, required int currentStep, required int totalSteps, String? childId}) async {
+    EnvelopeGuard.data(await _api.saveAnswerDraft(id: id, request: <String, dynamic>{
+      'answers': answers, 'current_step': currentStep, 'total_steps': totalSteps, 'child_id': childId,
+    }));
+  }
+
+  @override
+  Future<void> deleteAnswerDraft({required String id, String? childId}) async {
+    EnvelopeGuard.data(await _api.deleteAnswerDraft(id: id, childId: childId));
+  }
   @override
   Future<ListResponse<SubmissionSummaryDto>> listSubmissions({
     required String id,

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/forms/form_answer_draft_store.dart';
 import '../../../data/dto/dto.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/common/friendly_api_error_message.dart';
@@ -42,6 +45,8 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
   String? _identityLabel;
   PublicSubmissionResponse? _submitted;
   bool _submittedByAuthenticated = false;
+  int _currentPage = 0;
+  String? _draftLoadedForKey;
 
   @override
   void initState() {
@@ -80,6 +85,8 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
     _identityLabel = null;
     _submitted = null;
     _submittedByAuthenticated = false;
+    _currentPage = 0;
+    _draftLoadedForKey = null;
   }
 
   @override
@@ -119,6 +126,7 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             widget.initialRespondentMode,
           );
           final mode = _respondentMode ?? 'authenticated';
+          _restoreDraftIfNeeded(form, mode);
 
           if (session == null && mode == 'authenticated') {
             if (authAsync.isLoading) {
@@ -162,6 +170,9 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
                   _respondentMode = value;
                   _publicAccessToken = null;
                   _identityLabel = null;
+                  _answers.clear();
+                  _currentPage = 0;
+                  _draftLoadedForKey = null;
                 });
               },
               onContinue: () => _validateEntry(form),
@@ -174,12 +185,59 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             submitting: _submitting,
             validatingAccess: _validatingAccess,
             answers: _answers,
-            onAnswerChanged: (fieldId, value) =>
-                setState(() => _answers[fieldId] = value),
+            initialPage: _currentPage,
+            onAnswerChanged: (fieldId, value) {
+              setState(() => _answers[fieldId] = value);
+              _saveDraft(form);
+            },
+            onPageChanged: (page) {
+              _currentPage = page;
+              _saveDraft(form);
+            },
             onSubmit: () => _submit(form),
           );
         },
       ),
+    );
+  }
+
+  void _restoreDraftIfNeeded(PublicFormDto form, String mode) {
+    final key = FormAnswerDraftStore.publicKey(
+      widget.publicToken,
+      respondentMode: mode,
+    );
+    if (_draftLoadedForKey == key) return;
+    _draftLoadedForKey = key;
+    unawaited(() async {
+      final draft = await ref.read(formAnswerDraftStoreProvider).read(key);
+      if (!mounted || _draftLoadedForKey != key || draft == null) return;
+      if (_answers.isNotEmpty || _submitted != null) return;
+      final total = _answerableCount(form.fields);
+      setState(() {
+        _answers
+          ..clear()
+          ..addAll(draft.answers);
+        final lastPage = total <= 0 ? 0 : total - 1;
+        _currentPage = draft.currentPage.clamp(0, lastPage).toInt();
+      });
+    }());
+  }
+
+  void _saveDraft(PublicFormDto form) {
+    final mode = _respondentMode ?? 'authenticated';
+    final key = FormAnswerDraftStore.publicKey(
+      widget.publicToken,
+      respondentMode: mode,
+    );
+    unawaited(
+      ref
+          .read(formAnswerDraftStoreProvider)
+          .save(
+            key: key,
+            answers: _answers,
+            currentPage: _currentPage,
+            totalQuestions: _answerableCount(form.fields),
+          ),
     );
   }
 
@@ -297,6 +355,16 @@ class _PublicFormScreenState extends ConsumerState<PublicFormScreen> {
             ),
           );
       if (!mounted) return;
+      unawaited(
+        ref
+            .read(formAnswerDraftStoreProvider)
+            .clear(
+              FormAnswerDraftStore.publicKey(
+                widget.publicToken,
+                respondentMode: _respondentMode ?? 'authenticated',
+              ),
+            ),
+      );
       setState(() {
         _submitted = response;
         _submittedByAuthenticated = isAuthenticated;
@@ -346,7 +414,9 @@ class _LoadedPublicForm extends StatelessWidget {
     required this.submitting,
     required this.validatingAccess,
     required this.answers,
+    required this.initialPage,
     required this.onAnswerChanged,
+    required this.onPageChanged,
     required this.onSubmit,
   });
 
@@ -356,7 +426,9 @@ class _LoadedPublicForm extends StatelessWidget {
   final bool submitting;
   final bool validatingAccess;
   final Map<String, Object?> answers;
+  final int initialPage;
   final void Function(String fieldId, Object? value) onAnswerChanged;
+  final ValueChanged<int> onPageChanged;
   final VoidCallback onSubmit;
 
   @override
@@ -369,7 +441,9 @@ class _LoadedPublicForm extends StatelessWidget {
         formTitle: form.title,
         fields: fields,
         answers: answers,
+        initialPage: initialPage,
         onAnswerChanged: onAnswerChanged,
+        onPageChanged: onPageChanged,
         onSubmit: onSubmit,
         submitting: submitting,
       ),
@@ -879,3 +953,6 @@ bool _fieldSubmitsAnswer(FieldType type) {
     _ => true,
   };
 }
+
+int _answerableCount(List<FormFieldDto> fields) =>
+    fields.where((field) => _fieldSubmitsAnswer(field.type)).length;

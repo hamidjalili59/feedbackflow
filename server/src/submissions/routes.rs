@@ -1,7 +1,7 @@
 use crate::{
     api_types::{
         common::{DeleteResultDto, ListQuery},
-        submissions::{CreateSubmissionRequest, UpdateSubmissionRequest},
+        submissions::{CreateSubmissionRequest, SaveAnswerDraftRequest, UpdateSubmissionRequest},
     },
     app_state::AppState,
     auth::AuthUser,
@@ -22,6 +22,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/forms/{id}/submissions",
             post(create_submission).get(list_submissions),
+        )
+        .route(
+            "/forms/{id}/answer-draft",
+            get(get_answer_draft).put(save_answer_draft).delete(delete_answer_draft),
         )
         .route(
             "/submissions/{id}",
@@ -91,4 +95,29 @@ pub async fn get_score_breakdown(
     Ok(response::ok(
         service::score_breakdown(&state, &auth, id).await?,
     ))
+}
+
+
+pub async fn get_answer_draft(
+    State(state): State<AppState>, auth: AuthUser, Path(id): Path<Uuid>,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let child_id = q.get("child_id").and_then(|v| Uuid::parse_str(v).ok());
+    Ok(response::ok(service::get_answer_draft(&state, &auth, id, child_id).await?))
+}
+
+pub async fn save_answer_draft(
+    State(state): State<AppState>, auth: AuthUser, Path(id): Path<Uuid>,
+    Json(payload): Json<SaveAnswerDraftRequest>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    Ok(response::ok(service::save_answer_draft(&state, &auth, id, payload).await?))
+}
+
+pub async fn delete_answer_draft(
+    State(state): State<AppState>, auth: AuthUser, Path(id): Path<Uuid>,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+) -> Result<impl axum::response::IntoResponse, AppError> {
+    let child_id = q.get("child_id").and_then(|v| Uuid::parse_str(v).ok());
+    service::delete_answer_draft(&state, &auth, id, child_id).await?;
+    Ok(response::ok(DeleteResultDto { deleted: true }))
 }

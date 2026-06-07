@@ -16,6 +16,8 @@ class StepFormView extends StatefulWidget {
     required this.onAnswerChanged,
     required this.onSubmit,
     required this.submitting,
+    this.initialPage = 0,
+    this.onPageChanged,
   });
 
   final String formTitle;
@@ -24,6 +26,8 @@ class StepFormView extends StatefulWidget {
   final void Function(String fieldId, Object? value) onAnswerChanged;
   final VoidCallback onSubmit;
   final bool submitting;
+  final int initialPage;
+  final ValueChanged<int>? onPageChanged;
 
   @override
   State<StepFormView> createState() => _StepFormViewState();
@@ -40,7 +44,11 @@ class _StepFormViewState extends State<StepFormView> {
     _answerableFields = widget.fields
         .where((f) => _fieldSubmitsAnswer(f.type))
         .toList(growable: false);
-    _pageController = PageController();
+    final lastPage = _answerableFields.isEmpty
+        ? 0
+        : _answerableFields.length - 1;
+    _currentPage = widget.initialPage.clamp(0, lastPage).toInt();
+    _pageController = PageController(initialPage: _currentPage);
   }
 
   @override
@@ -51,6 +59,9 @@ class _StepFormViewState extends State<StepFormView> {
           .where((f) => _fieldSubmitsAnswer(f.type))
           .toList(growable: false);
       if (_currentPage >= _answerableFields.length) _currentPage = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_currentPage);
+      }
     }
   }
 
@@ -135,7 +146,10 @@ class _StepFormViewState extends State<StepFormView> {
             physics: const NeverScrollableScrollPhysics(),
             reverse: Directionality.of(context) == TextDirection.rtl,
             itemCount: _answerableFields.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
+            onPageChanged: (index) {
+              setState(() => _currentPage = index);
+              widget.onPageChanged?.call(index);
+            },
             itemBuilder: (context, index) {
               final field = _answerableFields[index];
               return _QuestionPage(

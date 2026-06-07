@@ -1313,6 +1313,45 @@ class FeedbackFlowApiClient {
     );
   }
 
+  Future<ApiResponse<Map<String, dynamic>?>> getAnswerDraft({
+    required String id,
+    String? childId,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/answer-draft', <String, String>{'id': id}),
+      queryParameters: _clean(<String, dynamic>{'child_id': childId}),
+    );
+    return _parseApiResponse<Map<String, dynamic>?>(
+      response.data,
+      (json) => json == null ? null : _jsonObject(json),
+    );
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> saveAnswerDraft({
+    required String id,
+    required Map<String, dynamic> request,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/answer-draft', <String, String>{'id': id}),
+      data: _body(request),
+    );
+    return _parseApiResponse<Map<String, dynamic>>(response.data, _jsonObject);
+  }
+
+  Future<ApiResponse<DeleteResultDto>> deleteAnswerDraft({
+    required String id,
+    String? childId,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      _path('/api/v1/forms/{id}/answer-draft', <String, String>{'id': id}),
+      queryParameters: _clean(<String, dynamic>{'child_id': childId}),
+    );
+    return _parseApiResponse<DeleteResultDto>(
+      response.data,
+      (json) => DeleteResultDto.fromJson(_jsonObject(json)),
+    );
+  }
+
   /// operationId: createSubmission
   /// POST /api/v1/forms/{id}/submissions
   /// Requires Bearer JWT.

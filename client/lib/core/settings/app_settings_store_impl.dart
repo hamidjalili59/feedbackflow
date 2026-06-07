@@ -16,6 +16,16 @@ class NativeAppSettingsStore implements AppSettingsStore {
   @override
   Future<void> saveThemeMode(String value) =>
       _storage.write(key: _themeModeKey, value: value);
+
+  @override
+  Future<String?> readValue(String key) => _storage.read(key: key);
+
+  @override
+  Future<void> writeValue(String key, String value) =>
+      _storage.write(key: key, value: value);
+
+  @override
+  Future<void> deleteValue(String key) => _storage.delete(key: key);
 }
 
 AppSettingsStore createPlatformSettingsStore() => NativeAppSettingsStore();

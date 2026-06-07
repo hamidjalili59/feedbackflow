@@ -526,3 +526,70 @@ fn row_to_submission_detail(
         updated_at: row.try_get("updated_at")?,
     })
 }
+
+pub async fn get_answer_draft(
+    state: &AppState,
+    auth: &AuthUser,
+    form_id: Uuid,
+    child_id: Option<Uuid>,
+) -> Result<Option<AnswerDraftDto>, AppError> {
+    let subject_child = match child_id {
+        Some(id) => { child_auth_for_parent(state, auth, id).await?; Some(id) }
+        None => None,
+    };
+    let row = sqlx::query(
+        "select form_id, respondent_user_id, child_user_id, answers, current_step, total_steps, updated_at \
+         from form_answer_drafts where form_id=$1 and respondent_user_id=$2 \
+         and child_user_id is not distinct from $3",
+    ).bind(form_id).bind(auth.user_id).bind(subject_child).fetch_optional(&state.db).await?;
+    row.map(|row| Ok(AnswerDraftDto {
+        form_id: row.try_get("form_id")?,
+        respondent_user_id: row.try_get("respondent_user_id")?,
+        child_id: row.try_get("child_user_id")?,
+        answers: row.try_get("answers")?,
+        current_step: row.try_get("current_step")?,
+        total_steps: row.try_get("total_steps")?,
+        updated_at: row.try_get("updated_at")?,
+    })).transpose()
+}
+
+pub async fn save_answer_draft(
+    state: &AppState,
+    auth: &AuthUser,
+    form_id: Uuid,
+    request: SaveAnswerDraftRequest,
+) -> Result<AnswerDraftDto, AppError> {
+    if request.current_step < 0 || request.total_steps < 0 || request.current_step > request.total_steps.max(1) {
+        return Err(AppError::validation("Invalid form step progress", json!({"current_step": request.current_step, "total_steps": request.total_steps})));
+    }
+    let child_id = match request.child_id {
+        Some(id) => { child_auth_for_parent(state, auth, id).await?; Some(id) }
+        None => None,
+    };
+    let row = sqlx::query(
+        "insert into form_answer_drafts (form_id, respondent_user_id, child_user_id, answers, current_step, total_steps) \
+         values ($1,$2,$3,$4,$5,$6) \
+         on conflict (form_id, respondent_user_id, child_user_id) do update \
+         set answers=excluded.answers, current_step=excluded.current_step, total_steps=excluded.total_steps, updated_at=now() \
+         returning form_id, respondent_user_id, child_user_id, answers, current_step, total_steps, updated_at",
+    ).bind(form_id).bind(auth.user_id).bind(child_id).bind(request.answers)
+     .bind(request.current_step).bind(request.total_steps).fetch_one(&state.db).await?;
+    Ok(AnswerDraftDto {
+        form_id: row.try_get("form_id")?, respondent_user_id: row.try_get("respondent_user_id")?,
+        child_id: row.try_get("child_user_id")?, answers: row.try_get("answers")?,
+        current_step: row.try_get("current_step")?, total_steps: row.try_get("total_steps")?,
+        updated_at: row.try_get("updated_at")?,
+    })
+}
+
+pub async fn delete_answer_draft(
+    state: &AppState,
+    auth: &AuthUser,
+    form_id: Uuid,
+    child_id: Option<Uuid>,
+) -> Result<(), AppError> {
+    if let Some(id) = child_id { child_auth_for_parent(state, auth, id).await?; }
+    sqlx::query("delete from form_answer_drafts where form_id=$1 and respondent_user_id=$2 and child_user_id is not distinct from $3")
+        .bind(form_id).bind(auth.user_id).bind(child_id).execute(&state.db).await?;
+    Ok(())
+}

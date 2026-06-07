@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/forms/form_answer_draft_store.dart';
 import '../../../data/dto/dto.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/theme/app_breakpoints.dart';
@@ -517,10 +518,47 @@ class _PaginationBar extends StatelessWidget {
   }
 }
 
-class _FormCard extends StatelessWidget {
+class _FormCard extends ConsumerWidget {
   const _FormCard({required this.form, required this.onTap});
 
   final FormSummaryDto form;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final answered =
+        form.mySubmissionId != null && form.mySubmissionId!.trim().isNotEmpty;
+    return FutureBuilder<FormAnswerDraft?>(
+      future: answered
+          ? Future<FormAnswerDraft?>.value(null)
+          : ref
+                .watch(formAnswerDraftStoreProvider)
+                .read(FormAnswerDraftStore.formKey(form.id)),
+      builder: (context, snapshot) {
+        final draft = snapshot.data;
+        final progress = answered ? 1.0 : draft?.completion ?? 0.0;
+        return _FormCardContent(
+          form: form,
+          progress: progress,
+          answered: answered,
+          onTap: onTap,
+        );
+      },
+    );
+  }
+}
+
+class _FormCardContent extends StatelessWidget {
+  const _FormCardContent({
+    required this.form,
+    required this.progress,
+    required this.answered,
+    required this.onTap,
+  });
+
+  final FormSummaryDto form;
+  final double progress;
+  final bool answered;
   final VoidCallback onTap;
 
   @override
@@ -528,44 +566,109 @@ class _FormCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final compact = context.isCompactWidth;
-    final iconSize = compact ? 44.0 : 54.0;
-    final answered =
-        form.mySubmissionId != null && form.mySubmissionId!.trim().isNotEmpty;
+    final percent = (progress * 100).round().clamp(0, 100);
+    final active = progress > 0 && progress < 1;
     return SoftCard(
       onTap: onTap,
-      padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(
+        compact ? AppSpacing.sm : AppSpacing.md,
+        compact ? AppSpacing.sm : 18,
+        compact ? AppSpacing.sm : AppSpacing.md,
+        compact ? AppSpacing.sm : 18,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: iconSize,
-            height: iconSize,
-            decoration: BoxDecoration(
-              color: scheme.secondaryContainer.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(compact ? 14 : 20),
-            ),
-            child: Icon(
-              Icons.article_outlined,
-              color: scheme.onSecondaryContainer,
-              size: compact ? 22 : 26,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: answered
+                      ? scheme.primaryContainer
+                      : active
+                      ? scheme.secondaryContainer.withValues(alpha: 0.88)
+                      : scheme.surfaceContainerHighest.withValues(alpha: 0.84),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(
+                  answered
+                      ? Icons.check_rounded
+                      : active
+                      ? Icons.edit_note_rounded
+                      : Icons.article_outlined,
+                  color: answered
+                      ? scheme.onPrimaryContainer
+                      : active
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      form.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.15,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      _formSubtitle(context, form),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                '$percent%',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (!compact) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Icon(appForwardIcon(context), color: scheme.onSurfaceVariant),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              height: 7,
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: scheme.surfaceContainerHighest,
+                color: answered
+                    ? scheme.primary
+                    : active
+                    ? scheme.secondary
+                    : scheme.primary.withValues(alpha: 0.34),
+              ),
             ),
           ),
-          SizedBox(width: compact ? AppSpacing.sm : AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  form.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.15,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Wrap(
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
                   spacing: AppSpacing.xs,
                   runSpacing: AppSpacing.xs,
                   children: [
@@ -575,68 +678,68 @@ class _FormCard extends StatelessWidget {
                         icon: Icons.check_circle_rounded,
                         label: context.l10n.t('submittedReviewTitle'),
                         translate: false,
-                      ),
-                  ],
-                ),
-                if ((form.description ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    form.description!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    if ((form.category ?? '').trim().isNotEmpty)
+                      )
+                    else if (active)
                       _MetaChip(
-                        icon: Icons.folder_outlined,
-                        label: form.category!,
+                        icon: Icons.schedule_rounded,
+                        label: context.l10n.t('status.inProgress'),
                         translate: false,
                       ),
-                    for (final tag in form.tags ?? const <String>[])
-                      _MetaChip(
-                        icon: Icons.sell_outlined,
-                        label: tag,
-                        translate: false,
-                      ),
-                    _MetaChip(
-                      icon: Icons.visibility_outlined,
-                      label: form.visibilityMode.toJson(),
-                    ),
-                    _MetaChip(
-                      icon: Icons.speed_outlined,
-                      label: form.scoringMode.toJson(),
-                    ),
                     _MetaChip(
                       icon: Icons.how_to_reg_outlined,
                       label: context.l10n.countSubmissions(
                         form.submissionsCount,
                       ),
                     ),
-                    _MetaChip(
-                      icon: Icons.update_outlined,
-                      label: _dateLabel(form.updatedAt),
-                    ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          if ((form.description ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              form.description!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (!compact &&
+              (((form.category ?? '').trim().isNotEmpty) ||
+                  (form.tags ?? const <String>[]).isNotEmpty)) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                if ((form.category ?? '').trim().isNotEmpty)
+                  _MetaChip(
+                    icon: Icons.folder_outlined,
+                    label: form.category!,
+                    translate: false,
+                  ),
+                for (final tag in (form.tags ?? const <String>[]).take(3))
+                  _MetaChip(
+                    icon: Icons.sell_outlined,
+                    label: tag,
+                    translate: false,
+                  ),
               ],
             ),
-          ),
-          if (!compact) ...[
-            const SizedBox(width: AppSpacing.xs),
-            Icon(appForwardIcon(context), color: scheme.onSurfaceVariant),
           ],
         ],
       ),
     );
   }
+}
+
+String _formSubtitle(BuildContext context, FormSummaryDto form) {
+  final category = (form.category ?? '').trim();
+  if (category.isNotEmpty) return '$category - ${_dateLabel(form.updatedAt)}';
+  return '${context.l10n.t('updated')} - ${_dateLabel(form.updatedAt)}';
 }
 
 class _StatusBadge extends StatelessWidget {

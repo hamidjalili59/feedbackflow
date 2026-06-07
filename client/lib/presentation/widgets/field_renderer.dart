@@ -869,10 +869,12 @@ class _StarRatingInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final current = value is num ? (value as num).toInt() : 0;
     final max = (field.config.max ?? 5).round().clamp(1, 10);
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
         for (var rating = 1; rating <= max; rating++)
           FeedbackRatingButton(
             selected: rating <= current,
@@ -881,7 +883,8 @@ class _StarRatingInput extends StatelessWidget {
                 : Icons.star_outline_rounded,
             onPressed: () => onChanged(rating),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

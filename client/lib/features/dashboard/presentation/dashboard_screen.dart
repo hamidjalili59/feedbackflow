@@ -435,7 +435,7 @@ class _ParentHomeHeader extends ConsumerWidget {
           onTap: () => context.go('/profile'),
           child: CircleAvatar(
             radius: 32,
-            backgroundColor: const Color(0xFFFFD8C2),
+            backgroundColor: const Color(0xFFE5E1FF),
             backgroundImage: _dashboardAvatarImageProvider(
               _visibleDashboardAvatarUrl(user.profile),
             ),
@@ -2944,7 +2944,7 @@ class _ManagementConfigurationRow extends ConsumerWidget {
                 ),
                 const Spacer(),
                 IconButton.filledTonal(
-                  tooltip: 'افزودن بخش مخاطبان',
+                  tooltip: context.l10n.t('dashboard.addAudienceSegment'),
                   onPressed: () => _showSegmentDialog(context, ref),
                   icon: const Icon(Icons.add_rounded),
                 ),
@@ -2971,15 +2971,15 @@ class _ManagementConfigurationRow extends ConsumerWidget {
                           .replaceAll('{count}', '${segment.memberCount}'),
                       actions: [
                         IconButton(
-                          tooltip: 'اعضا',
+                          tooltip: context.l10n.t('dashboard.members'),
                           onPressed: () =>
                               _showSegmentMembersDialog(context, ref, segment),
                           icon: const Icon(Icons.group_add_outlined),
                         ),
                         IconButton(
                           tooltip: segment.enabled
-                              ? 'غیرفعال کردن'
-                              : 'فعال کردن',
+                              ? context.l10n.t('dashboard.disable')
+                              : context.l10n.t('dashboard.enable'),
                           onPressed: () =>
                               _toggleSegment(context, ref, segment),
                           icon: Icon(
@@ -3173,28 +3173,28 @@ class _MetricManagementTile extends StatelessWidget {
         children: [
           Switch(value: metric.enabled, onChanged: busy ? null : onToggle),
           PopupMenuButton<String>(
-            tooltip: 'عملیات شاخص',
+            tooltip: context.l10n.t('dashboard.metricActions'),
             enabled: !busy,
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) {
               if (value == 'edit') onEdit();
               if (value == 'mappings') onMappings();
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'edit',
                 child: ListTile(
                   dense: true,
-                  leading: Icon(Icons.edit_outlined),
-                  title: Text('ویرایش شاخص'),
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(context.l10n.t('dashboard.editMetric')),
                 ),
               ),
               PopupMenuItem(
                 value: 'mappings',
                 child: ListTile(
                   dense: true,
-                  leading: Icon(Icons.account_tree_outlined),
-                  title: Text('اتصال داده‌ها'),
+                  leading: const Icon(Icons.account_tree_outlined),
+                  title: Text(context.l10n.t('dashboard.dataMappings')),
                 ),
               ),
             ],
@@ -4130,28 +4130,31 @@ class _ManagementListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final compact = MediaQuery.sizeOf(context).width < 560;
-    final titleBlock = Column(
-      crossAxisAlignment: compact
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.end,
-      children: [
-        Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w900,
+    final titleBlock = Padding(
+      padding: const EdgeInsetsDirectional.only(end: 10),
+      child: Column(
+        crossAxisAlignment: compact
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
     final trailingText = Text(
       trailing,
@@ -4170,32 +4173,19 @@ class _ManagementListItem extends StatelessWidget {
         color: _dashboardSurface(context),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                titleBlock,
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: trailingText),
-                    if (actions.isNotEmpty) actionWrap,
-                  ],
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                Flexible(child: trailingText),
-                const Spacer(),
-                if (actions.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  actionWrap,
-                ],
-                const SizedBox(width: 8),
-                Expanded(child: titleBlock),
-              ],
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          titleBlock,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: trailingText),
+              if (actions.isNotEmpty) actionWrap,
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

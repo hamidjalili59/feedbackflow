@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' as rp;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../core/forms/form_answer_draft_store.dart';
 import '../core/security/token_store.dart';
 import '../core/settings/app_settings_store.dart';
 import '../data/api/feedback_flow_api_client.dart';
@@ -41,6 +42,10 @@ AuthTokenStore tokenStore(Ref ref) =>
 @Riverpod(keepAlive: true)
 AppSettingsStore settingsStore(Ref ref) =>
     ref.watch(appDependenciesProvider).settingsStore;
+
+final formAnswerDraftStoreProvider = rp.Provider<FormAnswerDraftStore>(
+  (ref) => FormAnswerDraftStore(ref.watch(settingsStoreProvider)),
+);
 
 @Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) => ref.watch(appDependenciesProvider).database;

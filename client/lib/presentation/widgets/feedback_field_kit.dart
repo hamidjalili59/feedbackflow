@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
 
 class FeedbackSheetFrame extends StatelessWidget {
   const FeedbackSheetFrame({
@@ -390,7 +391,7 @@ class FeedbackRatingButton extends StatelessWidget {
                   selected ? Icons.star_rounded : Icons.star_rounded,
                   size: starLike ? 34 : 27,
                   color: selected
-                      ? const Color(0xFFFFC857)
+                      ? AppTheme.primary
                       : scheme.outlineVariant,
                 ),
         ),

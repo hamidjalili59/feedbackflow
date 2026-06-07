@@ -12,7 +12,7 @@ class AppTheme {
   static const ink = Color(0xFF181B34);
   static const muted = Color(0xFF858BA6);
   static const success = Color(0xFF32C76F);
-  static const warning = Color(0xFFFFA93B);
+  static const warning = Color(0xFF7C6CF2);
   static const danger = Color(0xFFFF525D);
 
   /// AbarFaNum keeps Persian and Latin digits visually aligned with the mockups.

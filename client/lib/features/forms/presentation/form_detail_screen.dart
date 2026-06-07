@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/forms/form_answer_draft_store.dart';
 import '../../../data/dto/dto.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/common/field_type_ui.dart';
@@ -203,6 +206,8 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
   bool _submitting = false;
   bool _submitted = false;
   SubmissionDetailDto? _submittedSubmission;
+  int _currentPage = 0;
+  String? _draftLoadedForKey;
 
   @override
   void initState() {
@@ -212,6 +217,7 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       for (final answer in editSubmission.answers) {
         _answers[answer.fieldId] = answer.value;
       }
+      _draftLoadedForKey = 'edit-${editSubmission.id}';
     }
   }
 
@@ -310,17 +316,85 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
         }
         final fields = [...form.fields]
           ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+        _restoreDraftIfNeeded(form);
 
         return StepFormView(
           formTitle: form.title,
           fields: fields,
           answers: _answers,
-          onAnswerChanged: (fieldId, value) =>
-              setState(() => _answers[fieldId] = value),
+          initialPage: _currentPage,
+          onAnswerChanged: (fieldId, value) {
+            setState(() => _answers[fieldId] = value);
+            _saveDraft();
+          },
+          onPageChanged: (page) {
+            _currentPage = page;
+            _saveDraft();
+          },
           onSubmit: _submit,
           submitting: _submitting,
         );
       },
+    );
+  }
+
+  void _restoreDraftIfNeeded(FormDetailDto form) {
+    if (widget.editSubmission != null) return;
+    final key = FormAnswerDraftStore.formKey(form.id, childId: widget.childId);
+    if (_draftLoadedForKey == key) return;
+    _draftLoadedForKey = key;
+    unawaited(() async {
+      Map<String, Object?>? restoredAnswers;
+      int restoredPage = 0;
+      try {
+        final remote = await ref.read(submissionsRepositoryProvider).getAnswerDraft(
+          id: form.id, childId: widget.childId,
+        );
+        final rawAnswers = remote?['answers'];
+        if (rawAnswers is Map) {
+          restoredAnswers = rawAnswers.map((key, value) => MapEntry('$key', value));
+          restoredPage = (remote?['current_step'] as num?)?.toInt() ?? 0;
+        }
+      } catch (_) {}
+      final local = await ref.read(formAnswerDraftStoreProvider).read(key);
+      restoredAnswers ??= local?.answers;
+      if (restoredPage == 0) restoredPage = local?.currentPage ?? 0;
+      if (!mounted || _draftLoadedForKey != key || restoredAnswers == null) return;
+      if (_answers.isNotEmpty || _submitted) return;
+      final total = _answerableCount(form.fields);
+      setState(() {
+        _answers
+          ..clear()
+          ..addAll(restoredAnswers!);
+        final lastPage = total <= 0 ? 0 : total - 1;
+        _currentPage = restoredPage.clamp(0, lastPage).toInt();
+      });
+    }());
+  }
+
+  void _saveDraft() {
+    if (widget.editSubmission != null) return;
+    unawaited(
+      ref.read(submissionsRepositoryProvider).saveAnswerDraft(
+        id: widget.form.id,
+        childId: widget.childId,
+        answers: _answers,
+        currentStep: _currentPage,
+        totalSteps: _answerableCount(widget.form.fields),
+      ).catchError((_) {}),
+    );
+    unawaited(
+      ref
+          .read(formAnswerDraftStoreProvider)
+          .save(
+            key: FormAnswerDraftStore.formKey(
+              widget.form.id,
+              childId: widget.childId,
+            ),
+            answers: _answers,
+            currentPage: _currentPage,
+            totalQuestions: _answerableCount(widget.form.fields),
+          ),
     );
   }
 
@@ -376,6 +450,17 @@ class _RespondentFormViewState extends ConsumerState<_RespondentFormView> {
       ref.invalidate(mySurveysProvider);
       ref.invalidate(surveyCalendarProvider);
       if (mounted) {
+        await ref.read(submissionsRepositoryProvider).deleteAnswerDraft(
+          id: widget.form.id, childId: widget.childId,
+        ).catchError((_) {});
+        await ref
+            .read(formAnswerDraftStoreProvider)
+            .clear(
+              FormAnswerDraftStore.formKey(
+                widget.form.id,
+                childId: widget.childId,
+              ),
+            );
         setState(() {
           _submittedSubmission = savedSubmission;
           _submitted = true;
@@ -4712,6 +4797,9 @@ bool _fieldSubmitsAnswer(FieldType type) {
     _ => true,
   };
 }
+
+int _answerableCount(List<FormFieldDto> fields) =>
+    fields.where((field) => _fieldSubmitsAnswer(field.type)).length;
 
 void _returnToPreviousOrForms(BuildContext context) {
   final navigator = Navigator.of(context);
