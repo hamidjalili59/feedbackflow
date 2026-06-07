@@ -126,7 +126,6 @@ class _ExperienceDashboard extends ConsumerStatefulWidget {
 class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
   String _period = 'this_month';
   late String? _selectedChildId = widget.initialChildId;
-  int _userListVersion = 0;
 
   DashboardQueryInput get _query => DashboardQueryInput(
     period: _period,
@@ -231,20 +230,9 @@ class _ExperienceDashboardState extends ConsumerState<_ExperienceDashboard> {
                     const SizedBox(height: 16),
                     _ManagementConfigurationRow(role: role),
                     const SizedBox(height: 16),
-                    _CreateUserCard(
-                      actorRole: role,
-                      onCreated: () {
-                        setState(() => _userListVersion++);
-                        ref.invalidate(dashboardExperienceProvider(_query));
-                      },
-                    ),
-                    const SizedBox(height: 16),
                     const _AudienceGroupsCard(),
                     const SizedBox(height: 16),
-                    _UserManagementCard(
-                      key: ValueKey('users-$_userListVersion'),
-                      actorRole: role,
-                    ),
+                    _UserManagementCard(actorRole: role),
                     const SizedBox(height: 16),
                     const _PendingApprovalCard(),
                     const SizedBox(height: 16),
@@ -537,16 +525,71 @@ class _ParentStudentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 520;
+    final studentRow = Row(
+      spacing: 8,
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                child.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: _dashboardText(context),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if ([child.className, child.gradeLabel]
+                  .whereType<String>()
+                  .where((value) => value.trim().isNotEmpty)
+                  .join(' - ')
+                  .isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  [child.className, child.gradeLabel]
+                      .whereType<String>()
+                      .where((value) => value.trim().isNotEmpty)
+                      .join(' - '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        CircleAvatar(
+          radius: 28,
+          backgroundColor: _dashboardTintSurface(context),
+          backgroundImage: _dashboardAvatarImageProvider(child.avatarUrl),
+          child: child.avatarUrl == null || child.avatarUrl!.isEmpty
+              ? Text(
+                  _initials(child.displayName),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              : null,
+        ),
+      ],
+    );
+
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: onStudentTap,
       child: _ParentWhiteCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Flex(
-          direction: compact ? Axis.vertical : Axis.horizontal,
-          crossAxisAlignment: compact
-              ? CrossAxisAlignment.stretch
-              : CrossAxisAlignment.center,
+          direction: Axis.horizontal,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
@@ -562,73 +605,7 @@ class _ParentStudentCard extends StatelessWidget {
               ),
             ),
             SizedBox(width: compact ? 0 : 12, height: compact ? 12 : 0),
-            Flexible(
-              fit: compact ? FlexFit.loose : FlexFit.tight,
-              child: Row(
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          child.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: _dashboardText(context),
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        if ([child.className, child.gradeLabel]
-                            .whereType<String>()
-                            .where((value) => value.trim().isNotEmpty)
-                            .join(' - ')
-                            .isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            [child.className, child.gradeLabel]
-                                .whereType<String>()
-                                .where((value) => value.trim().isNotEmpty)
-                                .join(' - '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: _dashboardTintSurface(context),
-                    backgroundImage: _dashboardAvatarImageProvider(
-                      child.avatarUrl,
-                    ),
-                    child: child.avatarUrl == null || child.avatarUrl!.isEmpty
-                        ? Text(
-                            _initials(child.displayName),
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          )
-                        : null,
-                  ),
-                ],
-              ),
-            ),
+            Flexible(child: studentRow),
           ],
         ),
       ),
@@ -5004,81 +4981,126 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
 
   @override
   Widget build(BuildContext context) {
-    final roles = _creatableRoles(widget.actorRole);
     return SoftCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _CardHeader(
+            icon: Icons.person_add_alt_rounded,
+            title: context.l10n.t('addUser'),
+            action: FilledButton.icon(
+              onPressed: _openCreateDialog,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(context.l10n.t('addUser')),
+            ),
+          ),
+          const SizedBox(height: 8),
           Text(
-            context.l10n.t('addUser'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _name,
-            decoration: InputDecoration(
-              labelText: context.l10n.t('displayName'),
-              prefixIcon: const Icon(Icons.badge_outlined),
+            'برای افزودن کاربر جدید از دکمه بالا استفاده کنید؛ فرم ساخت کاربر در یک پنجره جدا باز می‌شود.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.left,
-            decoration: InputDecoration(
-              labelText: context.l10n.t('phone'),
-              prefixIcon: const Icon(Icons.phone_outlined),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openCreateDialog() async {
+    final roles = _creatableRoles(widget.actorRole);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(context.l10n.t('addUser')),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _name,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('displayName'),
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('phone'),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('email'),
+                      prefixIcon: const Icon(Icons.alternate_email_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _GenderDropdown(
+                    value: _gender,
+                    onChanged: (value) {
+                      setState(() => _gender = value);
+                      setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('password'),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<UserRole>(
+                    initialValue: _role,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('role'),
+                    ),
+                    items: [
+                      for (final role in roles)
+                        DropdownMenuItem(
+                          value: role,
+                          child: Text(context.l10n.enumLabel(role.toJson())),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _role = value);
+                      setDialogState(() {});
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.left,
-            decoration: InputDecoration(
-              labelText: context.l10n.t('email'),
-              prefixIcon: const Icon(Icons.alternate_email_rounded),
+          actions: [
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(dialogContext),
+              child: Text(context.l10n.t('cancel')),
             ),
-          ),
-          const SizedBox(height: 10),
-          _GenderDropdown(
-            value: _gender,
-            onChanged: (value) => setState(() => _gender = value),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _password,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: context.l10n.t('password'),
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
-            ),
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<UserRole>(
-            initialValue: _role,
-            decoration: InputDecoration(labelText: context.l10n.t('role')),
-            items: [
-              for (final role in roles)
-                DropdownMenuItem(
-                  value: role,
-                  child: Text(context.l10n.enumLabel(role.toJson())),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => _role = value);
-            },
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: FilledButton.icon(
-              onPressed: _saving ? null : _create,
+            FilledButton.icon(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      setDialogState(() => _saving = true);
+                      await _create(closeDialog: true);
+                      if (mounted) setDialogState(() => _saving = false);
+                    },
               icon: _saving
                   ? const SizedBox.square(
                       dimension: 18,
@@ -5089,13 +5111,13 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
                 _saving ? context.l10n.t('saving') : context.l10n.t('addUser'),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _create() async {
+  Future<void> _create({bool closeDialog = false}) async {
     final messenger = ScaffoldMessenger.of(context);
     final normalizedPhone = PhoneNumberNormalizer.normalize(_phone.text);
     if (!PhoneNumberNormalizer.isLikelyValid(normalizedPhone)) {
@@ -5128,6 +5150,7 @@ class _CreateUserCardState extends ConsumerState<_CreateUserCard> {
         messenger.showSnackBar(
           SnackBar(content: Text(context.l10n.t('userCreated'))),
         );
+        if (closeDialog) Navigator.of(context).pop();
       }
     } catch (error) {
       if (mounted) {
@@ -5176,14 +5199,9 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _CardHeader(
+          const _CardHeader(
             icon: Icons.groups_2_outlined,
             title: 'مدیریت کلاس‌ها و گروه‌ها',
-            action: IconButton(
-              tooltip: context.l10n.t('refresh'),
-              onPressed: _refresh,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -5193,62 +5211,18 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              SizedBox(
-                width: 280,
-                child: TextField(
-                  controller: _name,
-                  decoration: const InputDecoration(
-                    labelText: 'نام کلاس یا گروه',
-                    prefixIcon: Icon(Icons.drive_file_rename_outline_rounded),
-                  ),
-                ),
+              IconButton(
+                tooltip: context.l10n.t('refresh'),
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh_rounded),
               ),
-              SizedBox(
-                width: 160,
-                child: DropdownButtonFormField<String>(
-                  initialValue: _groupType,
-                  decoration: const InputDecoration(labelText: 'نوع'),
-                  items: const [
-                    DropdownMenuItem(value: 'class', child: Text('کلاس')),
-                    DropdownMenuItem(value: 'group', child: Text('گروه')),
-                    DropdownMenuItem(
-                      value: 'department',
-                      child: Text('دپارتمان'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) setState(() => _groupType = value);
-                  },
-                ),
-              ),
-              SizedBox(
-                width: 180,
-                child: TextField(
-                  controller: _code,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.left,
-                  decoration: const InputDecoration(
-                    labelText: 'کد اختیاری',
-                    prefixIcon: Icon(Icons.tag_rounded),
-                  ),
-                ),
-              ),
+              const Spacer(),
               FilledButton.icon(
-                onPressed: _saving ? null : _create,
-                icon: _saving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_rounded),
-                label: Text(
-                  _saving ? context.l10n.t('saving') : 'ساخت کلاس/گروه',
-                ),
+                onPressed: _openCreateDialog,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(context.l10n.t('add')),
               ),
             ],
           ),
@@ -5376,7 +5350,89 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
     });
   }
 
-  Future<void> _create() async {
+  Future<void> _openCreateDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('افزودن کلاس/گروه'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _name,
+                    decoration: const InputDecoration(
+                      labelText: 'نام کلاس یا گروه',
+                      prefixIcon: Icon(Icons.drive_file_rename_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _groupType,
+                    decoration: const InputDecoration(labelText: 'نوع'),
+                    items: const [
+                      DropdownMenuItem(value: 'class', child: Text('کلاس')),
+                      DropdownMenuItem(value: 'group', child: Text('گروه')),
+                      DropdownMenuItem(
+                        value: 'department',
+                        child: Text('دپارتمان'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _groupType = value);
+                      setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _code,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    decoration: const InputDecoration(
+                      labelText: 'کد اختیاری',
+                      prefixIcon: Icon(Icons.tag_rounded),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(dialogContext),
+              child: Text(context.l10n.t('cancel')),
+            ),
+            FilledButton.icon(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      setDialogState(() => _saving = true);
+                      await _create(closeDialog: true);
+                      if (dialogContext.mounted) {
+                        setDialogState(() => _saving = false);
+                      }
+                    },
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_rounded),
+              label: Text(
+                _saving ? context.l10n.t('saving') : 'ساخت کلاس/گروه',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _create({bool closeDialog = false}) async {
     final messenger = ScaffoldMessenger.of(context);
     final name = _name.text.trim();
     if (name.isEmpty) {
@@ -5407,6 +5463,7 @@ class _AudienceGroupsCardState extends ConsumerState<_AudienceGroupsCard> {
         messenger.showSnackBar(
           const SnackBar(content: Text('کلاس/گروه ساخته شد.')),
         );
+        if (closeDialog) Navigator.of(context).pop();
       }
     } catch (error) {
       if (mounted) {
@@ -6033,7 +6090,7 @@ IconData _groupTypeIcon(String value) => switch (value) {
 };
 
 class _UserManagementCard extends ConsumerStatefulWidget {
-  const _UserManagementCard({super.key, required this.actorRole});
+  const _UserManagementCard({required this.actorRole});
 
   final UserRole actorRole;
 
@@ -6044,12 +6101,23 @@ class _UserManagementCard extends ConsumerStatefulWidget {
 
 class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
   final _search = TextEditingController();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  late UserRole _role = _creatableRoles(widget.actorRole).first;
+  String? _gender;
   int _page = 1;
+  bool _saving = false;
   late Future<ListResponse<UserSummaryDto>> _future = _load();
 
   @override
   void dispose() {
     _search.dispose();
+    _name.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -6062,12 +6130,23 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
           _CardHeader(
             icon: Icons.manage_accounts_outlined,
             title: context.l10n.t('userManagement'),
-            action: IconButton(
-              tooltip: context.l10n.t('refresh'),
-              onPressed: _refresh,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
           ),
+          Row(
+            children: [
+              IconButton(
+                tooltip: context.l10n.t('refresh'),
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                onPressed: _openCreateDialog,
+                icon: const Icon(Icons.person_add_alt_rounded),
+                label: Text(context.l10n.t('addUser')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           const SizedBox(height: 12),
           TextField(
             controller: _search,
@@ -6203,6 +6282,172 @@ class _UserManagementCardState extends ConsumerState<_UserManagementCard> {
       _page = page;
       _future = _load();
     });
+  }
+
+  Future<void> _openCreateDialog() async {
+    final roles = _creatableRoles(widget.actorRole);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(context.l10n.t('addUser')),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _name,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('displayName'),
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('phone'),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.left,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('email'),
+                      prefixIcon: const Icon(Icons.alternate_email_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _GenderDropdown(
+                    value: _gender,
+                    onChanged: (value) {
+                      setState(() => _gender = value);
+                      setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _password,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('password'),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<UserRole>(
+                    initialValue: _role,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.t('role'),
+                    ),
+                    items: [
+                      for (final role in roles)
+                        DropdownMenuItem(
+                          value: role,
+                          child: Text(context.l10n.enumLabel(role.toJson())),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _role = value);
+                      setDialogState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(dialogContext),
+              child: Text(context.l10n.t('cancel')),
+            ),
+            FilledButton.icon(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      setDialogState(() => _saving = true);
+                      await _create(closeDialog: true);
+                      if (dialogContext.mounted) {
+                        setDialogState(() => _saving = false);
+                      }
+                    },
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.person_add_alt_rounded),
+              label: Text(
+                _saving ? context.l10n.t('saving') : context.l10n.t('addUser'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _create({bool closeDialog = false}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final normalizedPhone = PhoneNumberNormalizer.normalize(_phone.text);
+    if (!PhoneNumberNormalizer.isLikelyValid(normalizedPhone)) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.l10n.t('dashboard.invalidPhone'))),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(usersRepositoryProvider)
+          .createUser(
+            request: CreateUserRequest(
+              phone: normalizedPhone,
+              email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+              displayName: _name.text.trim(),
+              gender: _gender,
+              password: _password.text,
+              primaryRole: _role,
+            ),
+          );
+      _name.clear();
+      _phone.clear();
+      _email.clear();
+      _password.clear();
+      setState(() {
+        _gender = null;
+        _page = 1;
+        _future = _load();
+      });
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.l10n.t('userCreated'))),
+        );
+        if (closeDialog) Navigator.of(context).pop();
+      }
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              FriendlyApiErrorMessage.from(error, context: context),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _manageFamily(UserSummaryDto user) async {
