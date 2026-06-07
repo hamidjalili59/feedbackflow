@@ -18,7 +18,18 @@ class FeedbackFlowApp extends ConsumerStatefulWidget {
 }
 
 class _FeedbackFlowAppState extends ConsumerState<FeedbackFlowApp> {
-  DateTime? _lastExitBackPress;
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  late final RootBackButtonDispatcher _backButtonDispatcher;
+
+  @override
+  void initState() {
+    super.initState();
+    _backButtonDispatcher = _FeedbackFlowBackButtonDispatcher(
+      ref: ref,
+      router: () => ref.read(routerProvider),
+      scaffoldMessengerKey: _scaffoldMessengerKey,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +41,14 @@ class _FeedbackFlowAppState extends ConsumerState<FeedbackFlowApp> {
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: AppTheme.light(locale),
       darkTheme: AppTheme.dark(locale),
       themeMode: ref.watch(themeControllerProvider),
-      routerConfig: router,
+      routeInformationProvider: router.routeInformationProvider,
+      routeInformationParser: router.routeInformationParser,
+      routerDelegate: router.routerDelegate,
+      backButtonDispatcher: _backButtonDispatcher,
       builder: (context, child) {
         return ScrollConfiguration(
           behavior: const MaterialScrollBehavior().copyWith(
@@ -45,44 +60,86 @@ class _FeedbackFlowAppState extends ConsumerState<FeedbackFlowApp> {
               PointerDeviceKind.invertedStylus,
             },
           ),
-          child: PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (didPop, result) {
-              if (!didPop) _handleSystemBack(context, router);
-            },
-            child: Directionality(
-              textDirection: context.l10n.textDirection,
-              child: Column(
-                children: [
-                  const SmartAppBanner(),
-                  Expanded(child: child ?? const SizedBox.shrink()),
-                ],
-              ),
+          child: Directionality(
+            textDirection: context.l10n.textDirection,
+            child: Column(
+              children: [
+                const SmartAppBanner(),
+                Expanded(child: child ?? const SizedBox.shrink()),
+              ],
             ),
           ),
         );
       },
     );
   }
+}
 
-  void _handleSystemBack(BuildContext context, GoRouter router) {
-    final currentPath = router.routeInformationProvider.value.uri.path;
+class _FeedbackFlowBackButtonDispatcher extends RootBackButtonDispatcher {
+  _FeedbackFlowBackButtonDispatcher({
+    required this.ref,
+    required this.router,
+    required this.scaffoldMessengerKey,
+  });
+
+  final WidgetRef ref;
+  final GoRouter Function() router;
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey;
+  DateTime? _lastExitBackPress;
+
+  @override
+  Future<bool> didPopRoute() async {
+    final handledByRouter = await invokeCallback(Future<bool>.value(false));
+    if (handledByRouter) {
+      _lastExitBackPress = null;
+      return true;
+    }
+
+    final appRouter = router();
+    final currentPath = appRouter.routeInformationProvider.value.uri.path;
     final session = ref.read(authControllerProvider).asData?.value;
     if (session != null && currentPath != '/dashboard') {
       _lastExitBackPress = null;
-      router.go('/dashboard');
-      return;
+      appRouter.go('/dashboard');
+      return true;
+    }
+
+    if (session == null && currentPath != '/login') {
+      _lastExitBackPress = null;
+      appRouter.go('/login');
+      return true;
     }
 
     final now = DateTime.now();
     final last = _lastExitBackPress;
     if (last == null || now.difference(last) > const Duration(seconds: 2)) {
       _lastExitBackPress = now;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.t('pressBackAgainToExit'))),
-      );
-      return;
+      _showExitBackSnackBar();
+      return true;
     }
-    SystemNavigator.pop();
+
+    await SystemNavigator.pop();
+    return true;
+  }
+
+  void _showExitBackSnackBar() {
+    final context = scaffoldMessengerKey.currentContext;
+    if (context == null) return;
+    scaffoldMessengerKey.currentState
+      ?..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          showCloseIcon: true,
+          content: Row(
+            children: [
+              const Icon(Icons.touch_app_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(child: Text(context.l10n.t('pressBackAgainToExit'))),
+            ],
+          ),
+        ),
+      );
   }
 }

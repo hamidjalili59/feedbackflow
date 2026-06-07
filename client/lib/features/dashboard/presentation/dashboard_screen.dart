@@ -420,13 +420,13 @@ class _ParentActivitiesSection extends StatelessWidget {
   }
 }
 
-class _ParentHomeHeader extends StatelessWidget {
+class _ParentHomeHeader extends ConsumerWidget {
   const _ParentHomeHeader({required this.user});
 
   final UserDetailDto user;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -452,6 +452,41 @@ class _ParentHomeHeader extends StatelessWidget {
                   )
                 : null,
           ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<String>(
+          tooltip: context.l10n.t('more'),
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (value) async {
+            if (value == 'profile') {
+              context.go('/profile');
+              return;
+            }
+            if (value == 'signOut') {
+              await ref.read(authControllerProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'profile',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person_outline_rounded),
+                title: Text(context.l10n.t('profile')),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'signOut',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.logout_rounded),
+                title: Text(context.l10n.t('signOut')),
+              ),
+            ),
+          ],
         ),
         const SizedBox(width: 20),
         Expanded(
@@ -671,6 +706,29 @@ class _ParentSurveyActionCard extends StatelessWidget {
           textDirection: TextDirection.rtl,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            SizedBox(
+              width: 98,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF436BFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => context.push(destination),
+                child: Text(
+                  answered
+                      ? context.l10n.t('viewResult')
+                      : context.l10n.t('start'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -700,28 +758,6 @@ class _ParentSurveyActionCard extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 98,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF436BFF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () => context.push(destination),
-                child: Text(
-                  answered
-                      ? context.l10n.t('viewResult')
-                      : context.l10n.t('start'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
             ),
           ],
